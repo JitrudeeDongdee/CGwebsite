@@ -28,9 +28,11 @@ export function useInteraction(
   state: DrawingState,
   addWall: (start: Point, end: Point) => void,
   updateNodePosition: (nodeId: string, point: Point) => void,
+  finalizeNodeMove: (nodeId: string, point: Point) => void,
 ) {
   const modeRef = useRef<Mode>(null)
   const [draft, setDraft] = useState<DraftWall | null>(null)
+  const [moveSnap, setMoveSnap] = useState<SnapTarget | null>(null)
 
   const onDown = useCallback(
     (point: Point) => {
@@ -53,6 +55,10 @@ export function useInteraction(
       if (!mode) return
       if (mode.type === 'node') {
         updateNodePosition(mode.nodeId, point)
+        const snap = findSnapTarget(state, point, undefined, mode.nodeId)
+        // finishNodeMove only merges into an existing node, not a wall
+        // midpoint, so only show the indicator when a release would merge.
+        setMoveSnap(snap?.type === 'node' ? snap : null)
       } else {
         setDraft({ start: mode.start, current: point, snap: findSnapTarget(state, point) })
       }
@@ -66,11 +72,14 @@ export function useInteraction(
       modeRef.current = null
       if (mode?.type === 'draft') {
         addWall(mode.start, point)
+      } else if (mode?.type === 'node') {
+        finalizeNodeMove(mode.nodeId, point)
       }
       setDraft(null)
+      setMoveSnap(null)
     },
-    [addWall],
+    [addWall, finalizeNodeMove],
   )
 
-  return { draft, onDown, onMove, onUp }
+  return { draft, moveSnap, onDown, onMove, onUp }
 }

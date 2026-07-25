@@ -69,3 +69,31 @@ export function moveNode(state: DrawingState, nodeId: string, point: Point): Dra
     nodes: { ...state.nodes, [nodeId]: { ...node, x: snapped.x, y: snapped.y } },
   }
 }
+
+/**
+ * Finalizes a node drag: if the release point lands on another existing
+ * node, merges into it (every wall pointing at the dragged node is
+ * re-pointed at the target, and the dragged node is dropped) instead of
+ * leaving two nodes overlapping but disconnected. That merge is what lets
+ * dragging one corner onto another actually close a wall loop.
+ */
+export function finishNodeMove(state: DrawingState, nodeId: string, point: Point): DrawingState {
+  const moved = moveNode(state, nodeId, point)
+  const target = findSnapTarget(moved, point, undefined, nodeId)
+
+  if (target?.type !== 'node') {
+    return moved
+  }
+
+  const targetId = target.nodeId
+  const { [nodeId]: _removed, ...remainingNodes } = moved.nodes
+  const walls = moved.walls
+    .map((wall) => ({
+      ...wall,
+      a: wall.a === nodeId ? targetId : wall.a,
+      b: wall.b === nodeId ? targetId : wall.b,
+    }))
+    .filter((wall) => wall.a !== wall.b)
+
+  return { nodes: remainingNodes, walls }
+}

@@ -1,4 +1,5 @@
 import type { DraftWall } from './useInteraction'
+import { SnapIndicator } from './SnapIndicator'
 
 export function DraftWallView({ draft }: { draft: DraftWall | null }) {
   if (!draft) return null
@@ -20,12 +21,7 @@ export function DraftWallView({ draft }: { draft: DraftWall | null }) {
           <meshBasicMaterial color="#3f8ee0" transparent opacity={0.8} />
         </mesh>
       )}
-      {draft.snap && (
-        <mesh position={[draft.snap.point.x, 0.12, draft.snap.point.y]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.18, 0.24, 24]} />
-          <meshBasicMaterial color="#3fe08e" />
-        </mesh>
-      )}
+      {draft.snap && <SnapIndicator point={draft.snap.point} />}
     </>
   )
 }

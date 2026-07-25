@@ -9,10 +9,16 @@ import { GroundPlane } from './GroundPlane'
 import { NodesView } from './NodesView'
 import { WallsView } from './WallsView'
 import { DraftWallView } from './DraftWallView'
+import { SnapIndicator } from './SnapIndicator'
 
 export function DrawingCanvas({ onAreaChange }: { onAreaChange: (area: number | null) => void }) {
-  const { state, addWall, updateNodePosition, roomArea } = useDrawingState()
-  const { draft, onDown, onMove, onUp } = useInteraction(state, addWall, updateNodePosition)
+  const { state, addWall, updateNodePosition, finalizeNodeMove, roomArea } = useDrawingState()
+  const { draft, moveSnap, onDown, onMove, onUp } = useInteraction(
+    state,
+    addWall,
+    updateNodePosition,
+    finalizeNodeMove,
+  )
   const controlsRef = useRef<OrbitControls>(null)
 
   const handleDown = (point: Point) => {
@@ -43,6 +49,7 @@ export function DrawingCanvas({ onAreaChange }: { onAreaChange: (area: number | 
       <WallsView state={state} />
       <NodesView nodes={Object.values(state.nodes)} />
       <DraftWallView draft={draft} />
+      {moveSnap && <SnapIndicator point={moveSnap.point} />}
     </Canvas>
   )
 }
