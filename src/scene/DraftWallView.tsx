@@ -1,7 +1,9 @@
+import { useTheme } from '@mui/material/styles'
 import type { DraftWall } from './useInteraction'
 import { SnapIndicator } from './SnapIndicator'
 
 export function DraftWallView({ draft }: { draft: DraftWall | null }) {
+  const { scene } = useTheme()
   if (!draft) return null
 
   const end = draft.snap?.point ?? draft.current
@@ -18,7 +20,7 @@ export function DraftWallView({ draft }: { draft: DraftWall | null }) {
       {length > 0 && (
         <mesh position={[midX, 0.16, midY]} rotation={[0, -angle, 0]}>
           <boxGeometry args={[length, 0.02, 0.06]} />
-          <meshBasicMaterial color="#3f8ee0" transparent opacity={0.8} />
+          <meshBasicMaterial color={scene.draft} transparent opacity={0.8} />
         </mesh>
       )}
       {draft.snap && <SnapIndicator point={draft.snap.point} />}

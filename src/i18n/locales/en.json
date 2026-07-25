@@ -1,0 +1,25 @@
+{
+  "app": {
+    "title": "House Plan Designer"
+  },
+  "canvas": {
+    "hint": "Drag on empty space to draw a wall · drag a corner to move it · drag a corner onto another to close the room",
+    "zoomHint": "Pinch or scroll to zoom"
+  },
+  "summary": {
+    "title": "Area summary",
+    "roomArea": "Room area",
+    "noRoom": "No closed room yet",
+    "noRoomHint": "Draw walls that enclose a loop to calculate the area",
+    "squareMeters": "m²",
+    "wallCount": "Walls",
+    "wallUnit": "segments"
+  },
+  "settings": {
+    "language": "Language",
+    "theme": "Theme",
+    "themeSystem": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark"
+  }
+}

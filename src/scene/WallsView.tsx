@@ -1,9 +1,10 @@
+import { useTheme } from '@mui/material/styles'
 import type { DrawingState, DrawWall } from '../drawing/types'
 
 const WALL_THICKNESS = 0.15
 const WALL_HEIGHT = 0.3
 
-function WallMesh({ wall, state }: { wall: DrawWall; state: DrawingState }) {
+function WallMesh({ wall, state, color }: { wall: DrawWall; state: DrawingState; color: string }) {
   const a = state.nodes[wall.a]
   const b = state.nodes[wall.b]
   if (!a || !b) return null
@@ -20,16 +21,17 @@ function WallMesh({ wall, state }: { wall: DrawWall; state: DrawingState }) {
   return (
     <mesh position={[midX, WALL_HEIGHT / 2, midY]} rotation={[0, -angle, 0]}>
       <boxGeometry args={[length, WALL_HEIGHT, WALL_THICKNESS]} />
-      <meshStandardMaterial color="#8892a0" />
+      <meshStandardMaterial color={color} />
     </mesh>
   )
 }
 
 export function WallsView({ state }: { state: DrawingState }) {
+  const { scene } = useTheme()
   return (
     <>
       {state.walls.map((wall) => (
-        <WallMesh key={wall.id} wall={wall} state={state} />
+        <WallMesh key={wall.id} wall={wall} state={state} color={scene.wall} />
       ))}
     </>
   )
