@@ -26,7 +26,7 @@ export function GroundPlane({ onDown, onMove, onUp }: GroundPlaneProps) {
       rotation={[-Math.PI / 2, 0, 0]}
       onPointerDown={(e) => {
         e.stopPropagation()
-        ;(e.target as Element).setPointerCapture(e.pointerId)
+        ;(e.nativeEvent.target as Element).setPointerCapture(e.pointerId)
         capturedId.current = e.pointerId
         onDown(toPoint(e))
       }}

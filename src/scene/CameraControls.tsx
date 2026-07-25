@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import type { RefObject } from 'react'
 import { extend, useFrame, useThree, type ThreeElement } from '@react-three/fiber'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
@@ -11,17 +11,20 @@ declare module '@react-three/fiber' {
 }
 
 interface CameraControlsProps {
-  enabled: boolean
+  controlsRef: RefObject<OrbitControls | null>
 }
 
 /**
  * Two-finger pinch/pan via three's OrbitControls, rotate disabled so it
- * stays a locked top-down view. Rotate being off makes single-finger drag a
- * no-op here, leaving that gesture free for our own node/wall dragging.
+ * stays a locked top-down view. `enabled` is toggled imperatively via
+ * controlsRef (see DrawingCanvas) rather than as a React prop: a native
+ * pointerdown reaches OrbitControls' own listener before a React state
+ * update can re-render `enabled` into this instance, so gating it through
+ * state alone lets the very first drag of a gesture slip through and skew
+ * the camera mid-draw.
  */
-export function CameraControls({ enabled }: CameraControlsProps) {
+export function CameraControls({ controlsRef }: CameraControlsProps) {
   const { camera, gl } = useThree()
-  const controlsRef = useRef<OrbitControls>(null)
 
   useFrame(() => controlsRef.current?.update())
 
@@ -29,7 +32,6 @@ export function CameraControls({ enabled }: CameraControlsProps) {
     <orbitControls
       ref={controlsRef}
       args={[camera, gl.domElement]}
-      enabled={enabled}
       enableRotate={false}
       minZoom={20}
       maxZoom={200}
