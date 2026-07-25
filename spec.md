@@ -4,6 +4,13 @@
 - Vite + React 19 + react-three-fiber (three.js) SPA, TypeScript, oxlint.
 - Package manager: **pnpm** (pinned via `packageManager` field, `pnpm-lock.yaml` committed). npm/yarn lockfiles must not be reintroduced.
 - UI chrome (toolbars/panels/forms around the r3f canvas) is required to use **MUI (Material-UI) with a custom theme** — not unstyled/ad-hoc DOM, not another component library. Not installed yet; see Todo. Theme tokens (palette, typography, spacing overrides) are not yet decided — do not invent values, confirm with the user before defining the theme.
+
+## Product requirements (stated by user, apply from Phase 1)
+These are confirmed requirements, not suggestions. None are implemented yet.
+- **Bilingual (2 languages).** Which two, and the default, are not yet confirmed — Thai is certain (all current UI copy is Thai); the second is presumed English but **must be confirmed before building the i18n layer**. All user-facing strings must go through the i18n layer from the start rather than being hardcoded and retrofitted later.
+- **Dark/light theme following the browser/OS preference** (`prefers-color-scheme`), not a hardcoded palette. Currently the app is hardcoded dark (`index.css`, plus three.js material/grid colors in `scene/`) — note the canvas colors are *not* CSS and must be themed separately from the MUI/DOM side.
+- **2D view must look like a real architectural floor plan** — conventional plan drafting look (proper wall thickness/poché, dimension lines with measurements, standard line weights), not the current debug-style thin lines and dots.
+- **3D view must stay simple and structural** — readable massing that makes the structure obvious and stays easy to edit; explicitly not a photoreal render. 3D does not exist yet (spike is 2D top-down only).
 - `src/drawing/` — pure state/geometry, no React or three.js:
   - `types.ts` — `Point`, `DrawNode`, `DrawWall`, `DrawingState` (`nodes: Record<id, DrawNode>`, `walls: DrawWall[]`), `SnapTarget`.
   - `geometry.ts` — grid snap (`GRID_SIZE=0.5`), node/wall-midpoint snap search (`SNAP_THRESHOLD=0.35`), `polygonArea` (shoelace), `findClosedLoop` (DFS back-edge single-cycle detection — single-room only, multi-room face detection is explicitly out of scope for the spike).
