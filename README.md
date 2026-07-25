@@ -5,6 +5,6 @@ House-design plan drawing engine spike (snap + connected wall movement + room ar
 ## Dev
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
