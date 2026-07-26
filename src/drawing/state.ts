@@ -1,8 +1,8 @@
-import type { DrawingState, DrawNode, DrawWall, Point } from './types'
-import { GRID_SIZE, findSnapTarget, snapToGrid } from './geometry'
+import type { DrawingState, DrawNode, DrawOpening, DrawWall, OpeningKind, Point } from './types'
+import { GRID_SIZE, distance, findSnapTarget, snapToGrid } from './geometry'
 
 export function createInitialState(): DrawingState {
-  return { nodes: {}, walls: [] }
+  return { nodes: {}, walls: [], openings: [] }
 }
 
 function nextId(prefix: string): string {
@@ -28,14 +28,28 @@ function resolveEndpoint(
   if (snap?.type === 'wallMidpoint') {
     const wall = state.walls.find((w) => w.id === snap.wallId)!
     const newNode: DrawNode = { id: nextId('node'), ...snap.point }
-    const walls = state.walls
-      .filter((w) => w.id !== wall.id)
-      .concat(
-        { id: nextId('wall'), a: wall.a, b: newNode.id },
-        { id: nextId('wall'), a: newNode.id, b: wall.b },
-      )
+    const firstHalf: DrawWall = { id: nextId('wall'), a: wall.a, b: newNode.id }
+    const secondHalf: DrawWall = { id: nextId('wall'), a: newNode.id, b: wall.b }
+
+    const walls = state.walls.filter((w) => w.id !== wall.id).concat(firstHalf, secondHalf)
+
+    // The wall this opening sat on no longer exists, so hand each opening to
+    // whichever half now contains it. One straddling the cut can't belong to
+    // either and is dropped.
+    const splitAt = distance(state.nodes[wall.a], snap.point)
+    const openings = state.openings.flatMap((opening) => {
+      if (opening.wallId !== wall.id) return [opening]
+      if (opening.offset + opening.width / 2 <= splitAt) {
+        return [{ ...opening, wallId: firstHalf.id }]
+      }
+      if (opening.offset - opening.width / 2 >= splitAt) {
+        return [{ ...opening, wallId: secondHalf.id, offset: opening.offset - splitAt }]
+      }
+      return []
+    })
+
     return {
-      state: { nodes: { ...state.nodes, [newNode.id]: newNode }, walls },
+      state: { nodes: { ...state.nodes, [newNode.id]: newNode }, walls, openings },
       nodeId: newNode.id,
     }
   }
@@ -43,9 +57,16 @@ function resolveEndpoint(
   const grid = snapToGrid(point)
   const newNode: DrawNode = { id: nextId('node'), ...grid }
   return {
-    state: { nodes: { ...state.nodes, [newNode.id]: newNode }, walls: state.walls },
+    state: { ...state, nodes: { ...state.nodes, [newNode.id]: newNode } },
     nodeId: newNode.id,
   }
+}
+
+/** Drops openings whose wall has gone away. */
+function pruneOpenings(state: DrawingState): DrawingState {
+  const wallIds = new Set(state.walls.map((wall) => wall.id))
+  const openings = state.openings.filter((opening) => wallIds.has(opening.wallId))
+  return openings.length === state.openings.length ? state : { ...state, openings }
 }
 
 export function commitWall(state: DrawingState, start: Point, end: Point): DrawingState {
@@ -95,7 +116,7 @@ export function finishNodeMove(state: DrawingState, nodeId: string, point: Point
     }))
     .filter((wall) => wall.a !== wall.b)
 
-  return { nodes: remainingNodes, walls }
+  return pruneOpenings({ ...moved, nodes: remainingNodes, walls })
 }
 
 /**
@@ -114,7 +135,7 @@ function dropOrphanNodes(state: DrawingState): DrawingState {
   for (const [id, node] of Object.entries(state.nodes)) {
     if (used.has(id)) nodes[id] = node
   }
-  return { nodes, walls: state.walls }
+  return pruneOpenings({ ...state, nodes })
 }
 
 export function deleteWall(state: DrawingState, wallId: string): DrawingState {
@@ -149,7 +170,46 @@ export function duplicateWall(state: DrawingState, wallId: string): DrawingState
   const newB: DrawNode = { id: nextId('node'), x: b.x + offset, y: b.y + offset }
 
   return {
+    ...state,
     nodes: { ...state.nodes, [newA.id]: newA, [newB.id]: newB },
     walls: [...state.walls, { id: nextId('wall'), a: newA.id, b: newB.id }],
   }
+}
+
+/**
+ * Places a door or window on the wall nearest `point`, centred where the
+ * user clicked and clamped so it can't hang off either end.
+ */
+export function addOpening(
+  state: DrawingState,
+  wallId: string,
+  offsetAlongWall: number,
+  width: number,
+  kind: OpeningKind,
+): DrawingState {
+  const wall = state.walls.find((w) => w.id === wallId)
+  if (!wall) return state
+
+  const a = state.nodes[wall.a]
+  const b = state.nodes[wall.b]
+  if (!a || !b) return state
+
+  const wallLength = distance(a, b)
+  // Leave the opening fully within the wall; too short a wall can't take it.
+  if (wallLength <= width) return state
+
+  const half = width / 2
+  const offset = Math.min(Math.max(offsetAlongWall, half), wallLength - half)
+
+  const opening: DrawOpening = { id: nextId('opening'), wallId, offset, width, kind }
+  return { ...state, openings: [...state.openings, opening] }
+}
+
+export function deleteOpening(state: DrawingState, openingId: string): DrawingState {
+  return { ...state, openings: state.openings.filter((o) => o.id !== openingId) }
+}
+
+/** Replaces the whole plan, e.g. when loading a starter template. */
+export function loadPlan(plan: DrawingState): DrawingState {
+  return { nodes: { ...plan.nodes }, walls: [...plan.walls], openings: [...plan.openings] }
 }

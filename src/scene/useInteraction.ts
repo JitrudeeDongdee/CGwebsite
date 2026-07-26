@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
-import type { DrawingState, Point, SnapTarget } from '../drawing/types'
-import { findNodeAt, findSnapTarget, snapToGrid } from '../drawing/geometry'
+import type { DrawingState, OpeningKind, Point, SnapTarget } from '../drawing/types'
+import { findNodeAt, findSnapTarget, findWallAt, snapToGrid } from '../drawing/geometry'
+import { offsetAlongWall } from '../drawing/openings'
+import type { ToolMode } from '../drawing/tools'
 
 export interface DraftWall {
   start: Point
@@ -27,6 +29,9 @@ interface UseInteractionOptions {
   beginNodeDrag: () => void
   updateNodePosition: (nodeId: string, point: Point) => void
   finalizeNodeMove: (nodeId: string, point: Point) => void
+  /** What a click means: move only, draw walls, or place an opening. */
+  tool: ToolMode
+  placeOpening: (wallId: string, offset: number, width: number, kind: OpeningKind) => void
 }
 
 /**
@@ -50,6 +55,8 @@ export function useInteraction({
   beginNodeDrag,
   updateNodePosition,
   finalizeNodeMove,
+  tool,
+  placeOpening,
 }: UseInteractionOptions) {
   const pressRef = useRef<Press | null>(null)
   /** Anchor of the wall currently being drawn; null when not drawing. */
@@ -108,13 +115,14 @@ export function useInteraction({
       }
 
       // Not dragging a corner: keep the rubber-band preview on the cursor.
+      // Suppressed while placing an opening — clicks mean "drop it here".
       const anchor = anchorRef.current
-      if (anchor) {
+      if (anchor && tool.type === 'draw') {
         const { point: end, snap } = resolve(point)
         setDraft({ start: anchor, current: end, snap })
       }
     },
-    [state, beginNodeDrag, updateNodePosition, resolve],
+    [state, beginNodeDrag, updateNodePosition, resolve, tool],
   )
 
   const onUp = useCallback(
@@ -127,6 +135,22 @@ export function useInteraction({
         setMoveSnap(null)
         return
       }
+
+      // With a door/window selected, a click drops it on the wall under the
+      // cursor rather than drawing.
+      if (tool.type === 'opening') {
+        const wall = findWallAt(state, point)
+        if (wall) {
+          const offset = offsetAlongWall(state, wall.id, point)
+          if (offset !== null) {
+            placeOpening(wall.id, offset, tool.width, tool.kind)
+          }
+        }
+        return
+      }
+
+      // Select mode moves existing geometry and never creates any.
+      if (tool.type !== 'draw') return
 
       // A click (no meaningful movement): place a point.
       const { point: placed } = resolve(point)
@@ -144,7 +168,7 @@ export function useInteraction({
       anchorRef.current = null
       setDraft(null)
     },
-    [addWall, finalizeNodeMove, resolve],
+    [addWall, finalizeNodeMove, resolve, state, tool, placeOpening],
   )
 
   return { draft, moveSnap, isDrawing: draft !== null, onDown, onMove, onUp, cancelDrawing }

@@ -13,6 +13,11 @@ import { AreaSummary } from '../ui/AreaSummary'
 import { EstimatePanel } from '../ui/EstimatePanel'
 import { LeadFormDialog } from '../ui/LeadFormDialog'
 import { CanvasContextMenu, type ContextTarget } from '../ui/CanvasContextMenu'
+import { ToolSidebar } from '../ui/ToolSidebar'
+import { PLAN_TEMPLATES } from '../drawing/templates'
+import { findOpeningAt, placeOpenings } from '../drawing/openings'
+import { BottomToolbar } from '../ui/BottomToolbar'
+import { DRAW_TOOL, SELECT_TOOL, type ToolMode } from '../drawing/tools'
 import { estimatePrice } from '../pricing/estimate'
 import { PLACEHOLDER_PRICE_CONFIG, loadPriceConfig } from '../pricing/config'
 import type { MaterialGrade } from '../pricing/types'
@@ -34,6 +39,9 @@ export function DesignerPage() {
     removeNode,
     copyWall,
     clearAll,
+    placeOpening,
+    removeOpening,
+    applyTemplate,
     undo,
     redo,
     canUndo,
@@ -44,6 +52,8 @@ export function DesignerPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [sent, setSent] = useState(false)
   const [contextTarget, setContextTarget] = useState<ContextTarget | null>(null)
+  const [tool, setTool] = useState<ToolMode>(DRAW_TOOL)
+  const [fitToken, setFitToken] = useState(0)
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 
   const priceConfig = useMemo(() => loadPriceConfig(), [])
@@ -61,11 +71,17 @@ export function DesignerPage() {
 
   const handleContextMenu = useCallback(
     (point: Point, screen: { x: number; y: number }) => {
-      const node = findNodeAt(state, point)
-      const wall = node ? null : findWallAt(state, point)
-      setContextTarget({ screen, nodeId: node?.id ?? null, wallId: wall?.id ?? null })
+      const opening = findOpeningAt(placeOpenings(state, exteriorWallIds), point)
+      const node = opening ? null : findNodeAt(state, point)
+      const wall = opening || node ? null : findWallAt(state, point)
+      setContextTarget({
+        screen,
+        nodeId: node?.id ?? null,
+        wallId: wall?.id ?? null,
+        openingId: opening?.id ?? null,
+      })
     },
-    [state],
+    [state, exteriorWallIds],
   )
 
   useEffect(() => {
@@ -75,6 +91,8 @@ export function DesignerPage() {
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
 
       if (e.key === 'Escape') {
+        // Drop back to plain drawing rather than leaving a tool armed.
+        setTool((current) => (current.type === 'opening' ? DRAW_TOOL : current))
         cancelDrawingRef.current?.()
         return
       }
@@ -103,8 +121,26 @@ export function DesignerPage() {
     setSent(true)
   }
 
+  const handleLoadTemplate = (templateId: string) => {
+    const template = PLAN_TEMPLATES.find((item) => item.id === templateId)
+    if (!template) return
+    applyTemplate(template.build())
+    setTool(SELECT_TOOL)
+    cancelDrawingRef.current?.()
+    setFitToken((n) => n + 1)
+  }
+
   return (
-    <Box sx={{ position: 'relative', flexGrow: 1, minHeight: 0 }}>
+    <Box sx={{ display: 'flex', flexGrow: 1, minHeight: 0 }}>
+      <ToolSidebar
+        activeOpening={tool.type === 'opening' ? { kind: tool.kind, width: tool.width } : null}
+        onSelectOpening={(next) =>
+          setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)
+        }
+        onLoadTemplate={handleLoadTemplate}
+      />
+
+      <Box sx={{ position: 'relative', flexGrow: 1, minWidth: 0 }}>
       <DrawingCanvas
         state={state}
         rooms={rooms}
@@ -115,17 +151,42 @@ export function DesignerPage() {
         finalizeNodeMove={finalizeNodeMove}
         onContextMenu={handleContextMenu}
         cancelRef={cancelDrawingRef}
+        tool={tool}
+        fitToken={fitToken}
+        placeOpening={placeOpening}
       />
+
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ position: 'absolute', bottom: 12, left: 12, maxWidth: '70%', pointerEvents: 'none' }}
+      >
+        {t('canvas.hint')}
+        <br />
+        {t('canvas.hint2')}
+        <br />
+        {t('canvas.zoomHint')}
+      </Typography>
+      <BottomToolbar
+        tool={tool}
+        onSelectTool={(type) => setTool(type === 'draw' ? DRAW_TOOL : SELECT_TOOL)}
+        onUndo={undo}
+        onRedo={redo}
+        onFit={() => setFitToken((n) => n + 1)}
+        canUndo={canUndo}
+        canRedo={canRedo}
+      />
+      </Box>
 
       <Stack
         spacing={1}
         sx={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          alignItems: 'stretch',
-          maxHeight: 'calc(100% - 32px)',
+          width: 288,
+          flexShrink: 0,
+          borderLeft: 1,
+          borderColor: 'divider',
           overflowY: 'auto',
+          p: 2,
         }}
       >
         <AreaSummary
@@ -142,21 +203,10 @@ export function DesignerPage() {
         />
       </Stack>
 
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ position: 'absolute', bottom: 16, left: 16, maxWidth: 480, pointerEvents: 'none' }}
-      >
-        {t('canvas.hint')}
-        <br />
-        {t('canvas.hint2')}
-        <br />
-        {t('canvas.zoomHint')}
-      </Typography>
-
       <CanvasContextMenu
         target={contextTarget}
         onClose={() => setContextTarget(null)}
+        onDeleteOpening={removeOpening}
         onDeleteWall={removeWall}
         onDeleteNode={removeNode}
         onCopyWall={copyWall}

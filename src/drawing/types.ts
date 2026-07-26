@@ -19,9 +19,26 @@ export interface DrawWall {
   thickness?: number
 }
 
+export type OpeningKind = 'door' | 'window'
+
+/**
+ * A door or window. Bound to a wall by distance along it rather than by
+ * world position, so it stays put when the wall is moved or stretched.
+ */
+export interface DrawOpening {
+  id: string
+  wallId: string
+  /** Centre of the opening, in metres from the wall's `a` end. */
+  offset: number
+  /** Clear width in metres. */
+  width: number
+  kind: OpeningKind
+}
+
 export interface DrawingState {
   nodes: Record<string, DrawNode>
   walls: DrawWall[]
+  openings: DrawOpening[]
 }
 
 export type SnapTarget =

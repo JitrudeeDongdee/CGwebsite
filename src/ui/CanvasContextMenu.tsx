@@ -14,11 +14,13 @@ export interface ContextTarget {
   screen: { x: number; y: number }
   wallId: string | null
   nodeId: string | null
+  openingId: string | null
 }
 
 interface CanvasContextMenuProps {
   target: ContextTarget | null
   onClose: () => void
+  onDeleteOpening: (openingId: string) => void
   onDeleteWall: (wallId: string) => void
   onDeleteNode: (nodeId: string) => void
   onCopyWall: (wallId: string) => void
@@ -33,6 +35,7 @@ interface CanvasContextMenuProps {
 export function CanvasContextMenu({
   target,
   onClose,
+  onDeleteOpening,
   onDeleteWall,
   onDeleteNode,
   onCopyWall,
@@ -59,6 +62,15 @@ export function CanvasContextMenu({
         target ? { top: target.screen.y, left: target.screen.x } : undefined
       }
     >
+      {target?.openingId && (
+        <MenuItem onClick={() => run(() => onDeleteOpening(target.openingId!))}>
+          <ListItemIcon>
+            <DeleteOutline fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('openings.deleteOpening')}</ListItemText>
+        </MenuItem>
+      )}
+
       {target?.nodeId && (
         <MenuItem onClick={() => run(() => onDeleteNode(target.nodeId!))}>
           <ListItemIcon>
@@ -86,7 +98,7 @@ export function CanvasContextMenu({
         </MenuItem>
       )}
 
-      {(target?.wallId || target?.nodeId) && <Divider />}
+      {(target?.wallId || target?.nodeId || target?.openingId) && <Divider />}
 
       <MenuItem disabled={!canUndo} onClick={() => run(onUndo)}>
         <ListItemIcon>

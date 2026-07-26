@@ -1,14 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { DrawingState, Point } from './types'
 import {
+  addOpening,
   commitWall,
   createInitialState,
   deleteNode,
+  deleteOpening,
   deleteWall,
   duplicateWall,
   finishNodeMove,
+  loadPlan,
   moveNode,
 } from './state'
+import type { OpeningKind } from './types'
 import { findRooms } from './rooms'
 
 interface History {
@@ -102,6 +106,20 @@ export function useDrawingState() {
   )
   const clearAll = useCallback(() => commit(() => createInitialState()), [commit])
 
+  const placeOpening = useCallback(
+    (wallId: string, offset: number, width: number, kind: OpeningKind) =>
+      commit((prev) => addOpening(prev, wallId, offset, width, kind)),
+    [commit],
+  )
+  const removeOpening = useCallback(
+    (openingId: string) => commit((prev) => deleteOpening(prev, openingId)),
+    [commit],
+  )
+  const applyTemplate = useCallback(
+    (plan: DrawingState) => commit(() => loadPlan(plan)),
+    [commit],
+  )
+
   const undo = useCallback(() => {
     setHistory((h) => {
       const previous = h.past.at(-1)
@@ -142,6 +160,9 @@ export function useDrawingState() {
     removeNode,
     copyWall,
     clearAll,
+    placeOpening,
+    removeOpening,
+    applyTemplate,
     undo,
     redo,
     canUndo: history.past.length > 0,

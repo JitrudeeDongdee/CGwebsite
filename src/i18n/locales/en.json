@@ -9,6 +9,25 @@
     "hint2": "Drag a corner to move it · right-click (when not drawing) to delete/copy · Ctrl+Z to undo",
     "zoomHint": "Pinch or scroll to zoom"
   },
+  "templates": {
+    "title": "Starter plans",
+    "hint": "Pick a layout to edit (replaces the current plan)",
+    "studio": "Studio",
+    "oneBed": "1 bedroom",
+    "twoBed": "2 bedrooms",
+    "shop": "Shop unit"
+  },
+  "openings": {
+    "title": "Doors / windows",
+    "hint": "Pick one, then click a wall to place it",
+    "placeHint": "Click a wall to place it · Esc to cancel",
+    "cancel": "Cancel placement",
+    "door80": "Door 80 cm",
+    "door90": "Door 90 cm",
+    "window100": "Window 100 cm",
+    "window150": "Window 150 cm",
+    "deleteOpening": "Delete this opening"
+  },
   "contextMenu": {
     "deleteWall": "Delete this wall",
     "deleteNode": "Delete this corner (and its walls)",
@@ -88,5 +107,10 @@
     "themeSystem": "System",
     "themeLight": "Light",
     "themeDark": "Dark"
+  },
+  "tools": {
+    "select": "Move (creates nothing)",
+    "draw": "Draw walls",
+    "fit": "Fit to view"
   }
 }

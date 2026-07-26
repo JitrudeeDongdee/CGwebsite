@@ -4,8 +4,10 @@ import type { Room } from '../drawing/rooms'
 
 /**
  * Each room's area, printed at its centre the way a floor plan annotates
- * rooms. Numeric only (no unit) for the same reason as wall dimensions —
- * the WebGL font can't be relied on to cover Thai glyphs.
+ * rooms. This one carries its unit — a bare "16.00" inside a room is
+ * genuinely ambiguous against the wall lengths around it. "m²" rather than
+ * "ตร.ม." because the WebGL font can't be relied on for Thai glyphs, and
+ * the symbol reads the same in both languages.
  */
 export function RoomAreaLabels({ rooms }: { rooms: Room[] }) {
   const { scene } = useTheme()
@@ -22,7 +24,7 @@ export function RoomAreaLabels({ rooms }: { rooms: Room[] }) {
           anchorX="center"
           anchorY="middle"
         >
-          {room.area.toFixed(2)}
+          {`${room.area.toFixed(2)} m²`}
         </Text>
       ))}
     </>
