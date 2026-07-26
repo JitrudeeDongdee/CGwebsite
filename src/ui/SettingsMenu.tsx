@@ -4,12 +4,10 @@ import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import ListSubheader from '@mui/material/ListSubheader'
-import Divider from '@mui/material/Divider'
 import Check from '@mui/icons-material/Check'
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
+import Brightness6Outlined from '@mui/icons-material/Brightness6Outlined'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
-import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES, type SupportedLanguage } from '../i18n'
 import { useThemeMode, type ThemePreference } from '../theme/AppThemeProvider'
 
 const THEME_OPTIONS: { value: ThemePreference; labelKey: string }[] = [
@@ -18,39 +16,21 @@ const THEME_OPTIONS: { value: ThemePreference; labelKey: string }[] = [
   { value: 'dark', labelKey: 'settings.themeDark' },
 ]
 
+/** Language lives in the toolbar itself; this is theme only. */
 export function SettingsMenu() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { preference, setPreference } = useThemeMode()
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
-
-  const currentLanguage = i18n.resolvedLanguage as SupportedLanguage
 
   const open = (event: MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget)
   const close = () => setAnchorEl(null)
 
   return (
     <>
-      <IconButton onClick={open} aria-label={t('settings.language')} size="small">
-        <SettingsOutlined fontSize="small" />
+      <IconButton onClick={open} aria-label={t('settings.theme')} size="small">
+        <Brightness6Outlined fontSize="small" />
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
-        <ListSubheader disableSticky>{t('settings.language')}</ListSubheader>
-        {SUPPORTED_LANGUAGES.map((lang) => (
-          <MenuItem
-            key={lang}
-            selected={currentLanguage === lang}
-            onClick={() => {
-              void i18n.changeLanguage(lang)
-              close()
-            }}
-          >
-            <ListItemIcon>{currentLanguage === lang && <Check fontSize="small" />}</ListItemIcon>
-            <ListItemText>{LANGUAGE_LABELS[lang]}</ListItemText>
-          </MenuItem>
-        ))}
-
-        <Divider />
-
         <ListSubheader disableSticky>{t('settings.theme')}</ListSubheader>
         {THEME_OPTIONS.map((option) => (
           <MenuItem

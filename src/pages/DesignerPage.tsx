@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
@@ -6,10 +6,13 @@ import Typography from '@mui/material/Typography'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import { useDrawingState } from '../drawing/useDrawingState'
+import { findNodeAt, findWallAt } from '../drawing/geometry'
+import type { Point } from '../drawing/types'
 import { DrawingCanvas } from '../scene/DrawingCanvas'
 import { AreaSummary } from '../ui/AreaSummary'
 import { EstimatePanel } from '../ui/EstimatePanel'
 import { LeadFormDialog } from '../ui/LeadFormDialog'
+import { CanvasContextMenu, type ContextTarget } from '../ui/CanvasContextMenu'
 import { estimatePrice } from '../pricing/estimate'
 import { PLACEHOLDER_PRICE_CONFIG, loadPriceConfig } from '../pricing/config'
 import type { MaterialGrade } from '../pricing/types'
@@ -18,11 +21,28 @@ import type { LeadContact } from '../leads/types'
 
 export function DesignerPage() {
   const { t } = useTranslation()
-  const { state, addWall, updateNodePosition, finalizeNodeMove, roomArea } = useDrawingState()
+  const {
+    state,
+    roomArea,
+    addWall,
+    beginNodeDrag,
+    updateNodePosition,
+    finalizeNodeMove,
+    removeWall,
+    removeNode,
+    copyWall,
+    clearAll,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useDrawingState()
 
   const [grade, setGrade] = useState<MaterialGrade>('standard')
   const [formOpen, setFormOpen] = useState(false)
   const [sent, setSent] = useState(false)
+  const [contextTarget, setContextTarget] = useState<ContextTarget | null>(null)
+  const cancelDrawingRef = useRef<(() => void) | null>(null)
 
   const priceConfig = useMemo(() => loadPriceConfig(), [])
   const estimate = useMemo(
@@ -36,6 +56,38 @@ export function DesignerPage() {
       JSON.stringify(PLACEHOLDER_PRICE_CONFIG.pricePerSqm),
     [priceConfig],
   )
+
+  const handleContextMenu = useCallback(
+    (point: Point, screen: { x: number; y: number }) => {
+      const node = findNodeAt(state, point)
+      const wall = node ? null : findWallAt(state, point)
+      setContextTarget({ screen, nodeId: node?.id ?? null, wallId: wall?.id ?? null })
+    },
+    [state],
+  )
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Don't hijack shortcuts while the user is typing in the lead form.
+      const target = e.target as HTMLElement | null
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+
+      if (e.key === 'Escape') {
+        cancelDrawingRef.current?.()
+        return
+      }
+
+      const modifier = e.metaKey || e.ctrlKey
+      if (!modifier || e.key.toLowerCase() !== 'z') return
+
+      e.preventDefault()
+      if (e.shiftKey) redo()
+      else undo()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [undo, redo])
 
   const handleSubmit = async (contact: LeadContact) => {
     await leadRepository.create({
@@ -54,8 +106,11 @@ export function DesignerPage() {
       <DrawingCanvas
         state={state}
         addWall={addWall}
+        beginNodeDrag={beginNodeDrag}
         updateNodePosition={updateNodePosition}
         finalizeNodeMove={finalizeNodeMove}
+        onContextMenu={handleContextMenu}
+        cancelRef={cancelDrawingRef}
       />
 
       <Stack
@@ -82,12 +137,28 @@ export function DesignerPage() {
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={{ position: 'absolute', bottom: 16, left: 16, maxWidth: 420, pointerEvents: 'none' }}
+        sx={{ position: 'absolute', bottom: 16, left: 16, maxWidth: 480, pointerEvents: 'none' }}
       >
         {t('canvas.hint')}
         <br />
+        {t('canvas.hint2')}
+        <br />
         {t('canvas.zoomHint')}
       </Typography>
+
+      <CanvasContextMenu
+        target={contextTarget}
+        onClose={() => setContextTarget(null)}
+        onDeleteWall={removeWall}
+        onDeleteNode={removeNode}
+        onCopyWall={copyWall}
+        onUndo={undo}
+        onRedo={redo}
+        onClearAll={clearAll}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        hasGeometry={state.walls.length > 0}
+      />
 
       <LeadFormDialog
         open={formOpen}

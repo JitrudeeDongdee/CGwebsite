@@ -1,8 +1,13 @@
 import { useTheme } from '@mui/material/styles'
 import type { DrawingState, DrawWall } from '../drawing/types'
+import { DimensionLabel } from './DimensionLabel'
 
-const WALL_THICKNESS = 0.15
-const WALL_HEIGHT = 0.3
+/**
+ * Thin, flat line rather than a chunky extruded box — the look of a pencil
+ * line on a drafting sheet. Wall poché (drawn double-line thickness) is a
+ * separate, later job; this keeps the plan readable while editing.
+ */
+const WALL_THICKNESS = 0.045
 
 function WallMesh({ wall, state, color }: { wall: DrawWall; state: DrawingState; color: string }) {
   const a = state.nodes[wall.a]
@@ -19,10 +24,13 @@ function WallMesh({ wall, state, color }: { wall: DrawWall; state: DrawingState;
   const midY = (a.y + b.y) / 2
 
   return (
-    <mesh position={[midX, WALL_HEIGHT / 2, midY]} rotation={[0, -angle, 0]}>
-      <boxGeometry args={[length, WALL_HEIGHT, WALL_THICKNESS]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
+    <>
+      <mesh position={[midX, 0.02, midY]} rotation={[-Math.PI / 2, 0, -angle]}>
+        <planeGeometry args={[length, WALL_THICKNESS]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <DimensionLabel a={a} b={b} />
+    </>
   )
 }
 

@@ -14,24 +14,34 @@ import { SnapIndicator } from './SnapIndicator'
 interface DrawingCanvasProps {
   state: DrawingState
   addWall: (start: Point, end: Point) => void
+  beginNodeDrag: () => void
   updateNodePosition: (nodeId: string, point: Point) => void
   finalizeNodeMove: (nodeId: string, point: Point) => void
+  onContextMenu: (point: Point, screen: { x: number; y: number }) => void
+  /** Lets the page cancel an in-progress wall from a keyboard handler. */
+  cancelRef: React.RefObject<(() => void) | null>
 }
 
 export function DrawingCanvas({
   state,
   addWall,
+  beginNodeDrag,
   updateNodePosition,
   finalizeNodeMove,
+  onContextMenu,
+  cancelRef,
 }: DrawingCanvasProps) {
-  const { draft, moveSnap, onDown, onMove, onUp } = useInteraction(
+  const { draft, moveSnap, onDown, onMove, onUp, cancelDrawing } = useInteraction({
     state,
     addWall,
+    beginNodeDrag,
     updateNodePosition,
     finalizeNodeMove,
-  )
+  })
   const controlsRef = useRef<OrbitControls>(null)
   const { scene } = useTheme()
+
+  cancelRef.current = cancelDrawing
 
   const handleDown = (point: Point) => {
     if (controlsRef.current) controlsRef.current.enabled = false
@@ -51,10 +61,14 @@ export function DrawingCanvas({
     >
       <color attach="background" args={[scene.background]} />
       <ambientLight intensity={1.2} />
-      <directionalLight position={[5, 10, 5]} intensity={0.6} />
       <CameraControls controlsRef={controlsRef} />
       <gridHelper args={[60, 60, scene.gridMajor, scene.gridMinor]} />
-      <GroundPlane onDown={handleDown} onMove={onMove} onUp={handleUp} />
+      <GroundPlane
+        onDown={handleDown}
+        onMove={onMove}
+        onUp={handleUp}
+        onContextMenu={onContextMenu}
+      />
       <WallsView state={state} />
       <NodesView nodes={Object.values(state.nodes)} />
       <DraftWallView draft={draft} />

@@ -9,6 +9,7 @@ import Stack from '@mui/material/Stack'
 import { DesignerPage } from './pages/DesignerPage'
 import { AdminPage } from './pages/AdminPage'
 import { SettingsMenu } from './ui/SettingsMenu'
+import { LanguageSwitcher } from './ui/LanguageSwitcher'
 
 function App() {
   const { t } = useTranslation()
@@ -46,7 +47,10 @@ function App() {
             </Button>
           </Stack>
 
-          <SettingsMenu />
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <LanguageSwitcher />
+            <SettingsMenu />
+          </Stack>
         </Toolbar>
       </AppBar>
 

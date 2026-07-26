@@ -5,8 +5,17 @@
     "navAdmin": "Admin"
   },
   "canvas": {
-    "hint": "Drag on empty space to draw a wall · drag a corner to move it · drag a corner onto another to close the room",
+    "hint": "Click to start a wall · move, then click again to place it · Esc to stop drawing",
+    "hint2": "Drag a corner to move it · right-click to delete/copy · Ctrl+Z to undo",
     "zoomHint": "Pinch or scroll to zoom"
+  },
+  "contextMenu": {
+    "deleteWall": "Delete this wall",
+    "deleteNode": "Delete this corner (and its walls)",
+    "copyWall": "Duplicate this wall",
+    "undo": "Undo",
+    "redo": "Redo",
+    "clearAll": "Clear the whole plan"
   },
   "summary": {
     "title": "Area summary",

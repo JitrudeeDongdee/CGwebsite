@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { DrawingState, Point, SnapTarget } from '../drawing/types'
-import { NODE_HIT_RADIUS, distance, findSnapTarget } from '../drawing/geometry'
+import { findNodeAt, findSnapTarget, snapToGrid } from '../drawing/geometry'
 
 export interface DraftWall {
   start: Point
@@ -8,78 +8,136 @@ export interface DraftWall {
   snap: SnapTarget | null
 }
 
-type Mode = { type: 'node'; nodeId: string } | { type: 'draft'; start: Point } | null
+/**
+ * How far the pointer must travel while held before we treat the gesture as
+ * a drag rather than a click. In world units — roughly a few pixels at the
+ * default zoom.
+ */
+const DRAG_THRESHOLD = 0.08
+
+interface Press {
+  origin: Point
+  nodeId: string | null
+  moved: boolean
+}
+
+interface UseInteractionOptions {
+  state: DrawingState
+  addWall: (start: Point, end: Point) => void
+  beginNodeDrag: () => void
+  updateNodePosition: (nodeId: string, point: Point) => void
+  finalizeNodeMove: (nodeId: string, point: Point) => void
+}
 
 /**
- * Single entry point for pointer input (from the ground-plane mesh): decides
- * whether a press starts a node move or a new wall draft, and tracks the
- * in-progress drag. Mouse and touch both arrive here as the same normalized
- * {x, y} point via React Three Fiber's pointer events.
+ * Drafting-style input, matching how CAD/floor-plan tools behave:
  *
- * The active mode lives in a ref, not useState: a native pointermove/up can
- * fire against a handler closure captured before React re-renders with the
- * mode set on pointerdown, which would silently read a stale null and drop
- * the whole gesture. A ref is mutated synchronously in the same tick as the
- * native event, so every closure sees the current mode regardless of
- * render timing (same class of race as the OrbitControls fix in
- * DrawingCanvas).
+ * - click on empty space or a corner  -> anchor the start of a wall
+ * - move                              -> rubber-band preview follows cursor
+ * - click again                       -> place that wall, and keep drawing
+ *                                        from the point just placed
+ * - Escape                            -> stop drawing
+ * - press and *drag* a corner         -> move that corner instead
+ *
+ * Click-to-place (rather than drag-to-draw) is what makes closing a room
+ * possible: the last wall of a loop needs both ends to land on corners that
+ * already exist, which a drag starting on an existing corner could never do
+ * because that gesture is reserved for moving it.
  */
-export function useInteraction(
-  state: DrawingState,
-  addWall: (start: Point, end: Point) => void,
-  updateNodePosition: (nodeId: string, point: Point) => void,
-  finalizeNodeMove: (nodeId: string, point: Point) => void,
-) {
-  const modeRef = useRef<Mode>(null)
+export function useInteraction({
+  state,
+  addWall,
+  beginNodeDrag,
+  updateNodePosition,
+  finalizeNodeMove,
+}: UseInteractionOptions) {
+  const pressRef = useRef<Press | null>(null)
+  /** Anchor of the wall currently being drawn; null when not drawing. */
+  const anchorRef = useRef<Point | null>(null)
+
   const [draft, setDraft] = useState<DraftWall | null>(null)
   const [moveSnap, setMoveSnap] = useState<SnapTarget | null>(null)
 
+  /** Resolves a raw pointer position to where geometry would actually land. */
+  const resolve = useCallback(
+    (point: Point, excludeNodeId?: string): { point: Point; snap: SnapTarget | null } => {
+      const snap = findSnapTarget(state, point, undefined, excludeNodeId)
+      return { point: snap ? snap.point : snapToGrid(point), snap }
+    },
+    [state],
+  )
+
+  const cancelDrawing = useCallback(() => {
+    anchorRef.current = null
+    setDraft(null)
+  }, [])
+
   const onDown = useCallback(
     (point: Point) => {
-      const nearNode = Object.values(state.nodes).find(
-        (node) => distance(point, node) < NODE_HIT_RADIUS,
-      )
-      if (nearNode) {
-        modeRef.current = { type: 'node', nodeId: nearNode.id }
-      } else {
-        modeRef.current = { type: 'draft', start: point }
-        setDraft({ start: point, current: point, snap: findSnapTarget(state, point) })
-      }
+      const node = findNodeAt(state, point)
+      pressRef.current = { origin: point, nodeId: node?.id ?? null, moved: false }
     },
     [state],
   )
 
   const onMove = useCallback(
     (point: Point) => {
-      const mode = modeRef.current
-      if (!mode) return
-      if (mode.type === 'node') {
-        updateNodePosition(mode.nodeId, point)
-        const snap = findSnapTarget(state, point, undefined, mode.nodeId)
-        // finishNodeMove only merges into an existing node, not a wall
-        // midpoint, so only show the indicator when a release would merge.
+      const press = pressRef.current
+
+      if (press && !press.moved) {
+        const travelled = Math.hypot(point.x - press.origin.x, point.y - press.origin.y)
+        if (travelled > DRAG_THRESHOLD && press.nodeId) {
+          press.moved = true
+          beginNodeDrag()
+        }
+      }
+
+      if (press?.moved && press.nodeId) {
+        updateNodePosition(press.nodeId, point)
+        const snap = findSnapTarget(state, point, undefined, press.nodeId)
         setMoveSnap(snap?.type === 'node' ? snap : null)
-      } else {
-        setDraft({ start: mode.start, current: point, snap: findSnapTarget(state, point) })
+        return
+      }
+
+      // Not dragging a corner: keep the rubber-band preview on the cursor.
+      const anchor = anchorRef.current
+      if (anchor) {
+        const { point: end, snap } = resolve(point)
+        setDraft({ start: anchor, current: end, snap })
       }
     },
-    [state, updateNodePosition],
+    [state, beginNodeDrag, updateNodePosition, resolve],
   )
 
   const onUp = useCallback(
     (point: Point) => {
-      const mode = modeRef.current
-      modeRef.current = null
-      if (mode?.type === 'draft') {
-        addWall(mode.start, point)
-      } else if (mode?.type === 'node') {
-        finalizeNodeMove(mode.nodeId, point)
+      const press = pressRef.current
+      pressRef.current = null
+
+      if (press?.moved && press.nodeId) {
+        finalizeNodeMove(press.nodeId, point)
+        setMoveSnap(null)
+        return
       }
-      setDraft(null)
-      setMoveSnap(null)
+
+      // A click (no meaningful movement): place a point.
+      const { point: placed } = resolve(point)
+      const anchor = anchorRef.current
+
+      if (anchor === null) {
+        anchorRef.current = placed
+        setDraft({ start: placed, current: placed, snap: null })
+        return
+      }
+
+      addWall(anchor, placed)
+      // Keep drawing from here, so a room is one continuous sequence of
+      // clicks rather than a separate gesture per wall.
+      anchorRef.current = placed
+      setDraft({ start: placed, current: placed, snap: null })
     },
-    [addWall, finalizeNodeMove],
+    [addWall, finalizeNodeMove, resolve],
   )
 
-  return { draft, moveSnap, onDown, onMove, onUp }
+  return { draft, moveSnap, isDrawing: draft !== null, onDown, onMove, onUp, cancelDrawing }
 }

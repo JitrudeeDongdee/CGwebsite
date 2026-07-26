@@ -1,9 +1,16 @@
-import type { DrawingState, DrawWall, Point, SnapTarget } from './types'
+import type { DrawingState, DrawNode, DrawWall, Point, SnapTarget } from './types'
 
 export const GRID_SIZE = 0.5
 export const SNAP_THRESHOLD = 0.35
 export const NODE_VISUAL_RADIUS = 0.07
 export const NODE_HIT_RADIUS = 0.35
+/**
+ * Generous compared with the drawn wall thickness so walls are easy to hit.
+ * Must exceed half a grid step (0.25): walls sit on snapped coordinates
+ * while the pointer reports a raw position, so a click that looks dead-on
+ * can still be a quarter-step away.
+ */
+export const WALL_HIT_DISTANCE = 0.35
 
 export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y)
@@ -17,6 +24,61 @@ export function wallMidpoint(wall: DrawWall, state: DrawingState): Point {
   const a = state.nodes[wall.a]
   const b = state.nodes[wall.b]
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+}
+
+/**
+ * Shortest distance from a point to the line *segment* a-b (not the
+ * infinite line), so a click far past a wall's end doesn't count as a hit.
+ */
+export function distanceToSegment(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lengthSq = dx * dx + dy * dy
+  if (lengthSq === 0) return distance(p, a)
+
+  // Projection of p onto the segment, clamped to the segment's extent.
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq))
+  return distance(p, { x: a.x + t * dx, y: a.y + t * dy })
+}
+
+/** Nearest wall within the hit distance, or null. Used for right-click targeting. */
+export function findWallAt(
+  state: DrawingState,
+  point: Point,
+  threshold: number = WALL_HIT_DISTANCE,
+): DrawWall | null {
+  let best: DrawWall | null = null
+  let bestDist = threshold
+
+  for (const wall of state.walls) {
+    const a = state.nodes[wall.a]
+    const b = state.nodes[wall.b]
+    if (!a || !b) continue
+    const d = distanceToSegment(point, a, b)
+    if (d < bestDist) {
+      bestDist = d
+      best = wall
+    }
+  }
+  return best
+}
+
+export function findNodeAt(
+  state: DrawingState,
+  point: Point,
+  threshold: number = NODE_HIT_RADIUS,
+): DrawNode | null {
+  let best: DrawNode | null = null
+  let bestDist = threshold
+
+  for (const node of Object.values(state.nodes)) {
+    const d = distance(point, node)
+    if (d < bestDist) {
+      bestDist = d
+      best = node
+    }
+  }
+  return best
 }
 
 /**

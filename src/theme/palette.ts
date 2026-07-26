@@ -50,6 +50,8 @@ export interface SceneColors {
   node: string
   draft: string
   snap: string
+  /** Dimension text — slightly lighter than walls, as on a real drawing. */
+  dimension: string
 }
 
 export const sceneColors: Record<'light' | 'dark', SceneColors> = {
@@ -61,6 +63,7 @@ export const sceneColors: Record<'light' | 'dark', SceneColors> = {
     node: brand.terracotta[500],
     draft: brand.blueprint[300],
     snap: '#2E9E6B',
+    dimension: brand.neutral[600],
   },
   dark: {
     background: brand.neutral[950],
@@ -70,5 +73,6 @@ export const sceneColors: Record<'light' | 'dark', SceneColors> = {
     node: '#E07A3F',
     draft: '#5FA8D3',
     snap: '#3FE08E',
+    dimension: '#9CA3AF',
   },
 }

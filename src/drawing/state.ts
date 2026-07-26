@@ -1,5 +1,5 @@
 import type { DrawingState, DrawNode, DrawWall, Point } from './types'
-import { findSnapTarget, snapToGrid } from './geometry'
+import { GRID_SIZE, findSnapTarget, snapToGrid } from './geometry'
 
 export function createInitialState(): DrawingState {
   return { nodes: {}, walls: [] }
@@ -96,4 +96,60 @@ export function finishNodeMove(state: DrawingState, nodeId: string, point: Point
     .filter((wall) => wall.a !== wall.b)
 
   return { nodes: remainingNodes, walls }
+}
+
+/**
+ * Drops nodes no wall references any more. Without this, deleting walls
+ * leaves invisible-but-real points behind that still attract snapping and
+ * still count as geometry.
+ */
+function dropOrphanNodes(state: DrawingState): DrawingState {
+  const used = new Set<string>()
+  for (const wall of state.walls) {
+    used.add(wall.a)
+    used.add(wall.b)
+  }
+
+  const nodes: Record<string, DrawNode> = {}
+  for (const [id, node] of Object.entries(state.nodes)) {
+    if (used.has(id)) nodes[id] = node
+  }
+  return { nodes, walls: state.walls }
+}
+
+export function deleteWall(state: DrawingState, wallId: string): DrawingState {
+  return dropOrphanNodes({
+    ...state,
+    walls: state.walls.filter((wall) => wall.id !== wallId),
+  })
+}
+
+/** Removes a node along with every wall attached to it. */
+export function deleteNode(state: DrawingState, nodeId: string): DrawingState {
+  return dropOrphanNodes({
+    ...state,
+    walls: state.walls.filter((wall) => wall.a !== nodeId && wall.b !== nodeId),
+  })
+}
+
+/**
+ * Copies a wall offset by one grid step, as its own pair of fresh nodes so
+ * the copy is independent of the original rather than sharing its corners.
+ */
+export function duplicateWall(state: DrawingState, wallId: string): DrawingState {
+  const wall = state.walls.find((w) => w.id === wallId)
+  if (!wall) return state
+
+  const a = state.nodes[wall.a]
+  const b = state.nodes[wall.b]
+  if (!a || !b) return state
+
+  const offset = GRID_SIZE
+  const newA: DrawNode = { id: nextId('node'), x: a.x + offset, y: a.y + offset }
+  const newB: DrawNode = { id: nextId('node'), x: b.x + offset, y: b.y + offset }
+
+  return {
+    nodes: { ...state.nodes, [newA.id]: newA, [newB.id]: newB },
+    walls: [...state.walls, { id: nextId('wall'), a: newA.id, b: newB.id }],
+  }
 }
