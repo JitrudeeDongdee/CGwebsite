@@ -11,6 +11,12 @@ export interface DrawWall {
   id: string
   a: string
   b: string
+  /**
+   * Wall thickness in metres, measured across the centreline that `a`/`b`
+   * define. Optional so existing plans keep working; renderers fall back to
+   * DEFAULT_WALL_THICKNESS.
+   */
+  thickness?: number
 }
 
 export interface DrawingState {

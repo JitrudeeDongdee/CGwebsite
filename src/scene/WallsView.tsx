@@ -1,46 +1,52 @@
+import { useMemo } from 'react'
+import * as THREE from 'three'
 import { useTheme } from '@mui/material/styles'
-import type { DrawingState, DrawWall } from '../drawing/types'
+import type { DrawingState } from '../drawing/types'
+import { computeWallOutlines, type WallOutline } from '../drawing/wallOutline'
 import { DimensionLabel } from './DimensionLabel'
 
-/**
- * Thin, flat line rather than a chunky extruded box — the look of a pencil
- * line on a drafting sheet. Wall poché (drawn double-line thickness) is a
- * separate, later job; this keeps the plan readable while editing.
- */
-const WALL_THICKNESS = 0.045
+/** Just above the grid, below the corner marks and dimension text. */
+const WALL_HEIGHT = 0.02
 
-function WallMesh({ wall, state, color }: { wall: DrawWall; state: DrawingState; color: string }) {
-  const a = state.nodes[wall.a]
-  const b = state.nodes[wall.b]
-  if (!a || !b) return null
-
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  const length = Math.hypot(dx, dy)
-  if (length === 0) return null
-
-  const angle = Math.atan2(dy, dx)
-  const midX = (a.x + b.x) / 2
-  const midY = (a.y + b.y) / 2
+function WallPoly({ outline, color }: { outline: WallOutline; color: string }) {
+  const geometry = useMemo(() => {
+    const positions = new Float32Array(
+      outline.corners.flatMap((corner) => [corner.x, WALL_HEIGHT, corner.y]),
+    )
+    const geom = new THREE.BufferGeometry()
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geom.setIndex([0, 1, 2, 0, 2, 3])
+    geom.computeVertexNormals()
+    return geom
+  }, [outline])
 
   return (
-    <>
-      <mesh position={[midX, 0.02, midY]} rotation={[-Math.PI / 2, 0, -angle]}>
-        <planeGeometry args={[length, WALL_THICKNESS]} />
-        <meshBasicMaterial color={color} />
-      </mesh>
-      <DimensionLabel a={a} b={b} />
-    </>
+    <mesh geometry={geometry}>
+      <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+    </mesh>
   )
 }
 
+/**
+ * Walls drawn as filled bands (poché) rather than single lines, with their
+ * edges mitered where walls meet — the double-line convention of a real
+ * floor plan. See drawing/wallOutline.ts for the joint geometry.
+ */
 export function WallsView({ state }: { state: DrawingState }) {
   const { scene } = useTheme()
+  const outlines = useMemo(() => computeWallOutlines(state), [state])
+
   return (
     <>
-      {state.walls.map((wall) => (
-        <WallMesh key={wall.id} wall={wall} state={state} color={scene.wall} />
+      {outlines.map((outline) => (
+        <WallPoly key={outline.wallId} outline={outline} color={scene.wall} />
       ))}
+      {state.walls.map((wall) => {
+        const a = state.nodes[wall.a]
+        const b = state.nodes[wall.b]
+        if (!a || !b) return null
+        return <DimensionLabel key={wall.id} a={a} b={b} />
+      })}
     </>
   )
 }
