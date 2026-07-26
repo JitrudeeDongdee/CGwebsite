@@ -3,7 +3,9 @@ import type {
   DrawingState,
   DrawNode,
   DrawOpening,
+  DrawRoomLabel,
   DrawWall,
+  FixtureKind,
   OpeningKind,
 } from './types'
 import { fixtureSpec } from './fixtures'
@@ -38,6 +40,10 @@ interface Spec {
   partitions: [number, number, number, number][]
   /** Doors and windows, positioned in footprint-local metres. */
   openings?: OpeningSpec[]
+  /** Furniture and columns beyond the automatic junction columns. */
+  furniture?: { kind: FixtureKind; x: number; y: number; rotation?: number }[]
+  /** Room names, stamped at a point inside the room they name. */
+  labels?: { x: number; y: number; nameKey: string }[]
 }
 
 type Segment = [number, number, number, number]
@@ -99,7 +105,14 @@ function planarize(segments: Segment[]): Segment[] {
   return result
 }
 
-function buildFromSpec({ width, depth, partitions, openings = [] }: Spec): DrawingState {
+function buildFromSpec({
+  width,
+  depth,
+  partitions,
+  openings = [],
+  furniture = [],
+  labels = [],
+}: Spec): DrawingState {
   const halfW = width / 2
   const halfD = depth / 2
 
@@ -178,7 +191,29 @@ function buildFromSpec({ width, depth, partitions, openings = [] }: Spec): Drawi
     depth: columnSpec.depth,
   }))
 
-  return { nodes, walls, openings: placed, fixtures }
+  furniture.forEach((item, index) => {
+    const spec = fixtureSpec(item.kind)
+    fixtures.push({
+      id: `tpl_furniture_${index}`,
+      kind: item.kind,
+      x: item.x - halfW,
+      y: item.y - halfD,
+      rotation: item.rotation ?? 0,
+      width: spec.width,
+      depth: spec.depth,
+    })
+  })
+
+  // Names carry i18n keys; the renderer translates them, so a plan loaded in
+  // Thai and switched to English relabels itself.
+  const roomLabels: DrawRoomLabel[] = labels.map((label, index) => ({
+    id: `tpl_label_${index}`,
+    x: label.x - halfW,
+    y: label.y - halfD,
+    name: label.nameKey,
+  }))
+
+  return { nodes, walls, openings: placed, fixtures, roomLabels }
 }
 
 /**
@@ -211,6 +246,17 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
           { x: 0, y: 2, width: 1, kind: 'window' },
           { x: 6, y: 1, width: 1, kind: 'window' },
         ],
+        furniture: [
+          { kind: 'bedDouble', x: 1.2, y: 2.9 },
+          { kind: 'sofa', x: 2.6, y: 0.6 },
+          { kind: 'kitchen', x: 3.0, y: 3.7 },
+          { kind: 'toilet', x: 5.2, y: 1.4 },
+          { kind: 'sink', x: 5.6, y: 0.4 },
+        ],
+        labels: [
+          { x: 2.2, y: 2.0, nameKey: 'rooms.studio' },
+          { x: 5.2, y: 1.0, nameKey: 'rooms.bathroom' },
+        ],
       }),
   },
   {
@@ -237,6 +283,18 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
           { x: 3, y: 6, width: 1.5, kind: 'window' },
           { x: 6, y: 5, width: 1, kind: 'window' },
           { x: 6, y: 1.75, width: 1, kind: 'window' },
+        ],
+        furniture: [
+          { kind: 'bedDouble', x: 1.6, y: 4.8 },
+          { kind: 'sofa', x: 4.2, y: 0.7 },
+          { kind: 'table', x: 4.2, y: 2.6 },
+          { kind: 'toilet', x: 0.5, y: 2.9 },
+          { kind: 'sink', x: 0.5, y: 0.5 },
+        ],
+        labels: [
+          { x: 3.0, y: 4.8, nameKey: 'rooms.bedroom' },
+          { x: 4.0, y: 1.75, nameKey: 'rooms.living' },
+          { x: 1.0, y: 1.75, nameKey: 'rooms.bathroom' },
         ],
       }),
   },
@@ -268,6 +326,21 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
           { x: 6, y: 6, width: 1, kind: 'window' },
           { x: 0, y: 1.5, width: 1.5, kind: 'window' },
         ],
+        furniture: [
+          { kind: 'bedDouble', x: 1.4, y: 4.8 },
+          { kind: 'bedSingle', x: 5.2, y: 4.8 },
+          { kind: 'sofa', x: 2.4, y: 0.7 },
+          { kind: 'table', x: 2.4, y: 2.4 },
+          { kind: 'kitchen', x: 4.6, y: 0.5 },
+          { kind: 'toilet', x: 7.2, y: 1.3 },
+          { kind: 'sink', x: 6.6, y: 0.4 },
+        ],
+        labels: [
+          { x: 2.0, y: 4.8, nameKey: 'rooms.bedroom1' },
+          { x: 6.0, y: 4.8, nameKey: 'rooms.bedroom2' },
+          { x: 3.0, y: 1.6, nameKey: 'rooms.living' },
+          { x: 7.0, y: 0.9, nameKey: 'rooms.bathroom' },
+        ],
       }),
   },
   {
@@ -294,6 +367,18 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
           { x: 2, y: 6, width: 0.8, kind: 'door' }, // store room
           { x: 4, y: 7, width: 0.8, kind: 'door' }, // bathroom
           { x: 0, y: 3, width: 1.5, kind: 'window' },
+        ],
+        furniture: [
+          { kind: 'table', x: 1.5, y: 2.0 },
+          { kind: 'table', x: 4.5, y: 2.0 },
+          { kind: 'kitchen', x: 2.0, y: 6.7 },
+          { kind: 'toilet', x: 5.2, y: 7.2 },
+          { kind: 'sink', x: 4.4, y: 7.6 },
+        ],
+        labels: [
+          { x: 3.0, y: 3.0, nameKey: 'rooms.shopfront' },
+          { x: 2.0, y: 7.0, nameKey: 'rooms.store' },
+          { x: 5.0, y: 7.0, nameKey: 'rooms.bathroom' },
         ],
       }),
   },

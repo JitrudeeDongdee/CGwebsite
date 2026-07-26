@@ -4,6 +4,7 @@ import type {
   DrawNode,
   DrawOpening,
   DrawWall,
+  DrawRoomLabel,
   FixtureKind,
   OpeningKind,
   Point,
@@ -12,7 +13,7 @@ import { fixtureSpec } from './fixtures'
 import { GRID_SIZE, distance, findSnapTarget, snapToGrid } from './geometry'
 
 export function createInitialState(): DrawingState {
-  return { nodes: {}, walls: [], openings: [], fixtures: [] }
+  return { nodes: {}, walls: [], openings: [], fixtures: [], roomLabels: [] }
 }
 
 function nextId(prefix: string): string {
@@ -226,7 +227,68 @@ export function loadPlan(plan: DrawingState): DrawingState {
     walls: [...plan.walls],
     openings: [...plan.openings],
     fixtures: [...plan.fixtures],
+    roomLabels: [...plan.roomLabels],
   }
+}
+
+/**
+ * Slides a whole wall, carrying both its corners. Corners shared with other
+ * walls move too, so the walls attached to them stretch to follow rather
+ * than tearing away.
+ */
+export function moveWall(state: DrawingState, wallId: string, delta: Point): DrawingState {
+  const wall = state.walls.find((w) => w.id === wallId)
+  if (!wall) return state
+
+  const nodes = { ...state.nodes }
+  for (const nodeId of [wall.a, wall.b]) {
+    const node = nodes[nodeId]
+    if (!node) continue
+    nodes[nodeId] = { ...node, x: node.x + delta.x, y: node.y + delta.y }
+  }
+  return { ...state, nodes }
+}
+
+/** Re-snaps a dragged wall's corners to the grid once the drag ends. */
+export function finishWallMove(state: DrawingState, wallId: string): DrawingState {
+  const wall = state.walls.find((w) => w.id === wallId)
+  if (!wall) return state
+
+  const nodes = { ...state.nodes }
+  for (const nodeId of [wall.a, wall.b]) {
+    const node = nodes[nodeId]
+    if (!node) continue
+    const snapped = snapToGrid(node)
+    nodes[nodeId] = { ...node, x: snapped.x, y: snapped.y }
+  }
+  return { ...state, nodes }
+}
+
+/** Names the room containing `point`, replacing any label already in it. */
+export function setRoomLabel(
+  state: DrawingState,
+  point: Point,
+  name: string,
+  existingId?: string,
+): DrawingState {
+  const trimmed = name.trim()
+
+  if (existingId) {
+    if (!trimmed) {
+      return { ...state, roomLabels: state.roomLabels.filter((l) => l.id !== existingId) }
+    }
+    return {
+      ...state,
+      roomLabels: state.roomLabels.map((label) =>
+        label.id === existingId ? { ...label, name: trimmed } : label,
+      ),
+    }
+  }
+
+  if (!trimmed) return state
+
+  const label: DrawRoomLabel = { id: nextId('label'), x: point.x, y: point.y, name: trimmed }
+  return { ...state, roomLabels: [...state.roomLabels, label] }
 }
 
 export function addFixture(state: DrawingState, kind: FixtureKind, point: Point): DrawingState {

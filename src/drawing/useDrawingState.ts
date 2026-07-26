@@ -14,7 +14,10 @@ import {
   loadPlan,
   moveFixture,
   moveNode,
+  moveWall,
+  finishWallMove,
   rotateFixture,
+  setRoomLabel,
 } from './state'
 import type { FixtureKind, OpeningKind, Point as PointType } from './types'
 import { findRooms } from './rooms'
@@ -145,6 +148,26 @@ export function useDrawingState() {
     },
     [],
   )
+  const dragWallBy = useCallback(
+    (wallId: string, delta: PointType) => amend((prev) => moveWall(prev, wallId, delta)),
+    [amend],
+  )
+  const finalizeWallMove = useCallback((wallId: string) => {
+    const origin = dragOriginRef.current
+    dragOriginRef.current = null
+    setHistory((h) => {
+      const present = finishWallMove(h.present, wallId)
+      if (!origin) return { ...h, present }
+      return { past: [...h.past, origin].slice(-MAX_HISTORY), present, future: [] }
+    })
+  }, [])
+
+  const nameRoom = useCallback(
+    (point: PointType, name: string, existingId?: string) =>
+      commit((prev) => setRoomLabel(prev, point, name, existingId)),
+    [commit],
+  )
+
   const turnFixture = useCallback(
     (fixtureId: string) => commit((prev) => rotateFixture(prev, fixtureId)),
     [commit],
@@ -202,6 +225,9 @@ export function useDrawingState() {
     finalizeFixtureMove,
     turnFixture,
     removeFixture,
+    dragWallBy,
+    finalizeWallMove,
+    nameRoom,
     undo,
     redo,
     canUndo: history.past.length > 0,

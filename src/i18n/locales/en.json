@@ -127,5 +127,20 @@
     "sink": "Basin",
     "rotate": "Rotate 90°",
     "delete": "Delete this item"
+  },
+  "rooms": {
+    "studio": "Studio",
+    "bedroom": "Bedroom",
+    "bedroom1": "Bedroom 1",
+    "bedroom2": "Bedroom 2",
+    "living": "Living",
+    "bathroom": "Bathroom",
+    "shopfront": "Shop floor",
+    "store": "Store room",
+    "rename": "Rename room",
+    "renameTitle": "Name this room",
+    "nameLabel": "Room name",
+    "save": "Save",
+    "cancel": "Cancel"
   }
 }

@@ -7,6 +7,8 @@ export interface Room {
   area: number
   /** Label anchor — the polygon's centroid. */
   centroid: Point
+  /** Outline, for point-in-room tests. */
+  polygon: Point[]
 }
 
 export interface PlanFaces {
@@ -134,6 +136,7 @@ export function findRooms(state: DrawingState): PlanFaces {
           nodeIds: face.map((e) => e.from),
           area: Math.abs(area),
           centroid: centroidOf(points),
+          polygon: points,
         })
       } else {
         // Opposite winding: this is the region outside the building, so the
@@ -148,6 +151,20 @@ export function findRooms(state: DrawingState): PlanFaces {
     totalArea: rooms.reduce((sum, room) => sum + room.area, 0),
     exteriorWallIds,
   }
+}
+
+/** Standard ray-casting test, used to match a room name stamp to its room. */
+export function pointInPolygon(point: Point, polygon: Point[]): boolean {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]
+    const b = polygon[j]
+    const straddles = a.y > point.y !== b.y > point.y
+    if (straddles && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside
+    }
+  }
+  return inside
 }
 
 /** Kept for callers that only need a single polygon's area. */

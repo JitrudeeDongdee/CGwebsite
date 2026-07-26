@@ -20,9 +20,13 @@ const DRAG_THRESHOLD = 0.08
 
 interface Press {
   origin: Point
+  /** Where the pointer was on the previous move, for incremental drags. */
+  last: Point
   nodeId: string | null
   /** Set when the press landed on a fixture instead of a corner. */
   fixtureId: string | null
+  /** Set when the press landed on a wall body, to slide the whole wall. */
+  wallId: string | null
   moved: boolean
 }
 
@@ -38,6 +42,8 @@ interface UseInteractionOptions {
   placeFixture: (kind: FixtureKind, point: Point) => void
   updateFixturePosition: (fixtureId: string, point: Point) => void
   finalizeFixtureMove: (fixtureId: string, point: Point) => void
+  dragWallBy: (wallId: string, delta: Point) => void
+  finalizeWallMove: (wallId: string) => void
 }
 
 /**
@@ -66,6 +72,8 @@ export function useInteraction({
   placeFixture,
   updateFixturePosition,
   finalizeFixtureMove,
+  dragWallBy,
+  finalizeWallMove,
 }: UseInteractionOptions) {
   const pressRef = useRef<Press | null>(null)
   /** Anchor of the wall currently being drawn; null when not drawing. */
@@ -73,6 +81,8 @@ export function useInteraction({
 
   const [draft, setDraft] = useState<DraftWall | null>(null)
   const [moveSnap, setMoveSnap] = useState<SnapTarget | null>(null)
+  /** Latest cursor position, for the ghost preview of a pending item. */
+  const [cursor, setCursor] = useState<Point | null>(null)
 
   /** Resolves a raw pointer position to where geometry would actually land. */
   const resolve = useCallback(
@@ -101,23 +111,30 @@ export function useInteraction({
       const node = findNodeAt(state, point)
       // Corners win over fixtures: they're smaller and harder to hit.
       const fixture = node ? null : findFixtureAt(state.fixtures, point)
+      // Only the move tool slides a whole wall; in draw mode a press on a
+      // wall still means "start a wall here".
+      const wall =
+        node || fixture || tool.type !== 'select' ? null : findWallAt(state, point)
       pressRef.current = {
         origin: point,
+        last: point,
         nodeId: node?.id ?? null,
         fixtureId: fixture?.id ?? null,
+        wallId: wall?.id ?? null,
         moved: false,
       }
     },
-    [state],
+    [state, tool],
   )
 
   const onMove = useCallback(
     (point: Point) => {
+      setCursor(point)
       const press = pressRef.current
 
       if (press && !press.moved) {
         const travelled = Math.hypot(point.x - press.origin.x, point.y - press.origin.y)
-        if (travelled > DRAG_THRESHOLD && (press.nodeId || press.fixtureId)) {
+        if (travelled > DRAG_THRESHOLD && (press.nodeId || press.fixtureId || press.wallId)) {
           press.moved = true
           beginNodeDrag()
         }
@@ -135,6 +152,14 @@ export function useInteraction({
         return
       }
 
+      if (press?.moved && press.wallId) {
+        // Incremental so the wall tracks the pointer rather than snapping
+        // its midpoint onto the cursor.
+        dragWallBy(press.wallId, { x: point.x - press.last.x, y: point.y - press.last.y })
+        press.last = point
+        return
+      }
+
       // Not dragging a corner: keep the rubber-band preview on the cursor.
       // Suppressed while placing an opening — clicks mean "drop it here".
       const anchor = anchorRef.current
@@ -143,7 +168,7 @@ export function useInteraction({
         setDraft({ start: anchor, current: end, snap })
       }
     },
-    [state, beginNodeDrag, updateNodePosition, updateFixturePosition, resolve, tool],
+    [state, beginNodeDrag, updateNodePosition, updateFixturePosition, dragWallBy, resolve, tool],
   )
 
   const onUp = useCallback(
@@ -159,6 +184,11 @@ export function useInteraction({
 
       if (press?.moved && press.fixtureId) {
         finalizeFixtureMove(press.fixtureId, point)
+        return
+      }
+
+      if (press?.moved && press.wallId) {
+        finalizeWallMove(press.wallId)
         return
       }
 
@@ -208,8 +238,9 @@ export function useInteraction({
       state,
       tool,
       placeOpening,
+      finalizeWallMove,
     ],
   )
 
-  return { draft, moveSnap, isDrawing: draft !== null, onDown, onMove, onUp, cancelDrawing }
+  return { draft, moveSnap, cursor, isDrawing: draft !== null, onDown, onMove, onUp, cancelDrawing }
 }

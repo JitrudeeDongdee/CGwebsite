@@ -4,11 +4,10 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
-import DoorFront from '@mui/icons-material/DoorFront'
-import Window from '@mui/icons-material/Window'
 import { PLAN_TEMPLATES } from '../drawing/templates'
 import { OPENING_PRESETS } from '../drawing/openings'
 import { FIXTURE_CATALOG } from '../drawing/fixtures'
+import { FixturePreview, OpeningPreview, TemplatePreview } from './ItemPreview'
 import type { FixtureKind, OpeningKind } from '../drawing/types'
 
 export interface OpeningTool {
@@ -60,12 +59,15 @@ export function ToolSidebar({
             variant="outlined"
             size="small"
             onClick={() => onLoadTemplate(template.id)}
-            sx={{ justifyContent: 'space-between', textAlign: 'left' }}
+            sx={{ justifyContent: 'flex-start', textAlign: 'left', gap: 1, py: 0.75 }}
           >
-            <span>{t(template.nameKey)}</span>
-            <Typography variant="caption" color="text.secondary">
-              {template.width}×{template.depth}
-            </Typography>
+            <TemplatePreview template={template} />
+            <Stack sx={{ flexGrow: 1, alignItems: 'flex-start' }}>
+              <span>{t(template.nameKey)}</span>
+              <Typography variant="caption" color="text.secondary">
+                {template.width}×{template.depth}
+              </Typography>
+            </Stack>
           </Button>
         ))}
       </Stack>
@@ -88,15 +90,15 @@ export function ToolSidebar({
               key={`${preset.kind}-${preset.width}`}
               variant={selected ? 'contained' : 'outlined'}
               size="small"
-              startIcon={preset.kind === 'door' ? <DoorFront /> : <Window />}
               onClick={() =>
                 onSelectOpening(
                   selected ? null : { kind: preset.kind, width: preset.width },
                 )
               }
-              sx={{ justifyContent: 'flex-start' }}
+              sx={{ justifyContent: 'flex-start', gap: 1, py: 0.75 }}
             >
-              {t(preset.labelKey)}
+              <OpeningPreview kind={preset.kind} width={preset.width} />
+              <span>{t(preset.labelKey)}</span>
             </Button>
           )
         })}
@@ -130,12 +132,15 @@ export function ToolSidebar({
             variant={activeFixture === spec.kind ? 'contained' : 'outlined'}
             size="small"
             onClick={() => onSelectFixture(activeFixture === spec.kind ? null : spec.kind)}
-            sx={{ justifyContent: 'space-between', textAlign: 'left' }}
+            sx={{ justifyContent: 'flex-start', textAlign: 'left', gap: 1, py: 0.75 }}
           >
-            <span>{t(spec.labelKey)}</span>
-            <Typography variant="caption" color="text.secondary">
-              {spec.width}×{spec.depth}
-            </Typography>
+            <FixturePreview kind={spec.kind} />
+            <Stack sx={{ flexGrow: 1, alignItems: 'flex-start' }}>
+              <span>{t(spec.labelKey)}</span>
+              <Typography variant="caption" color="text.secondary">
+                {spec.width}×{spec.depth}
+              </Typography>
+            </Stack>
           </Button>
         ))}
       </Stack>

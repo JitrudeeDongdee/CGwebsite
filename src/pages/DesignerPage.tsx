@@ -17,6 +17,8 @@ import { ToolSidebar } from '../ui/ToolSidebar'
 import { PLAN_TEMPLATES } from '../drawing/templates'
 import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
+import { pointInPolygon } from '../drawing/rooms'
+import { RoomNameDialog } from '../ui/RoomNameDialog'
 import { BottomToolbar } from '../ui/BottomToolbar'
 import { DRAW_TOOL, SELECT_TOOL, type ToolMode } from '../drawing/tools'
 import { estimatePrice } from '../pricing/estimate'
@@ -48,6 +50,9 @@ export function DesignerPage() {
     finalizeFixtureMove,
     turnFixture,
     removeFixture,
+    dragWallBy,
+    finalizeWallMove,
+    nameRoom,
     undo,
     redo,
     canUndo,
@@ -60,6 +65,7 @@ export function DesignerPage() {
   const [contextTarget, setContextTarget] = useState<ContextTarget | null>(null)
   const [tool, setTool] = useState<ToolMode>(DRAW_TOOL)
   const [fitToken, setFitToken] = useState(0)
+  const [renaming, setRenaming] = useState(false)
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 
   const priceConfig = useMemo(() => loadPriceConfig(), [])
@@ -88,15 +94,24 @@ export function DesignerPage() {
       const opening = fixture ? null : findOpeningAt(placeOpenings(state, exteriorWallIds), point)
       const node = fixture || opening ? null : findNodeAt(state, point)
       const wall = fixture || opening || node ? null : findWallAt(state, point)
+      const room = rooms.find((item) => pointInPolygon(point, item.polygon))
+      const existingLabel = room
+        ? state.roomLabels.find((item) => pointInPolygon(item, room.polygon))
+        : undefined
+
       setContextTarget({
         screen,
+        point,
         nodeId: node?.id ?? null,
         wallId: wall?.id ?? null,
         openingId: opening?.id ?? null,
         fixtureId: fixture?.id ?? null,
+        roomLabelId: existingLabel?.id ?? null,
+        roomLabelName: existingLabel ? existingLabel.name : '',
+        insideRoom: room !== undefined,
       })
     },
-    [state, exteriorWallIds],
+    [state, exteriorWallIds, rooms],
   )
 
   useEffect(() => {
@@ -176,6 +191,8 @@ export function DesignerPage() {
         placeFixture={placeFixture}
         updateFixturePosition={updateFixturePosition}
         finalizeFixtureMove={finalizeFixtureMove}
+        dragWallBy={dragWallBy}
+        finalizeWallMove={finalizeWallMove}
       />
 
       <Typography
@@ -231,6 +248,7 @@ export function DesignerPage() {
         onDeleteOpening={removeOpening}
         onDeleteFixture={removeFixture}
         onRotateFixture={turnFixture}
+        onRenameRoom={() => setRenaming(true)}
         onDeleteWall={removeWall}
         onDeleteNode={removeNode}
         onCopyWall={copyWall}
@@ -240,6 +258,20 @@ export function DesignerPage() {
         canUndo={canUndo}
         canRedo={canRedo}
         hasGeometry={state.walls.length > 0}
+      />
+
+      <RoomNameDialog
+        open={renaming}
+        initialName={
+          contextTarget?.roomLabelName.startsWith('rooms.')
+            ? t(contextTarget.roomLabelName)
+            : (contextTarget?.roomLabelName ?? '')
+        }
+        onClose={() => setRenaming(false)}
+        onSave={(name) => {
+          if (!contextTarget) return
+          nameRoom(contextTarget.point, name, contextTarget.roomLabelId ?? undefined)
+        }}
       />
 
       <LeadFormDialog

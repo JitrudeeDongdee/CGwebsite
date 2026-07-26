@@ -61,11 +61,25 @@ export interface DrawFixture {
   depth: number
 }
 
+/**
+ * A room name, stored as a stamp at a point rather than attached to a room.
+ * Rooms are derived from the walls, so they have no stable id to hang a name
+ * on — but a point keeps pointing at the same room as long as the walls
+ * around it still enclose it.
+ */
+export interface DrawRoomLabel {
+  id: string
+  x: number
+  y: number
+  name: string
+}
+
 export interface DrawingState {
   nodes: Record<string, DrawNode>
   walls: DrawWall[]
   openings: DrawOpening[]
   fixtures: DrawFixture[]
+  roomLabels: DrawRoomLabel[]
 }
 
 export type SnapTarget =

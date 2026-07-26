@@ -3,16 +3,21 @@ import type { DrawFixture } from '../drawing/types'
 import { fixtureSpec } from '../drawing/fixtures'
 
 const HEIGHT = 0.022
-const OUTLINE_WIDTH = 0.03
+/** Finer than the wall line — furniture is a lighter annotation. */
+const OUTLINE_WIDTH = 0.018
+/** Softened so the line reads as pencil rather than a hard CAD stroke. */
+const OUTLINE_OPACITY = 0.55
 
 function Edge({
   from,
   to,
   color,
+  opacity = OUTLINE_OPACITY,
 }: {
   from: [number, number]
   to: [number, number]
   color: string
+  opacity?: number
 }) {
   const dx = to[0] - from[0]
   const dy = to[1] - from[1]
@@ -25,7 +30,7 @@ function Edge({
       rotation={[-Math.PI / 2, 0, -Math.atan2(dy, dx)]}
     >
       <planeGeometry args={[length, OUTLINE_WIDTH]} />
-      <meshBasicMaterial color={color} />
+      <meshBasicMaterial color={color} transparent opacity={opacity} />
     </mesh>
   )
 }

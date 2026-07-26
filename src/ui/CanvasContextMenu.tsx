@@ -10,6 +10,7 @@ import Undo from '@mui/icons-material/Undo'
 import Redo from '@mui/icons-material/Redo'
 import ClearAll from '@mui/icons-material/ClearAll'
 import Rotate90DegreesCw from '@mui/icons-material/Rotate90DegreesCw'
+import DriveFileRenameOutline from '@mui/icons-material/DriveFileRenameOutline'
 
 export interface ContextTarget {
   screen: { x: number; y: number }
@@ -17,6 +18,12 @@ export interface ContextTarget {
   nodeId: string | null
   openingId: string | null
   fixtureId: string | null
+  /** World point of the right-click, for naming the room under it. */
+  point: { x: number; y: number }
+  /** Existing label in that room, if any. */
+  roomLabelId: string | null
+  roomLabelName: string
+  insideRoom: boolean
 }
 
 interface CanvasContextMenuProps {
@@ -25,6 +32,7 @@ interface CanvasContextMenuProps {
   onDeleteOpening: (openingId: string) => void
   onDeleteFixture: (fixtureId: string) => void
   onRotateFixture: (fixtureId: string) => void
+  onRenameRoom: () => void
   onDeleteWall: (wallId: string) => void
   onDeleteNode: (nodeId: string) => void
   onCopyWall: (wallId: string) => void
@@ -42,6 +50,7 @@ export function CanvasContextMenu({
   onDeleteOpening,
   onDeleteFixture,
   onRotateFixture,
+  onRenameRoom,
   onDeleteWall,
   onDeleteNode,
   onCopyWall,
@@ -68,12 +77,30 @@ export function CanvasContextMenu({
         target ? { top: target.screen.y, left: target.screen.x } : undefined
       }
     >
+      {target?.insideRoom && !target.fixtureId && !target.openingId && (
+        <MenuItem onClick={() => run(onRenameRoom)}>
+          <ListItemIcon>
+            <DriveFileRenameOutline fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('rooms.rename')}</ListItemText>
+        </MenuItem>
+      )}
+
       {target?.fixtureId && (
         <MenuItem onClick={() => run(() => onRotateFixture(target.fixtureId!))}>
           <ListItemIcon>
             <Rotate90DegreesCw fontSize="small" />
           </ListItemIcon>
           <ListItemText>{t('fixtures.rotate')}</ListItemText>
+        </MenuItem>
+      )}
+
+      {target?.insideRoom && !target.fixtureId && !target.openingId && (
+        <MenuItem onClick={() => run(onRenameRoom)}>
+          <ListItemIcon>
+            <DriveFileRenameOutline fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('rooms.rename')}</ListItemText>
         </MenuItem>
       )}
 
@@ -122,9 +149,11 @@ export function CanvasContextMenu({
         </MenuItem>
       )}
 
-      {(target?.wallId || target?.nodeId || target?.openingId || target?.fixtureId) && (
-        <Divider />
-      )}
+      {(target?.wallId ||
+        target?.nodeId ||
+        target?.openingId ||
+        target?.fixtureId ||
+        target?.insideRoom) && <Divider />}
 
       <MenuItem disabled={!canUndo} onClick={() => run(onUndo)}>
         <ListItemIcon>

@@ -15,6 +15,7 @@ import { DimensionStrings } from './DimensionStrings'
 import type { Room } from '../drawing/rooms'
 import { OpeningsView } from './OpeningsView'
 import { FixturesView } from './FixturesView'
+import { GhostPreview } from './GhostPreview'
 import type { FixtureKind, OpeningKind } from '../drawing/types'
 import type { ToolMode } from '../drawing/tools'
 import { CameraFit } from './CameraFit'
@@ -35,6 +36,8 @@ interface DrawingCanvasProps {
   placeFixture: (kind: FixtureKind, point: Point) => void
   updateFixturePosition: (fixtureId: string, point: Point) => void
   finalizeFixtureMove: (fixtureId: string, point: Point) => void
+  dragWallBy: (wallId: string, delta: Point) => void
+  finalizeWallMove: (wallId: string) => void
   /** Lets the page cancel an in-progress wall from a keyboard handler. */
   cancelRef: React.RefObject<(() => void) | null>
 }
@@ -55,8 +58,10 @@ export function DrawingCanvas({
   placeFixture,
   updateFixturePosition,
   finalizeFixtureMove,
+  dragWallBy,
+  finalizeWallMove,
 }: DrawingCanvasProps) {
-  const { draft, moveSnap, onDown, onMove, onUp, cancelDrawing } = useInteraction({
+  const { draft, moveSnap, cursor, onDown, onMove, onUp, cancelDrawing } = useInteraction({
     state,
     addWall,
     beginNodeDrag,
@@ -67,6 +72,8 @@ export function DrawingCanvas({
     placeFixture,
     updateFixturePosition,
     finalizeFixtureMove,
+    dragWallBy,
+    finalizeWallMove,
   })
   const controlsRef = useRef<OrbitControls>(null)
   const { scene } = useTheme()
@@ -112,7 +119,8 @@ export function DrawingCanvas({
       <WallsView state={state} exteriorWallIds={exteriorWallIds} />
       <OpeningsView state={state} exteriorWallIds={exteriorWallIds} />
       <FixturesView fixtures={state.fixtures} />
-      <RoomAreaLabels rooms={rooms} />
+      <GhostPreview tool={tool} cursor={cursor} state={state} />
+      <RoomAreaLabels rooms={rooms} roomLabels={state.roomLabels} />
       <DimensionStrings state={state} />
       <NodesView nodes={Object.values(state.nodes)} />
       <DraftWallView draft={draft} />

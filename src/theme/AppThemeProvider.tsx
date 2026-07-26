@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
+import GlobalStyles from '@mui/material/GlobalStyles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { buildTheme, type ThemeMode } from './theme'
 
@@ -48,6 +49,16 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     <ThemeModeContext.Provider value={value}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        {/* Room labels render as DOM inside the canvas, so their colours
+            have to reach CSS rather than the three.js material path. */}
+        <GlobalStyles
+          styles={{
+            ':root': {
+              '--room-label-name': theme.scene.wall,
+              '--room-label-area': theme.scene.dimension,
+            },
+          }}
+        />
         {children}
       </ThemeProvider>
     </ThemeModeContext.Provider>
