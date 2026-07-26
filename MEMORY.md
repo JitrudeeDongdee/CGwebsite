@@ -66,6 +66,22 @@ synchronously and every closure reads the same object, regardless of render timi
 `useState` for the parts that actually need to trigger a re-render (e.g. the visual draft
 preview). See `src/scene/useInteraction.ts`.
 
+## The browser-tool tab goes stale after HMR failures — reopen before debugging
+
+**What happened**: after a source file briefly had a syntax error, drawing appeared
+completely broken in the browser pane — pointer events reached the canvas but R3F's mesh
+handlers never fired. A long hunt for a regression followed, including diffing `src/scene`
+against the last known-good commit (which showed it was byte-identical).
+
+**Root cause**: the tab was running stale modules from a failed HMR update
+(`[vite] Failed to reload /src/App.tsx`). A plain reload — even a forced one — did not
+recover it. Opening a brand-new tab did, immediately.
+
+**Correct behavior**: when in-app behavior breaks right after an edit, check the console
+for `[vite] Failed to reload` FIRST, and open a fresh tab before assuming a code
+regression. Also: never edit source files in the middle of a multi-step UI verification —
+the HMR reload resets component state mid-sequence and invalidates the run.
+
 ## Eyeballing pixel coordinates from a screenshot is unreliable
 
 **What happened**: an extended debugging detour chasing a "node move doesn't work" bug that

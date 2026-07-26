@@ -1,6 +1,8 @@
 {
   "app": {
-    "title": "House Plan Designer"
+    "title": "House Plan Designer",
+    "navDesigner": "Design",
+    "navAdmin": "Admin"
   },
   "canvas": {
     "hint": "Drag on empty space to draw a wall · drag a corner to move it · drag a corner onto another to close the room",
@@ -14,6 +16,60 @@
     "squareMeters": "m²",
     "wallCount": "Walls",
     "wallUnit": "segments"
+  },
+  "estimate": {
+    "title": "Price estimate",
+    "grade": "Material grade",
+    "gradeEconomy": "Economy",
+    "gradeStandard": "Standard",
+    "gradePremium": "Premium",
+    "perSqm": "per m²",
+    "total": "Estimated price",
+    "unavailable": "Close a room to see the estimate",
+    "disclaimer": "Preliminary estimate only — not a final price. The actual price depends on the design, materials and site conditions.",
+    "placeholderWarning": "The per-m² rates are still example values, not the company's real pricing.",
+    "submit": "Send plan to our team"
+  },
+  "lead": {
+    "title": "Send your plan to our team",
+    "description": "Our team will see the plan you drew along with the estimate, and get back to you.",
+    "name": "Full name",
+    "phone": "Phone",
+    "email": "Email",
+    "province": "Province / build location",
+    "timeline": "When do you want to start?",
+    "timelineAsap": "As soon as possible",
+    "timeline3m": "Within 3 months",
+    "timeline6m": "Within 6 months",
+    "timeline1y": "Within a year",
+    "timelineUndecided": "Not decided yet",
+    "cancel": "Cancel",
+    "send": "Send plan",
+    "sending": "Sending…",
+    "success": "Plan sent. Our team will contact you shortly.",
+    "required": "This field is required",
+    "invalidEmail": "That email address doesn't look right",
+    "invalidPhone": "That phone number doesn't look right",
+    "noRoomWarning": "No closed room yet — you can still send the plan, but it won't include an estimate.",
+    "localOnlyNotice": "Right now this is saved only in your browser; it is not sent to a real server yet."
+  },
+  "admin": {
+    "title": "Leads",
+    "empty": "No leads yet",
+    "emptyHint": "Submitted plans will appear here.",
+    "name": "Name",
+    "contact": "Contact",
+    "province": "Province",
+    "timeline": "Timeline",
+    "area": "Area",
+    "estimate": "Estimate",
+    "status": "Status",
+    "createdAt": "Submitted",
+    "statusNew": "New",
+    "statusContacted": "Contacted",
+    "statusWon": "Won",
+    "statusLost": "Lost",
+    "storageNotice": "This list is read from this browser only (no real database yet)."
   },
   "settings": {
     "language": "Language",
