@@ -24,7 +24,9 @@
     "noRoomHint": "วาดกำแพงให้ล้อมเป็นวงปิดเพื่อคำนวณพื้นที่",
     "squareMeters": "ตร.ม.",
     "wallCount": "จำนวนกำแพง",
-    "wallUnit": "เส้น"
+    "wallUnit": "เส้น",
+    "roomCount": "จำนวนห้อง",
+    "roomUnit": "ห้อง"
   },
   "estimate": {
     "title": "ประเมินราคา",

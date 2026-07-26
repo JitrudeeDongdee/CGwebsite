@@ -9,7 +9,7 @@ import {
   finishNodeMove,
   moveNode,
 } from './state'
-import { findClosedLoop, polygonArea } from './geometry'
+import { findRooms } from './rooms'
 
 interface History {
   past: DrawingState[]
@@ -124,15 +124,16 @@ export function useDrawingState() {
 
   const state = history.present
 
-  const roomArea = useMemo(() => {
-    const loop = findClosedLoop(state)
-    if (!loop) return null
-    return polygonArea(loop.map((id) => state.nodes[id]))
-  }, [state])
+  // Every enclosed room, so a plan with interior partitions reports the sum
+  // of its rooms rather than whichever single loop happened to be found.
+  const plan = useMemo(() => findRooms(state), [state])
+  const roomArea = plan.rooms.length > 0 ? plan.totalArea : null
 
   return {
     state,
     roomArea,
+    rooms: plan.rooms,
+    exteriorWallIds: plan.exteriorWallIds,
     addWall,
     beginNodeDrag,
     updateNodePosition,

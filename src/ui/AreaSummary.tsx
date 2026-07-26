@@ -4,11 +4,13 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
 interface AreaSummaryProps {
+  /** Total of every enclosed room, or null when nothing is enclosed yet. */
   area: number | null
+  roomCount: number
   wallCount: number
 }
 
-export function AreaSummary({ area, wallCount }: AreaSummaryProps) {
+export function AreaSummary({ area, roomCount, wallCount }: AreaSummaryProps) {
   const { t } = useTranslation()
 
   return (
@@ -38,13 +40,25 @@ export function AreaSummary({ area, wallCount }: AreaSummaryProps) {
         )}
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: 'baseline' }}>
-        <Typography variant="body2" color="text.secondary">
-          {t('summary.wallCount')}
-        </Typography>
-        <Typography variant="body2">
-          {wallCount} {t('summary.wallUnit')}
-        </Typography>
+      <Stack spacing={0.5} sx={{ mt: 2 }}>
+        {roomCount > 0 && (
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+            <Typography variant="body2" color="text.secondary">
+              {t('summary.roomCount')}
+            </Typography>
+            <Typography variant="body2">
+              {roomCount} {t('summary.roomUnit')}
+            </Typography>
+          </Stack>
+        )}
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+          <Typography variant="body2" color="text.secondary">
+            {t('summary.wallCount')}
+          </Typography>
+          <Typography variant="body2">
+            {wallCount} {t('summary.wallUnit')}
+          </Typography>
+        </Stack>
       </Stack>
     </Paper>
   )

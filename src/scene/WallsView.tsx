@@ -32,9 +32,18 @@ function WallPoly({ outline, color }: { outline: WallOutline; color: string }) {
  * edges mitered where walls meet — the double-line convention of a real
  * floor plan. See drawing/wallOutline.ts for the joint geometry.
  */
-export function WallsView({ state }: { state: DrawingState }) {
+export function WallsView({
+  state,
+  exteriorWallIds,
+}: {
+  state: DrawingState
+  exteriorWallIds: ReadonlySet<string>
+}) {
   const { scene } = useTheme()
-  const outlines = useMemo(() => computeWallOutlines(state), [state])
+  const outlines = useMemo(
+    () => computeWallOutlines(state, exteriorWallIds),
+    [state, exteriorWallIds],
+  )
 
   return (
     <>

@@ -24,7 +24,9 @@
     "noRoomHint": "Draw walls that enclose a loop to calculate the area",
     "squareMeters": "m²",
     "wallCount": "Walls",
-    "wallUnit": "segments"
+    "wallUnit": "segments",
+    "roomCount": "Rooms",
+    "roomUnit": "rooms"
   },
   "estimate": {
     "title": "Price estimate",

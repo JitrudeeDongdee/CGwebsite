@@ -10,9 +10,14 @@ import { NodesView } from './NodesView'
 import { WallsView } from './WallsView'
 import { DraftWallView } from './DraftWallView'
 import { SnapIndicator } from './SnapIndicator'
+import { RoomAreaLabels } from './RoomAreaLabels'
+import { DimensionStrings } from './DimensionStrings'
+import type { Room } from '../drawing/rooms'
 
 interface DrawingCanvasProps {
   state: DrawingState
+  rooms: Room[]
+  exteriorWallIds: ReadonlySet<string>
   addWall: (start: Point, end: Point) => void
   beginNodeDrag: () => void
   updateNodePosition: (nodeId: string, point: Point) => void
@@ -24,6 +29,8 @@ interface DrawingCanvasProps {
 
 export function DrawingCanvas({
   state,
+  rooms,
+  exteriorWallIds,
   addWall,
   beginNodeDrag,
   updateNodePosition,
@@ -76,7 +83,9 @@ export function DrawingCanvas({
         onUp={handleUp}
         onContextMenu={handleContextMenu}
       />
-      <WallsView state={state} />
+      <WallsView state={state} exteriorWallIds={exteriorWallIds} />
+      <RoomAreaLabels rooms={rooms} />
+      <DimensionStrings state={state} />
       <NodesView nodes={Object.values(state.nodes)} />
       <DraftWallView draft={draft} />
       {moveSnap && <SnapIndicator point={moveSnap.point} />}

@@ -1,7 +1,11 @@
 import type { DrawingState, Point } from './types'
 
-/** Typical interior partition, in metres. */
-export const DEFAULT_WALL_THICKNESS = 0.15
+/** Load-bearing outer wall, in metres. */
+export const EXTERIOR_WALL_THICKNESS = 0.2
+/** Non-structural interior partition, in metres. */
+export const INTERIOR_WALL_THICKNESS = 0.1
+/** Used when a wall isn't part of any enclosed room yet. */
+export const DEFAULT_WALL_THICKNESS = INTERIOR_WALL_THICKNESS
 
 /**
  * Past this multiple of the half-thickness a miter spike is cut off and the
@@ -86,7 +90,11 @@ function miterPoint(node: Point, from: Spoke, to: Spoke): Point {
  * shared corners — the double-line poché of a real floor plan, rather than
  * overlapping rectangles with notched joints.
  */
-export function computeWallOutlines(state: DrawingState): WallOutline[] {
+export function computeWallOutlines(
+  state: DrawingState,
+  /** Walls on the building's outer boundary, drawn thicker. */
+  exteriorWallIds?: ReadonlySet<string>,
+): WallOutline[] {
   // Every wall end, grouped by the node it touches.
   const spokesByNode = new Map<string, Spoke[]>()
 
@@ -100,7 +108,12 @@ export function computeWallOutlines(state: DrawingState): WallOutline[] {
     const length = Math.hypot(dx, dy)
     if (length === 0) continue
 
-    const halfThickness = (wall.thickness ?? DEFAULT_WALL_THICKNESS) / 2
+    // An explicit thickness wins; otherwise outer walls are drawn as the
+    // structural shell and everything else as a partition.
+    const thickness =
+      wall.thickness ??
+      (exteriorWallIds?.has(wall.id) ? EXTERIOR_WALL_THICKNESS : INTERIOR_WALL_THICKNESS)
+    const halfThickness = thickness / 2
     const forward = { x: dx / length, y: dy / length }
     const backward = { x: -forward.x, y: -forward.y }
 

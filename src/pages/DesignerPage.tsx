@@ -24,6 +24,8 @@ export function DesignerPage() {
   const {
     state,
     roomArea,
+    rooms,
+    exteriorWallIds,
     addWall,
     beginNodeDrag,
     updateNodePosition,
@@ -105,6 +107,8 @@ export function DesignerPage() {
     <Box sx={{ position: 'relative', flexGrow: 1, minHeight: 0 }}>
       <DrawingCanvas
         state={state}
+        rooms={rooms}
+        exteriorWallIds={exteriorWallIds}
         addWall={addWall}
         beginNodeDrag={beginNodeDrag}
         updateNodePosition={updateNodePosition}
@@ -124,7 +128,11 @@ export function DesignerPage() {
           overflowY: 'auto',
         }}
       >
-        <AreaSummary area={roomArea} wallCount={state.walls.length} />
+        <AreaSummary
+          area={roomArea}
+          roomCount={rooms.length}
+          wallCount={state.walls.length}
+        />
         <EstimatePanel
           grade={grade}
           onGradeChange={setGrade}
