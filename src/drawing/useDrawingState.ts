@@ -1,18 +1,22 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { DrawingState, Point } from './types'
 import {
+  addFixture,
   addOpening,
   commitWall,
   createInitialState,
   deleteNode,
+  deleteFixture,
   deleteOpening,
   deleteWall,
   duplicateWall,
   finishNodeMove,
   loadPlan,
+  moveFixture,
   moveNode,
+  rotateFixture,
 } from './state'
-import type { OpeningKind } from './types'
+import type { FixtureKind, OpeningKind, Point as PointType } from './types'
 import { findRooms } from './rooms'
 
 interface History {
@@ -120,6 +124,36 @@ export function useDrawingState() {
     [commit],
   )
 
+  const placeFixture = useCallback(
+    (kind: FixtureKind, point: PointType) => commit((prev) => addFixture(prev, kind, point)),
+    [commit],
+  )
+  const updateFixturePosition = useCallback(
+    (fixtureId: string, point: PointType) =>
+      amend((prev) => moveFixture(prev, fixtureId, point)),
+    [amend],
+  )
+  const finalizeFixtureMove = useCallback(
+    (fixtureId: string, point: PointType) => {
+      const origin = dragOriginRef.current
+      dragOriginRef.current = null
+      setHistory((h) => {
+        const present = moveFixture(h.present, fixtureId, point)
+        if (!origin) return { ...h, present }
+        return { past: [...h.past, origin].slice(-MAX_HISTORY), present, future: [] }
+      })
+    },
+    [],
+  )
+  const turnFixture = useCallback(
+    (fixtureId: string) => commit((prev) => rotateFixture(prev, fixtureId)),
+    [commit],
+  )
+  const removeFixture = useCallback(
+    (fixtureId: string) => commit((prev) => deleteFixture(prev, fixtureId)),
+    [commit],
+  )
+
   const undo = useCallback(() => {
     setHistory((h) => {
       const previous = h.past.at(-1)
@@ -163,6 +197,11 @@ export function useDrawingState() {
     placeOpening,
     removeOpening,
     applyTemplate,
+    placeFixture,
+    updateFixturePosition,
+    finalizeFixtureMove,
+    turnFixture,
+    removeFixture,
     undo,
     redo,
     canUndo: history.past.length > 0,

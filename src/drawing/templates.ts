@@ -1,4 +1,12 @@
-import type { DrawingState, DrawNode, DrawOpening, DrawWall, OpeningKind } from './types'
+import type {
+  DrawFixture,
+  DrawingState,
+  DrawNode,
+  DrawOpening,
+  DrawWall,
+  OpeningKind,
+} from './types'
+import { fixtureSpec } from './fixtures'
 import { distanceToSegment } from './geometry'
 
 export interface PlanTemplate {
@@ -157,7 +165,20 @@ function buildFromSpec({ width, depth, partitions, openings = [] }: Spec): Drawi
     })
   })
 
-  return { nodes, walls, openings: placed }
+  // Structural columns land on every wall junction — that's where the posts
+  // go in a real prefab frame, and it matches how these plans are drawn.
+  const columnSpec = fixtureSpec('column')
+  const fixtures: DrawFixture[] = Object.values(nodes).map((node, index) => ({
+    id: `tpl_column_${index}`,
+    kind: 'column' as const,
+    x: node.x,
+    y: node.y,
+    rotation: 0,
+    width: columnSpec.width,
+    depth: columnSpec.depth,
+  }))
+
+  return { nodes, walls, openings: placed, fixtures }
 }
 
 /**

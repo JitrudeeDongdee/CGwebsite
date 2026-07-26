@@ -1,3 +1,5 @@
+import type { OpeningKind } from '../drawing/types'
+
 export const MATERIAL_GRADES = ['economy', 'standard', 'premium'] as const
 export type MaterialGrade = (typeof MATERIAL_GRADES)[number]
 
@@ -13,13 +15,29 @@ export interface PriceConfig {
   currency: string
   /** Build cost per square metre, by material grade. */
   pricePerSqm: Record<MaterialGrade, number>
+  /**
+   * Supply-and-fit cost per door / window. These are a real line item, not
+   * something the per-sqm rate absorbs: two plans of identical area but very
+   * different glazing don't cost the same. Editable from admin for the same
+   * reason as the sqm rates.
+   */
+  openingPrice: Record<OpeningKind, number>
+}
+
+export interface OpeningCount {
+  door: number
+  window: number
 }
 
 export interface PriceEstimate {
   areaSqm: number
   grade: MaterialGrade
   pricePerSqm: number
-  /** areaSqm * pricePerSqm — the only term in the Phase 1 formula. */
+  /** areaSqm * pricePerSqm. */
+  areaCost: number
+  openings: OpeningCount
+  /** Doors + windows, priced per unit. */
+  openingsCost: number
   total: number
   currency: string
 }

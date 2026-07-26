@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
-import type { DrawingState, OpeningKind, Point, SnapTarget } from '../drawing/types'
+import type { DrawingState, FixtureKind, OpeningKind, Point, SnapTarget } from '../drawing/types'
 import { findNodeAt, findSnapTarget, findWallAt, snapToGrid } from '../drawing/geometry'
 import { offsetAlongWall } from '../drawing/openings'
+import { findFixtureAt } from '../drawing/fixtures'
 import type { ToolMode } from '../drawing/tools'
 
 export interface DraftWall {
@@ -20,6 +21,8 @@ const DRAG_THRESHOLD = 0.08
 interface Press {
   origin: Point
   nodeId: string | null
+  /** Set when the press landed on a fixture instead of a corner. */
+  fixtureId: string | null
   moved: boolean
 }
 
@@ -32,6 +35,9 @@ interface UseInteractionOptions {
   /** What a click means: move only, draw walls, or place an opening. */
   tool: ToolMode
   placeOpening: (wallId: string, offset: number, width: number, kind: OpeningKind) => void
+  placeFixture: (kind: FixtureKind, point: Point) => void
+  updateFixturePosition: (fixtureId: string, point: Point) => void
+  finalizeFixtureMove: (fixtureId: string, point: Point) => void
 }
 
 /**
@@ -57,6 +63,9 @@ export function useInteraction({
   finalizeNodeMove,
   tool,
   placeOpening,
+  placeFixture,
+  updateFixturePosition,
+  finalizeFixtureMove,
 }: UseInteractionOptions) {
   const pressRef = useRef<Press | null>(null)
   /** Anchor of the wall currently being drawn; null when not drawing. */
@@ -90,7 +99,14 @@ export function useInteraction({
   const onDown = useCallback(
     (point: Point) => {
       const node = findNodeAt(state, point)
-      pressRef.current = { origin: point, nodeId: node?.id ?? null, moved: false }
+      // Corners win over fixtures: they're smaller and harder to hit.
+      const fixture = node ? null : findFixtureAt(state.fixtures, point)
+      pressRef.current = {
+        origin: point,
+        nodeId: node?.id ?? null,
+        fixtureId: fixture?.id ?? null,
+        moved: false,
+      }
     },
     [state],
   )
@@ -101,7 +117,7 @@ export function useInteraction({
 
       if (press && !press.moved) {
         const travelled = Math.hypot(point.x - press.origin.x, point.y - press.origin.y)
-        if (travelled > DRAG_THRESHOLD && press.nodeId) {
+        if (travelled > DRAG_THRESHOLD && (press.nodeId || press.fixtureId)) {
           press.moved = true
           beginNodeDrag()
         }
@@ -114,6 +130,11 @@ export function useInteraction({
         return
       }
 
+      if (press?.moved && press.fixtureId) {
+        updateFixturePosition(press.fixtureId, point)
+        return
+      }
+
       // Not dragging a corner: keep the rubber-band preview on the cursor.
       // Suppressed while placing an opening — clicks mean "drop it here".
       const anchor = anchorRef.current
@@ -122,7 +143,7 @@ export function useInteraction({
         setDraft({ start: anchor, current: end, snap })
       }
     },
-    [state, beginNodeDrag, updateNodePosition, resolve, tool],
+    [state, beginNodeDrag, updateNodePosition, updateFixturePosition, resolve, tool],
   )
 
   const onUp = useCallback(
@@ -133,6 +154,16 @@ export function useInteraction({
       if (press?.moved && press.nodeId) {
         finalizeNodeMove(press.nodeId, point)
         setMoveSnap(null)
+        return
+      }
+
+      if (press?.moved && press.fixtureId) {
+        finalizeFixtureMove(press.fixtureId, point)
+        return
+      }
+
+      if (tool.type === 'fixture') {
+        placeFixture(tool.kind, snapToGrid(point))
         return
       }
 
@@ -168,7 +199,16 @@ export function useInteraction({
       anchorRef.current = null
       setDraft(null)
     },
-    [addWall, finalizeNodeMove, resolve, state, tool, placeOpening],
+    [
+      addWall,
+      finalizeNodeMove,
+      finalizeFixtureMove,
+      placeFixture,
+      resolve,
+      state,
+      tool,
+      placeOpening,
+    ],
   )
 
   return { draft, moveSnap, isDrawing: draft !== null, onDown, onMove, onUp, cancelDrawing }

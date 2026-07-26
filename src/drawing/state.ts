@@ -1,8 +1,18 @@
-import type { DrawingState, DrawNode, DrawOpening, DrawWall, OpeningKind, Point } from './types'
+import type {
+  DrawFixture,
+  DrawingState,
+  DrawNode,
+  DrawOpening,
+  DrawWall,
+  FixtureKind,
+  OpeningKind,
+  Point,
+} from './types'
+import { fixtureSpec } from './fixtures'
 import { GRID_SIZE, distance, findSnapTarget, snapToGrid } from './geometry'
 
 export function createInitialState(): DrawingState {
-  return { nodes: {}, walls: [], openings: [] }
+  return { nodes: {}, walls: [], openings: [], fixtures: [] }
 }
 
 function nextId(prefix: string): string {
@@ -49,7 +59,7 @@ function resolveEndpoint(
     })
 
     return {
-      state: { nodes: { ...state.nodes, [newNode.id]: newNode }, walls, openings },
+      state: { ...state, nodes: { ...state.nodes, [newNode.id]: newNode }, walls, openings },
       nodeId: newNode.id,
     }
   }
@@ -211,5 +221,49 @@ export function deleteOpening(state: DrawingState, openingId: string): DrawingSt
 
 /** Replaces the whole plan, e.g. when loading a starter template. */
 export function loadPlan(plan: DrawingState): DrawingState {
-  return { nodes: { ...plan.nodes }, walls: [...plan.walls], openings: [...plan.openings] }
+  return {
+    nodes: { ...plan.nodes },
+    walls: [...plan.walls],
+    openings: [...plan.openings],
+    fixtures: [...plan.fixtures],
+  }
+}
+
+export function addFixture(state: DrawingState, kind: FixtureKind, point: Point): DrawingState {
+  const spec = fixtureSpec(kind)
+  const fixture: DrawFixture = {
+    id: nextId('fixture'),
+    kind,
+    x: point.x,
+    y: point.y,
+    rotation: 0,
+    width: spec.width,
+    depth: spec.depth,
+  }
+  return { ...state, fixtures: [...state.fixtures, fixture] }
+}
+
+export function moveFixture(state: DrawingState, fixtureId: string, point: Point): DrawingState {
+  return {
+    ...state,
+    fixtures: state.fixtures.map((fixture) =>
+      fixture.id === fixtureId ? { ...fixture, x: point.x, y: point.y } : fixture,
+    ),
+  }
+}
+
+/** Quarter turns keep furniture aligned to the walls it sits against. */
+export function rotateFixture(state: DrawingState, fixtureId: string): DrawingState {
+  return {
+    ...state,
+    fixtures: state.fixtures.map((fixture) =>
+      fixture.id === fixtureId
+        ? { ...fixture, rotation: (fixture.rotation + Math.PI / 2) % (Math.PI * 2) }
+        : fixture,
+    ),
+  }
+}
+
+export function deleteFixture(state: DrawingState, fixtureId: string): DrawingState {
+  return { ...state, fixtures: state.fixtures.filter((f) => f.id !== fixtureId) }
 }

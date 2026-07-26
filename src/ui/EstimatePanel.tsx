@@ -71,8 +71,21 @@ export function EstimatePanel({
           <Typography variant="caption" color="text.secondary">
             {estimate.areaSqm.toFixed(2)} {t('summary.squareMeters')} ×{' '}
             {formatCurrency(estimate.pricePerSqm, estimate.currency, locale)}{' '}
-            {t('estimate.perSqm')}
+            {t('estimate.perSqm')} ={' '}
+            {formatCurrency(estimate.areaCost, estimate.currency, locale)}
           </Typography>
+
+          {/* Openings are a separate line so it's clear that adding a door
+              or window is what moved the number. */}
+          {estimate.openingsCost > 0 && (
+            <Typography variant="caption" color="text.secondary">
+              {t('estimate.openingsLine', {
+                doors: estimate.openings.door,
+                windows: estimate.openings.window,
+              })}{' '}
+              = {formatCurrency(estimate.openingsCost, estimate.currency, locale)}
+            </Typography>
+          )}
         </Stack>
       ) : (
         <Typography variant="body2" color="text.secondary">

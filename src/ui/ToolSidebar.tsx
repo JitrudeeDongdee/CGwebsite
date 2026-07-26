@@ -8,7 +8,8 @@ import DoorFront from '@mui/icons-material/DoorFront'
 import Window from '@mui/icons-material/Window'
 import { PLAN_TEMPLATES } from '../drawing/templates'
 import { OPENING_PRESETS } from '../drawing/openings'
-import type { OpeningKind } from '../drawing/types'
+import { FIXTURE_CATALOG } from '../drawing/fixtures'
+import type { FixtureKind, OpeningKind } from '../drawing/types'
 
 export interface OpeningTool {
   kind: OpeningKind
@@ -19,12 +20,16 @@ interface ToolSidebarProps {
   activeOpening: OpeningTool | null
   onSelectOpening: (tool: OpeningTool | null) => void
   onLoadTemplate: (templateId: string) => void
+  activeFixture: FixtureKind | null
+  onSelectFixture: (kind: FixtureKind | null) => void
 }
 
 export function ToolSidebar({
   activeOpening,
   onSelectOpening,
   onLoadTemplate,
+  activeFixture,
+  onSelectFixture,
 }: ToolSidebarProps) {
   const { t } = useTranslation()
 
@@ -108,6 +113,32 @@ export function ToolSidebar({
           {t('openings.cancel')}
         </Button>
       )}
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="overline" color="text.secondary">
+        {t('fixtures.title')}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+        {t('fixtures.hint')}
+      </Typography>
+
+      <Stack spacing={1}>
+        {FIXTURE_CATALOG.map((spec) => (
+          <Button
+            key={spec.kind}
+            variant={activeFixture === spec.kind ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => onSelectFixture(activeFixture === spec.kind ? null : spec.kind)}
+            sx={{ justifyContent: 'space-between', textAlign: 'left' }}
+          >
+            <span>{t(spec.labelKey)}</span>
+            <Typography variant="caption" color="text.secondary">
+              {spec.width}×{spec.depth}
+            </Typography>
+          </Button>
+        ))}
+      </Stack>
     </Paper>
   )
 }

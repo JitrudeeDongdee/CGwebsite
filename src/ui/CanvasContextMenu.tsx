@@ -9,18 +9,22 @@ import ContentCopy from '@mui/icons-material/ContentCopy'
 import Undo from '@mui/icons-material/Undo'
 import Redo from '@mui/icons-material/Redo'
 import ClearAll from '@mui/icons-material/ClearAll'
+import Rotate90DegreesCw from '@mui/icons-material/Rotate90DegreesCw'
 
 export interface ContextTarget {
   screen: { x: number; y: number }
   wallId: string | null
   nodeId: string | null
   openingId: string | null
+  fixtureId: string | null
 }
 
 interface CanvasContextMenuProps {
   target: ContextTarget | null
   onClose: () => void
   onDeleteOpening: (openingId: string) => void
+  onDeleteFixture: (fixtureId: string) => void
+  onRotateFixture: (fixtureId: string) => void
   onDeleteWall: (wallId: string) => void
   onDeleteNode: (nodeId: string) => void
   onCopyWall: (wallId: string) => void
@@ -36,6 +40,8 @@ export function CanvasContextMenu({
   target,
   onClose,
   onDeleteOpening,
+  onDeleteFixture,
+  onRotateFixture,
   onDeleteWall,
   onDeleteNode,
   onCopyWall,
@@ -62,6 +68,24 @@ export function CanvasContextMenu({
         target ? { top: target.screen.y, left: target.screen.x } : undefined
       }
     >
+      {target?.fixtureId && (
+        <MenuItem onClick={() => run(() => onRotateFixture(target.fixtureId!))}>
+          <ListItemIcon>
+            <Rotate90DegreesCw fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('fixtures.rotate')}</ListItemText>
+        </MenuItem>
+      )}
+
+      {target?.fixtureId && (
+        <MenuItem onClick={() => run(() => onDeleteFixture(target.fixtureId!))}>
+          <ListItemIcon>
+            <DeleteOutline fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('fixtures.delete')}</ListItemText>
+        </MenuItem>
+      )}
+
       {target?.openingId && (
         <MenuItem onClick={() => run(() => onDeleteOpening(target.openingId!))}>
           <ListItemIcon>
@@ -98,7 +122,9 @@ export function CanvasContextMenu({
         </MenuItem>
       )}
 
-      {(target?.wallId || target?.nodeId || target?.openingId) && <Divider />}
+      {(target?.wallId || target?.nodeId || target?.openingId || target?.fixtureId) && (
+        <Divider />
+      )}
 
       <MenuItem disabled={!canUndo} onClick={() => run(onUndo)}>
         <ListItemIcon>

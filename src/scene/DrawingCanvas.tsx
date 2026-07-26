@@ -14,7 +14,8 @@ import { RoomAreaLabels } from './RoomAreaLabels'
 import { DimensionStrings } from './DimensionStrings'
 import type { Room } from '../drawing/rooms'
 import { OpeningsView } from './OpeningsView'
-import type { OpeningKind } from '../drawing/types'
+import { FixturesView } from './FixturesView'
+import type { FixtureKind, OpeningKind } from '../drawing/types'
 import type { ToolMode } from '../drawing/tools'
 import { CameraFit } from './CameraFit'
 
@@ -31,6 +32,9 @@ interface DrawingCanvasProps {
   /** Bumped to request the view be re-framed around the plan. */
   fitToken: number
   placeOpening: (wallId: string, offset: number, width: number, kind: OpeningKind) => void
+  placeFixture: (kind: FixtureKind, point: Point) => void
+  updateFixturePosition: (fixtureId: string, point: Point) => void
+  finalizeFixtureMove: (fixtureId: string, point: Point) => void
   /** Lets the page cancel an in-progress wall from a keyboard handler. */
   cancelRef: React.RefObject<(() => void) | null>
 }
@@ -48,6 +52,9 @@ export function DrawingCanvas({
   tool,
   fitToken,
   placeOpening,
+  placeFixture,
+  updateFixturePosition,
+  finalizeFixtureMove,
 }: DrawingCanvasProps) {
   const { draft, moveSnap, onDown, onMove, onUp, cancelDrawing } = useInteraction({
     state,
@@ -57,6 +64,9 @@ export function DrawingCanvas({
     finalizeNodeMove,
     tool,
     placeOpening,
+    placeFixture,
+    updateFixturePosition,
+    finalizeFixtureMove,
   })
   const controlsRef = useRef<OrbitControls>(null)
   const { scene } = useTheme()
@@ -101,6 +111,7 @@ export function DrawingCanvas({
       />
       <WallsView state={state} exteriorWallIds={exteriorWallIds} />
       <OpeningsView state={state} exteriorWallIds={exteriorWallIds} />
+      <FixturesView fixtures={state.fixtures} />
       <RoomAreaLabels rooms={rooms} />
       <DimensionStrings state={state} />
       <NodesView nodes={Object.values(state.nodes)} />

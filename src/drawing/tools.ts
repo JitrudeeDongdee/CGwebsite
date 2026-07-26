@@ -1,4 +1,4 @@
-import type { OpeningKind } from './types'
+import type { FixtureKind, OpeningKind } from './types'
 
 /**
  * What a click on the canvas means.
@@ -11,6 +11,7 @@ export type ToolMode =
   | { type: 'select' }
   | { type: 'draw' }
   | { type: 'opening'; kind: OpeningKind; width: number }
+  | { type: 'fixture'; kind: FixtureKind }
 
 export const SELECT_TOOL: ToolMode = { type: 'select' }
 export const DRAW_TOOL: ToolMode = { type: 'draw' }

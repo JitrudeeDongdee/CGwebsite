@@ -35,10 +35,37 @@ export interface DrawOpening {
   kind: OpeningKind
 }
 
+export type FixtureKind =
+  | 'column'
+  | 'bedDouble'
+  | 'bedSingle'
+  | 'sofa'
+  | 'table'
+  | 'toilet'
+  | 'sink'
+  | 'kitchen'
+
+/**
+ * A free-standing item placed on the plan — a structural column or a piece
+ * of furniture. Unlike openings these aren't bound to a wall, so they carry
+ * their own position and rotation.
+ */
+export interface DrawFixture {
+  id: string
+  kind: FixtureKind
+  x: number
+  y: number
+  /** Radians, clockwise from the plan's x axis. */
+  rotation: number
+  width: number
+  depth: number
+}
+
 export interface DrawingState {
   nodes: Record<string, DrawNode>
   walls: DrawWall[]
   openings: DrawOpening[]
+  fixtures: DrawFixture[]
 }
 
 export type SnapTarget =

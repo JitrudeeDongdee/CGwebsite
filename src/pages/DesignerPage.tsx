@@ -16,6 +16,7 @@ import { CanvasContextMenu, type ContextTarget } from '../ui/CanvasContextMenu'
 import { ToolSidebar } from '../ui/ToolSidebar'
 import { PLAN_TEMPLATES } from '../drawing/templates'
 import { findOpeningAt, placeOpenings } from '../drawing/openings'
+import { findFixtureAt } from '../drawing/fixtures'
 import { BottomToolbar } from '../ui/BottomToolbar'
 import { DRAW_TOOL, SELECT_TOOL, type ToolMode } from '../drawing/tools'
 import { estimatePrice } from '../pricing/estimate'
@@ -42,6 +43,11 @@ export function DesignerPage() {
     placeOpening,
     removeOpening,
     applyTemplate,
+    placeFixture,
+    updateFixturePosition,
+    finalizeFixtureMove,
+    turnFixture,
+    removeFixture,
     undo,
     redo,
     canUndo,
@@ -57,9 +63,16 @@ export function DesignerPage() {
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 
   const priceConfig = useMemo(() => loadPriceConfig(), [])
+  const openingCounts = useMemo(
+    () => ({
+      door: state.openings.filter((o) => o.kind === 'door').length,
+      window: state.openings.filter((o) => o.kind === 'window').length,
+    }),
+    [state.openings],
+  )
   const estimate = useMemo(
-    () => estimatePrice(roomArea, grade, priceConfig),
-    [roomArea, grade, priceConfig],
+    () => estimatePrice(roomArea, grade, priceConfig, openingCounts),
+    [roomArea, grade, priceConfig, openingCounts],
   )
 
   const usingPlaceholderRates = useMemo(
@@ -71,14 +84,16 @@ export function DesignerPage() {
 
   const handleContextMenu = useCallback(
     (point: Point, screen: { x: number; y: number }) => {
-      const opening = findOpeningAt(placeOpenings(state, exteriorWallIds), point)
-      const node = opening ? null : findNodeAt(state, point)
-      const wall = opening || node ? null : findWallAt(state, point)
+      const fixture = findFixtureAt(state.fixtures, point)
+      const opening = fixture ? null : findOpeningAt(placeOpenings(state, exteriorWallIds), point)
+      const node = fixture || opening ? null : findNodeAt(state, point)
+      const wall = fixture || opening || node ? null : findWallAt(state, point)
       setContextTarget({
         screen,
         nodeId: node?.id ?? null,
         wallId: wall?.id ?? null,
         openingId: opening?.id ?? null,
+        fixtureId: fixture?.id ?? null,
       })
     },
     [state, exteriorWallIds],
@@ -138,6 +153,10 @@ export function DesignerPage() {
           setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)
         }
         onLoadTemplate={handleLoadTemplate}
+        activeFixture={tool.type === 'fixture' ? tool.kind : null}
+        onSelectFixture={(kind) =>
+          setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)
+        }
       />
 
       <Box sx={{ position: 'relative', flexGrow: 1, minWidth: 0 }}>
@@ -154,6 +173,9 @@ export function DesignerPage() {
         tool={tool}
         fitToken={fitToken}
         placeOpening={placeOpening}
+        placeFixture={placeFixture}
+        updateFixturePosition={updateFixturePosition}
+        finalizeFixtureMove={finalizeFixtureMove}
       />
 
       <Typography
@@ -207,6 +229,8 @@ export function DesignerPage() {
         target={contextTarget}
         onClose={() => setContextTarget(null)}
         onDeleteOpening={removeOpening}
+        onDeleteFixture={removeFixture}
+        onRotateFixture={turnFixture}
         onDeleteWall={removeWall}
         onDeleteNode={removeNode}
         onCopyWall={copyWall}

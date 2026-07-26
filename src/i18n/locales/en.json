@@ -58,7 +58,8 @@
     "unavailable": "Close a room to see the estimate",
     "disclaimer": "Preliminary estimate only — not a final price. The actual price depends on the design, materials and site conditions.",
     "placeholderWarning": "The per-m² rates are still example values, not the company's real pricing.",
-    "submit": "Send plan to our team"
+    "submit": "Send plan to our team",
+    "openingsLine": "{{doors}} doors · {{windows}} windows"
   },
   "lead": {
     "title": "Send your plan to our team",
@@ -112,5 +113,19 @@
     "select": "Move (creates nothing)",
     "draw": "Draw walls",
     "fit": "Fit to view"
+  },
+  "fixtures": {
+    "title": "Columns / furniture",
+    "hint": "Pick one, then click the plan to place it",
+    "column": "Column",
+    "bedDouble": "Double bed",
+    "bedSingle": "Single bed",
+    "sofa": "Sofa",
+    "table": "Dining table",
+    "kitchen": "Kitchen counter",
+    "toilet": "Toilet",
+    "sink": "Basin",
+    "rotate": "Rotate 90°",
+    "delete": "Delete this item"
   }
 }

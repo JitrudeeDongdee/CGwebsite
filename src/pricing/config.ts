@@ -18,6 +18,11 @@ export const PLACEHOLDER_PRICE_CONFIG: PriceConfig = {
     standard: 18_000,
     premium: 25_000,
   },
+  // Supply and fit, per unit.
+  openingPrice: {
+    door: 8_000,
+    window: 6_000,
+  },
 }
 
 const STORAGE_KEY = 'cg:price-config'
@@ -32,6 +37,7 @@ export function loadPriceConfig(): PriceConfig {
     return {
       currency: parsed.currency ?? PLACEHOLDER_PRICE_CONFIG.currency,
       pricePerSqm: { ...PLACEHOLDER_PRICE_CONFIG.pricePerSqm, ...parsed.pricePerSqm },
+      openingPrice: { ...PLACEHOLDER_PRICE_CONFIG.openingPrice, ...parsed.openingPrice },
     }
   } catch {
     return PLACEHOLDER_PRICE_CONFIG
