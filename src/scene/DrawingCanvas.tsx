@@ -53,6 +53,13 @@ export function DrawingCanvas({
     if (controlsRef.current) controlsRef.current.enabled = true
   }
 
+  const handleContextMenu = (point: Point, screen: { x: number; y: number }) => {
+    // While a wall is being drawn, right-click means "cancel it" (the CAD
+    // convention) rather than opening the menu.
+    if (cancelDrawing()) return
+    onContextMenu(point, screen)
+  }
+
   return (
     <Canvas
       orthographic
@@ -67,7 +74,7 @@ export function DrawingCanvas({
         onDown={handleDown}
         onMove={onMove}
         onUp={handleUp}
-        onContextMenu={onContextMenu}
+        onContextMenu={handleContextMenu}
       />
       <WallsView state={state} />
       <NodesView nodes={Object.values(state.nodes)} />

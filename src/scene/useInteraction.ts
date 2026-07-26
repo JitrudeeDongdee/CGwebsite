@@ -34,9 +34,9 @@ interface UseInteractionOptions {
  *
  * - click on empty space or a corner  -> anchor the start of a wall
  * - move                              -> rubber-band preview follows cursor
- * - click again                       -> place that wall, and keep drawing
- *                                        from the point just placed
- * - Escape                            -> stop drawing
+ * - click again                       -> place that wall and end the gesture,
+ *                                        so nothing trails the cursor after
+ * - Escape / right-click              -> cancel a wall that was started
  * - press and *drag* a corner         -> move that corner instead
  *
  * Click-to-place (rather than drag-to-draw) is what makes closing a room
@@ -67,9 +67,17 @@ export function useInteraction({
     [state],
   )
 
+  /**
+   * Returns whether a wall was actually in progress. Always clears both the
+   * anchor and the preview — never early-returns on one of them — so the two
+   * can't drift into a state where a stale anchor survives with no visible
+   * preview (or vice versa).
+   */
   const cancelDrawing = useCallback(() => {
+    const wasDrawing = anchorRef.current !== null
     anchorRef.current = null
     setDraft(null)
+    return wasDrawing
   }, [])
 
   const onDown = useCallback(
@@ -130,11 +138,11 @@ export function useInteraction({
         return
       }
 
+      // One wall per pair of clicks: placing it ends the gesture, so the
+      // preview stops following the cursor until you start the next wall.
       addWall(anchor, placed)
-      // Keep drawing from here, so a room is one continuous sequence of
-      // clicks rather than a separate gesture per wall.
-      anchorRef.current = placed
-      setDraft({ start: placed, current: placed, snap: null })
+      anchorRef.current = null
+      setDraft(null)
     },
     [addWall, finalizeNodeMove, resolve],
   )

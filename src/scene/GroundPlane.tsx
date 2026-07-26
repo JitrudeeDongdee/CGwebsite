@@ -36,6 +36,9 @@ export function GroundPlane({ onDown, onMove, onUp, onContextMenu }: GroundPlane
       // has to track the cursor while no button is held.
       onPointerMove={(e) => onMove(toPoint(e))}
       onPointerUp={(e) => {
+        // Right-click also emits a pointerup; without this guard it would
+        // reach onUp and re-anchor a wall straight after a cancel.
+        if (e.button !== 0) return
         if (capturedId.current === null) return
         capturedId.current = null
         onUp(toPoint(e))

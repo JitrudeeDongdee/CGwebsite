@@ -96,3 +96,23 @@ not a measurement, especially past a couple hundred pixels of guessed distance.
 via a previous, known drag input, reuse those known input coordinates directly instead of
 re-estimating the result's position from a screenshot. Only fall back to visual estimation
 when there's no better source of truth (e.g. content you didn't place yourself).
+
+## Clicking "on the canvas" that actually lands on a UI panel over it
+
+**What happened**: right-click-to-cancel appeared broken — the in-progress wall's anchor dot
+survived. A round of speculative "fixes" followed (guarding pointerup by button, making
+cancel unconditional) before any evidence was gathered. Nothing was actually wrong with the
+feature.
+
+**Root cause**: the test click was at a point covered by the floating MUI panel that sits on
+top of the canvas, so the event never reached the R3F ground plane at all. Two things hid
+this: the browser tool's coordinate space is not always 1:1 with client pixels (it was 1.6x
+in one window size and 1:1 in another), and the app's overlay panels are opaque to pointer
+events over a large part of the right-hand side.
+
+**Correct behavior**: for a canvas app with floating overlays, measure the interactive region
+before choosing test coordinates — `getBoundingClientRect()` on the canvas *and* on
+`.MuiPaper-root` overlays, plus `innerWidth/innerHeight` to establish the tool-to-client
+scale. And when a handler seems not to run, log inside it first: "the handler never fired"
+and "the handler fired but did the wrong thing" look identical from a screenshot and lead to
+completely different fixes.

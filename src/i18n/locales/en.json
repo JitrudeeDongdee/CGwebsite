@@ -5,8 +5,8 @@
     "navAdmin": "Admin"
   },
   "canvas": {
-    "hint": "Click to start a wall · move, then click again to place it · Esc to stop drawing",
-    "hint2": "Drag a corner to move it · right-click to delete/copy · Ctrl+Z to undo",
+    "hint": "Click to start a wall · move, then click again to place it · Esc or right-click to cancel",
+    "hint2": "Drag a corner to move it · right-click (when not drawing) to delete/copy · Ctrl+Z to undo",
     "zoomHint": "Pinch or scroll to zoom"
   },
   "contextMenu": {
