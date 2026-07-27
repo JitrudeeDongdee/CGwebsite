@@ -19,6 +19,10 @@ import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
 import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
+import { Scene3D, type Building3DOptions } from '../scene3d/Scene3D'
+import { Building3DPanel } from '../ui/Building3DPanel'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { BottomToolbar } from '../ui/BottomToolbar'
 import { DRAW_TOOL, SELECT_TOOL, type ToolMode } from '../drawing/tools'
 import { estimatePrice } from '../pricing/estimate'
@@ -66,6 +70,13 @@ export function DesignerPage() {
   const [tool, setTool] = useState<ToolMode>(DRAW_TOOL)
   const [fitToken, setFitToken] = useState(0)
   const [renaming, setRenaming] = useState(false)
+  const [view, setView] = useState<'plan' | 'three'>('plan')
+  const [building3d, setBuilding3d] = useState<Building3DOptions>({
+    roof: 'gable',
+    wall: 'plaster',
+    frame: 'aluminium',
+    roofMaterial: 'tile',
+  })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 
   const priceConfig = useMemo(() => loadPriceConfig(), [])
@@ -175,6 +186,27 @@ export function DesignerPage() {
       />
 
       <Box sx={{ position: 'relative', flexGrow: 1, minWidth: 0 }}>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={view}
+        onChange={(_, next: 'plan' | 'three' | null) => next && setView(next)}
+        sx={{
+          position: 'absolute',
+          top: 12,
+          left: 12,
+          zIndex: 2,
+          bgcolor: 'background.paper',
+        }}
+      >
+        <ToggleButton value="plan">{t('view.plan')}</ToggleButton>
+        <ToggleButton value="three">{t('view.three')}</ToggleButton>
+      </ToggleButtonGroup>
+
+      {view === 'three' ? (
+        <Scene3D state={state} exteriorWallIds={exteriorWallIds} options={building3d} />
+      ) : (
+      <>
       <DrawingCanvas
         state={state}
         rooms={rooms}
@@ -215,6 +247,8 @@ export function DesignerPage() {
         canUndo={canUndo}
         canRedo={canRedo}
       />
+      </>
+      )}
       </Box>
 
       <Stack
@@ -228,6 +262,9 @@ export function DesignerPage() {
           p: 2,
         }}
       >
+        {view === 'three' && (
+          <Building3DPanel options={building3d} onChange={setBuilding3d} />
+        )}
         <AreaSummary
           area={roomArea}
           roomCount={rooms.length}

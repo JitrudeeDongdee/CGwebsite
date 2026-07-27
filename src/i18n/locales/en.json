@@ -142,5 +142,39 @@
     "nameLabel": "Room name",
     "save": "Save",
     "cancel": "Cancel"
+  },
+  "building3d": {
+    "title": "3D view",
+    "roofShape": "Roof shape",
+    "roofMaterial": "Roof material",
+    "wallMaterial": "Wall material",
+    "frameMaterial": "Door / window material",
+    "note": "Only walls, doors and windows are built in 3D — furniture is not shown.",
+    "roof": {
+      "gable": "Gable",
+      "hip": "Hip",
+      "shed": "Shed",
+      "flat": "Flat"
+    },
+    "roofMat": {
+      "tile": "Tile",
+      "metal": "Metal",
+      "shingle": "Shingle"
+    },
+    "wallMat": {
+      "plaster": "Plaster",
+      "brick": "Brick",
+      "wood": "Wood",
+      "concrete": "Concrete"
+    },
+    "frameMat": {
+      "aluminium": "Aluminium",
+      "wood": "Wood",
+      "white": "White"
+    }
+  },
+  "view": {
+    "plan": "2D plan",
+    "three": "3D"
   }
 }
