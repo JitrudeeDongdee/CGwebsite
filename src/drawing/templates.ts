@@ -178,18 +178,9 @@ function buildFromSpec({
     })
   })
 
-  // Structural columns land on every wall junction — that's where the posts
-  // go in a real prefab frame, and it matches how these plans are drawn.
-  const columnSpec = fixtureSpec('column')
-  const fixtures: DrawFixture[] = Object.values(nodes).map((node, index) => ({
-    id: `tpl_column_${index}`,
-    kind: 'column' as const,
-    x: node.x,
-    y: node.y,
-    rotation: 0,
-    width: columnSpec.width,
-    depth: columnSpec.depth,
-  }))
+  // Junction columns are added by loadPlan's column sync, so templates only
+  // declare their loose furniture here.
+  const fixtures: DrawFixture[] = []
 
   furniture.forEach((item, index) => {
     const spec = fixtureSpec(item.kind)

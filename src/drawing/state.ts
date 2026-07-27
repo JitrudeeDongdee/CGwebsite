@@ -73,6 +73,44 @@ function resolveEndpoint(
   }
 }
 
+/**
+ * Keeps one structural column on every wall junction: adds them for new
+ * corners, drops them when a corner goes away, and moves the rest to follow
+ * their corner. Free-standing columns the user placed by hand have no
+ * nodeId and are left alone.
+ */
+function syncStructuralColumns(state: DrawingState): DrawingState {
+  const spec = fixtureSpec('column')
+  const bound = new Map<string, DrawFixture>()
+  const loose: DrawFixture[] = []
+
+  for (const fixture of state.fixtures) {
+    if (fixture.nodeId) bound.set(fixture.nodeId, fixture)
+    else loose.push(fixture)
+  }
+
+  const columns: DrawFixture[] = []
+  for (const node of Object.values(state.nodes)) {
+    const existing = bound.get(node.id)
+    columns.push(
+      existing
+        ? { ...existing, x: node.x, y: node.y }
+        : {
+            id: nextId('fixture'),
+            kind: 'column',
+            nodeId: node.id,
+            x: node.x,
+            y: node.y,
+            rotation: 0,
+            width: spec.width,
+            depth: spec.depth,
+          },
+    )
+  }
+
+  return { ...state, fixtures: [...columns, ...loose] }
+}
+
 /** Drops openings whose wall has gone away. */
 function pruneOpenings(state: DrawingState): DrawingState {
   const wallIds = new Set(state.walls.map((wall) => wall.id))
@@ -89,17 +127,20 @@ export function commitWall(state: DrawingState, start: Point, end: Point): Drawi
   }
 
   const wall: DrawWall = { id: nextId('wall'), a: startResolved.nodeId, b: endResolved.nodeId }
-  return { ...endResolved.state, walls: [...endResolved.state.walls, wall] }
+  return syncStructuralColumns({
+    ...endResolved.state,
+    walls: [...endResolved.state.walls, wall],
+  })
 }
 
 export function moveNode(state: DrawingState, nodeId: string, point: Point): DrawingState {
   const node = state.nodes[nodeId]
   if (!node) return state
   const snapped = snapToGrid(point)
-  return {
+  return syncStructuralColumns({
     ...state,
     nodes: { ...state.nodes, [nodeId]: { ...node, x: snapped.x, y: snapped.y } },
-  }
+  })
 }
 
 /**
@@ -127,7 +168,7 @@ export function finishNodeMove(state: DrawingState, nodeId: string, point: Point
     }))
     .filter((wall) => wall.a !== wall.b)
 
-  return pruneOpenings({ ...moved, nodes: remainingNodes, walls })
+  return syncStructuralColumns(pruneOpenings({ ...moved, nodes: remainingNodes, walls }))
 }
 
 /**
@@ -146,7 +187,7 @@ function dropOrphanNodes(state: DrawingState): DrawingState {
   for (const [id, node] of Object.entries(state.nodes)) {
     if (used.has(id)) nodes[id] = node
   }
-  return pruneOpenings({ ...state, nodes })
+  return syncStructuralColumns(pruneOpenings({ ...state, nodes }))
 }
 
 export function deleteWall(state: DrawingState, wallId: string): DrawingState {
@@ -222,31 +263,47 @@ export function deleteOpening(state: DrawingState, openingId: string): DrawingSt
 
 /** Replaces the whole plan, e.g. when loading a starter template. */
 export function loadPlan(plan: DrawingState): DrawingState {
-  return {
+  return syncStructuralColumns({
     nodes: { ...plan.nodes },
     walls: [...plan.walls],
     openings: [...plan.openings],
     fixtures: [...plan.fixtures],
     roomLabels: [...plan.roomLabels],
-  }
+  })
 }
 
 /**
- * Slides a whole wall, carrying both its corners. Corners shared with other
- * walls move too, so the walls attached to them stretch to follow rather
- * than tearing away.
+ * Slides a whole wall, carrying both its corners.
+ *
+ * The drag is projected onto the wall's own normal, so the wall only ever
+ * moves sideways. That's what keeps the plan square: a shared corner then
+ * travels *along* the perpendicular wall attached to it, lengthening or
+ * shortening that wall without changing its angle. Allowing the raw drag
+ * through instead drags those neighbours off-axis and skews the whole
+ * outline into diagonals.
  */
 export function moveWall(state: DrawingState, wallId: string, delta: Point): DrawingState {
   const wall = state.walls.find((w) => w.id === wallId)
   if (!wall) return state
 
+  const a = state.nodes[wall.a]
+  const b = state.nodes[wall.b]
+  if (!a || !b) return state
+
+  const length = distance(a, b)
+  if (length === 0) return state
+
+  const normal = { x: -(b.y - a.y) / length, y: (b.x - a.x) / length }
+  const alongNormal = delta.x * normal.x + delta.y * normal.y
+  const constrained = { x: normal.x * alongNormal, y: normal.y * alongNormal }
+
   const nodes = { ...state.nodes }
   for (const nodeId of [wall.a, wall.b]) {
     const node = nodes[nodeId]
     if (!node) continue
-    nodes[nodeId] = { ...node, x: node.x + delta.x, y: node.y + delta.y }
+    nodes[nodeId] = { ...node, x: node.x + constrained.x, y: node.y + constrained.y }
   }
-  return { ...state, nodes }
+  return syncStructuralColumns({ ...state, nodes })
 }
 
 /** Re-snaps a dragged wall's corners to the grid once the drag ends. */
@@ -261,7 +318,7 @@ export function finishWallMove(state: DrawingState, wallId: string): DrawingStat
     const snapped = snapToGrid(node)
     nodes[nodeId] = { ...node, x: snapped.x, y: snapped.y }
   }
-  return { ...state, nodes }
+  return syncStructuralColumns({ ...state, nodes })
 }
 
 /** Names the room containing `point`, replacing any label already in it. */

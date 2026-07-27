@@ -53,6 +53,12 @@ export type FixtureKind =
 export interface DrawFixture {
   id: string
   kind: FixtureKind
+  /**
+   * Set on structural columns that belong to a wall junction. Their position
+   * is kept in step with that corner, so moving or stretching walls carries
+   * the columns along instead of leaving them behind.
+   */
+  nodeId?: string
   x: number
   y: number
   /** Radians, clockwise from the plan's x axis. */
