@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tdd",
+  "compatibility_date": "2026-09-01",
+
+  // Assets-only Worker: no server code, just the built SPA. `wrangler deploy`
+  // uploads ./dist as-is.
+  "assets": {
+    "directory": "./dist",
+
+    // The SPA rewrite. React Router uses real paths, so a request for /products
+    // matches no file on disk; without this it is a 404 on refresh or when a link
+    // is shared. "single-page-application" serves /index.html with 200 instead.
+    //
+    // This is the Workers equivalent of public/_redirects (which only Pages
+    // reads). Both are kept so the project deploys either way.
+    "not_found_handling": "single-page-application"
+  }
+}

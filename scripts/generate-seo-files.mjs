@@ -23,15 +23,31 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-// CF_PAGES_URL is injected by Cloudflare Pages: the production domain on a
-// production build, the deployment's own preview URL otherwise.
-const site = (process.env.SITE_URL || process.env.CF_PAGES_URL || '').replace(/\/+$/, '')
-
 const PRODUCTION_BRANCH = 'main'
-const branch = process.env.CF_PAGES_BRANCH
-// Only a Pages build can be a preview; a local or GitHub build has no branch var
+// Pages calls it CF_PAGES_BRANCH, Workers Builds calls it WORKERS_CI_BRANCH.
+const branch = process.env.CF_PAGES_BRANCH ?? process.env.WORKERS_CI_BRANCH
+// Only a CI build can be a preview; a local or GitHub build has no branch var
 // and is treated as production so `pnpm run build` keeps behaving normally.
 const isPreview = Boolean(branch) && branch !== PRODUCTION_BRANCH
+
+/**
+ * CF_PAGES_URL is the URL of *this deployment* — on Pages that is
+ * `https://<hash>.<project>.pages.dev`, and the hash changes every build. A
+ * sitemap or og:url pointing there would advertise a URL that is stale by the
+ * next deploy, so for a production build we drop the deployment label to get
+ * the stable `<project>.pages.dev`. SITE_URL, when set, always wins.
+ */
+function canonicalOrigin(raw, isProduction) {
+  if (!raw) return ''
+  const url = raw.replace(/\/+$/, '')
+  if (!isProduction) return url
+  // 4+ labels on pages.dev means a per-deployment host; 3 is already canonical.
+  return url.replace(/^(https?:\/\/)[^.]+\.([^.]+\.pages\.dev)$/, '$1$2')
+}
+
+const site = process.env.SITE_URL
+  ? process.env.SITE_URL.replace(/\/+$/, '')
+  : canonicalOrigin(process.env.CF_PAGES_URL, !isPreview)
 const sitemapPath = join(root, 'public/sitemap.xml')
 
 /** Pull the `slug: '...'` values out of a catalog seed file. */
