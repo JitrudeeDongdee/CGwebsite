@@ -35,7 +35,11 @@ export function PortfolioPage() {
       query,
     ),
   )
-  const { page, pageCount, items: projects } = paginate(matches, requestedPage, PAGE_SIZE)
+  // Starred work leads the list — that is what the star is for, and on a page
+  // that paginates at six, an unsorted featured item can land on page 3.
+  // `sort` on the array `filter` just produced, so the catalog order is intact.
+  const ordered = matches.sort((a, b) => Number(b.featured) - Number(a.featured))
+  const { page, pageCount, items: projects } = paginate(ordered, requestedPage, PAGE_SIZE)
 
   return (
     <Wrap sx={{ py: { xs: 5, md: 7 } }}>
