@@ -16,10 +16,14 @@ import react from '@vitejs/plugin-react'
 const SITE_URL = (process.env.SITE_URL || process.env.CF_PAGES_URL || '').replace(/\/+$/, '')
 
 const PRODUCTION_BRANCH = 'main'
-/** A Cloudflare Pages build of any branch other than production. Those get their
- *  own public *.pages.dev URL, so they must not be indexed — see
- *  scripts/generate-seo-files.mjs, which writes the matching robots.txt. */
-const IS_PREVIEW = Boolean(process.env.CF_PAGES_BRANCH) && process.env.CF_PAGES_BRANCH !== PRODUCTION_BRANCH
+/** The branch being built. Cloudflare names this differently per product:
+ *  CF_PAGES_BRANCH on Pages, WORKERS_CI_BRANCH on Workers Builds. */
+const CI_BRANCH = process.env.CF_PAGES_BRANCH ?? process.env.WORKERS_CI_BRANCH
+/** A CI build of any branch other than production. Those get their own public
+ *  URL, so they must not be indexed — see scripts/generate-seo-files.mjs, which
+ *  writes the matching robots.txt. A local build has no branch var and counts as
+ *  production, so `pnpm run build` keeps behaving normally. */
+const IS_PREVIEW = Boolean(CI_BRANCH) && CI_BRANCH !== PRODUCTION_BRANCH
 
 /** The 1200x630 share card in public/brand — regenerate with `pnpm run og`. */
 const SHARE_IMAGE = 'og-card.png'
@@ -27,7 +31,7 @@ const SHARE_TITLE = 'TDD — Thai Dongdee Engineering'
 
 /** Short commit sha, from whichever CI is building — or local git as a fallback. */
 function commitSha(): string {
-  const fromCi = process.env.CF_PAGES_COMMIT_SHA ?? process.env.GITHUB_SHA
+  const fromCi = process.env.CF_PAGES_COMMIT_SHA ?? process.env.WORKERS_CI_COMMIT_SHA ?? process.env.GITHUB_SHA
   if (fromCi) return fromCi.slice(0, 7)
   try {
     return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
@@ -98,7 +102,7 @@ function siteMeta(): Plugin {
     closeBundle() {
       // CF_PAGES_BRANCH stands in for a version until releases are tagged (see
       // the SemVer rules in the global CLAUDE.md).
-      const payload = { version: process.env.CF_PAGES_BRANCH ?? '0.0.0', sha, built_at: builtAt }
+      const payload = { version: CI_BRANCH ?? '0.0.0', sha, built_at: builtAt }
       writeFileSync(resolve(__dirname, 'dist/version.json'), JSON.stringify(payload, null, 2))
       console.log(`[tdd-site-meta] /version → ${JSON.stringify(payload)}`)
     },

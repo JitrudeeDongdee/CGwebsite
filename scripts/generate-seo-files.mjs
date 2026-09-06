@@ -28,8 +28,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const site = (process.env.SITE_URL || process.env.CF_PAGES_URL || '').replace(/\/+$/, '')
 
 const PRODUCTION_BRANCH = 'main'
-const branch = process.env.CF_PAGES_BRANCH
-// Only a Pages build can be a preview; a local or GitHub build has no branch var
+// Pages calls it CF_PAGES_BRANCH, Workers Builds calls it WORKERS_CI_BRANCH.
+const branch = process.env.CF_PAGES_BRANCH ?? process.env.WORKERS_CI_BRANCH
+// Only a CI build can be a preview; a local or GitHub build has no branch var
 // and is treated as production so `pnpm run build` keeps behaving normally.
 const isPreview = Boolean(branch) && branch !== PRODUCTION_BRANCH
 const sitemapPath = join(root, 'public/sitemap.xml')
