@@ -17,7 +17,10 @@ import type { Product, Project } from './types'
  */
 export interface CatalogRepository {
   listProducts(): Promise<Product[]>
+  /** Portfolio work only (kind = 'project'). */
   listProjects(): Promise<Project[]>
+  /** Public-benefit works & donations (kind = 'community'). */
+  listCommunity(): Promise<Project[]>
 }
 
 /** DB row -> Product. snake_case and jsonb on one side, the app's types on the other. */
@@ -41,7 +44,9 @@ function toProduct(row: Record<string, unknown>): Product {
 function toProject(row: Record<string, unknown>): Project {
   return {
     id: row.id as string,
-    slug: row.slug as string,
+    // Absent when the migration hasn't run yet — treat those rows as portfolio.
+    kind: (row.kind as Project['kind']) ?? 'project',
+    slug: (row.slug as string) ?? '',
     title: row.title as Project['title'],
     location: row.location as Project['location'],
     year: (row.year as string) ?? '',
@@ -49,14 +54,37 @@ function toProject(row: Record<string, unknown>): Project {
     area: (row.area as string) ?? undefined,
     description: row.description as Project['description'],
     imagePath: (row.image_path as string) ?? undefined,
+    images: (row.images as string[]) ?? undefined,
     featured: Boolean(row.featured),
     sourceUrl: (row.source_url as string) ?? undefined,
+    sources: (row.sources as Project['sources']) ?? undefined,
+    productId: (row.product_id as string) ?? undefined,
   }
 }
 
+/** kind, defaulting older/seed rows (no column) to 'project'. */
+const kindOf = (p: Project) => p.kind ?? 'project'
+
 export const seedRepository: CatalogRepository = {
   listProducts: async () => PRODUCTS,
-  listProjects: async () => PROJECTS,
+  listProjects: async () => PROJECTS.filter((p) => kindOf(p) === 'project'),
+  listCommunity: async () => PROJECTS.filter((p) => kindOf(p) === 'community'),
+}
+
+/**
+ * Both project lists come from the same query, split by `kind` in JS rather than
+ * a `kind = eq` filter — so a checkout whose DB hasn't run the kind migration yet
+ * (no such column) still loads its portfolio instead of erroring into the seed.
+ */
+async function fetchProjects(): Promise<Project[]> {
+  if (!supabase) throw new Error('supabase is not configured')
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('published', true)
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map(toProject)
 }
 
 export const supabaseRepository: CatalogRepository = {
@@ -71,14 +99,10 @@ export const supabaseRepository: CatalogRepository = {
     return (data ?? []).map(toProduct)
   },
   async listProjects() {
-    if (!supabase) throw new Error('supabase is not configured')
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('published', true)
-      .order('sort_order', { ascending: true })
-    if (error) throw error
-    return (data ?? []).map(toProject)
+    return (await fetchProjects()).filter((p) => kindOf(p) === 'project')
+  },
+  async listCommunity() {
+    return (await fetchProjects()).filter((p) => kindOf(p) === 'community')
   },
 }
 
