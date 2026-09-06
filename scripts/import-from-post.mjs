@@ -4,7 +4,12 @@
  *   node scripts/import-from-post.mjs --url "https://www.facebook.com/..." \
  *     --slug pai-chaloem-abt-sadiang --category electronics \
  *     --title-th "ป้ายเฉลิมพระเกียรติ อบต.สะเดียง" [--location-th "เพชรบูรณ์"] \
- *     [--year 2567] [--publish] [--dry-run]
+ *     [--year 2567] [--kind community] [--publish] [--dry-run]
+
+ *
+ * `--kind community` files the post under ผลงานสาธารณประโยชน์และการบริจาค
+ * (`/community`) instead of the portfolio; `category` is unused for those rows
+ * but the column is NOT NULL, so it still gets whatever --category says.
  *
  * What it does: reads the post's Open Graph preview (see lib/facebook.mjs — the
  * link-preview metadata, not a scrape), downloads that photo, resizes it,
@@ -61,6 +66,8 @@ if (!/^[a-z0-9][a-z0-9-]*$/.test(args.slug)) fail(`--slug "${args.slug}" must be
 
 const category = args.category ?? 'house'
 if (!CATEGORIES.includes(category)) fail(`--category must be one of ${CATEGORIES.join(', ')}`)
+const kind = args.kind ?? 'project'
+if (!['project', 'community'].includes(kind)) fail("--kind must be 'project' or 'community'")
 if (!dryRun && !storageConfigured()) fail('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required (see .env.example)')
 
 console.log(`reading the post preview…`)
@@ -104,6 +111,7 @@ const row = {
   location,
   year: args.year ?? '',
   category,
+  kind,
   ...(args.area ? { area: args.area } : {}),
   description,
   featured: false,
