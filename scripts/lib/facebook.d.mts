@@ -6,6 +6,8 @@ export interface PostPreview {
   description?: string
   imageUrl?: string
   canonicalUrl?: string
+  /** ISO date from article:published_time, when Facebook provides one. */
+  publishedTime?: string
 }
 export function fetchPostPreview(url: string): Promise<PostPreview>
 export function downloadImage(imageUrl: string): Promise<{ body: Buffer; contentType: string }>

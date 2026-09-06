@@ -17,7 +17,10 @@
  *    title; the caller has to supply one.
  */
 
-const OG_TAG = /<meta\s+property="(og:[^"]+)"\s+content="([^"]*)"/gi
+// og:* plus article:published_time — Facebook does not currently emit the date
+// for a post (checked 2026-09-07: no article:published_time, no JSON-LD), but
+// reading it costs nothing and starts working the day they add it.
+const META_TAG = /<meta\s+property="((?:og|article):[^"]+)"\s+content="([^"]*)"/gi
 
 /** Minimal HTML entity decode — Facebook escapes Thai text as &#xNNNN;. */
 function decodeEntities(value) {
@@ -33,7 +36,7 @@ function decodeEntities(value) {
 
 /**
  * @param {string} url a public Facebook post URL
- * @returns {Promise<{title?: string, description?: string, imageUrl?: string, canonicalUrl?: string, type?: string}>}
+ * @returns {Promise<{title?: string, description?: string, imageUrl?: string, canonicalUrl?: string, type?: string, publishedTime?: string}>}
  */
 export async function fetchPostPreview(url) {
   if (!/^https?:\/\/(www\.|m\.|web\.)?facebook\.com\//i.test(url)) {
@@ -54,7 +57,7 @@ export async function fetchPostPreview(url) {
 
   const html = await response.text()
   const tags = {}
-  for (const [, key, value] of html.matchAll(OG_TAG)) {
+  for (const [, key, value] of html.matchAll(META_TAG)) {
     if (!(key in tags)) tags[key] = decodeEntities(value)
   }
 
@@ -67,6 +70,7 @@ export async function fetchPostPreview(url) {
 
   return {
     type: tags['og:type'],
+    publishedTime: tags['article:published_time'] ?? tags['og:updated_time'],
     title: tags['og:title'],
     description: tags['og:description'],
     imageUrl: tags['og:image'],
