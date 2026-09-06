@@ -42,12 +42,14 @@ function App() {
       </Route>
 
       <Route element={<AppShell />}>
-        <Route path="/" element={<DesignerPage />} />
+        <Route path="/design" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Landing on / goes to the marketing home; the designer tool lives at /design. */}
+      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   )
 }

@@ -88,7 +88,7 @@ export function HomePage() {
                 {t('mkt.home.lead')}
               </Typography>
               <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1.5 }}>
-                <Button component={RouterLink} to="/" variant="contained" color="secondary" size="large" endIcon={<ArrowForwardIcon />}>
+                <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large" endIcon={<ArrowForwardIcon />}>
                   {t('mkt.home.ctaPrimary')}
                 </Button>
                 <Button component={RouterLink} to="/products" variant="outlined" size="large">
@@ -177,7 +177,7 @@ export function HomePage() {
                     <Typography sx={{ color: 'secondary.main', fontWeight: 700 }}>
                       {formatCurrency(m.width * m.depth * RATE, 'THB', locale)}
                     </Typography>
-                    <Button component={RouterLink} to="/" size="small" endIcon={<ArrowForwardIcon />}>
+                    <Button component={RouterLink} to="/design" size="small" endIcon={<ArrowForwardIcon />}>
                       {t('mkt.home.modelCustomize')}
                     </Button>
                   </Stack>
@@ -233,7 +233,7 @@ export function HomePage() {
         <Wrap>
           <Typography variant="h2" sx={{ fontSize: { xs: 24, md: 34 }, fontWeight: 600 }}>{t('mkt.home.finalHeading')}</Typography>
           <Typography sx={{ color: 'text.secondary', maxWidth: '32em', mx: 'auto', mt: 1.5, mb: 3 }}>{t('mkt.home.finalSub')}</Typography>
-          <Button component={RouterLink} to="/" variant="contained" color="secondary" size="large" endIcon={<ArrowForwardIcon />}>
+          <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large" endIcon={<ArrowForwardIcon />}>
             {t('mkt.home.finalCta')}
           </Button>
         </Wrap>

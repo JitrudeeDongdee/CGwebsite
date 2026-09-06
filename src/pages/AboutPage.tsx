@@ -104,7 +104,7 @@ export function AboutPage() {
         </Box>
 
         <Stack direction="row" spacing={1.5} sx={{ mt: 5, flexWrap: 'wrap', gap: 1.5 }}>
-          <Button component={RouterLink} to="/" variant="contained" color="secondary" size="large">
+          <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large">
             {t('mkt.nav.designCta')}
           </Button>
           <Button component={RouterLink} to="/contact" variant="outlined" size="large">
