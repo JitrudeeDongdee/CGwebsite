@@ -8,7 +8,7 @@ import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
-import { getProject } from '../catalog/projects'
+import { useProject } from '../catalog/CatalogProvider'
 import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { useLocalized } from '../catalog/useLocalized'
@@ -24,7 +24,7 @@ export function ProjectDetailPage() {
   const { t } = useTranslation()
   const L = useLocalized()
   const { slug } = useParams()
-  const project = slug ? getProject(slug) : undefined
+  const project = useProject(slug)
 
   if (!project) {
     return (

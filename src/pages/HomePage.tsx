@@ -19,8 +19,7 @@ import { IsoThumbnail } from '../ui/ItemPreview'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
-import { heroProductFor, productsByCategory } from '../catalog/products'
-import { PROJECTS } from '../catalog/projects'
+import { useCatalog, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
@@ -88,10 +87,17 @@ export function HomePage() {
   const L = useLocalized()
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
 
+  const cat: ProductCategory | null = isCategory(service) ? service : null
+
+  // Catalog hooks must run before the early return below — a hook that is
+  // skipped on some renders breaks the hook order for the whole component.
+  const { projects: allProjects } = useCatalog()
+  const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 3)
+  // The hero card leads with the line's best seller.
+  const heroProduct = useHeroProduct(cat ?? 'house')
+
   // `/home/<something unknown>` is not a service — fall back to the main home.
   if (service !== undefined && !isCategory(service)) return <Navigate to="/home" replace />
-
-  const cat: ProductCategory | null = isCategory(service) ? service : null
   /** The house line keeps the designer as its call to action; the others lead to contact. */
   const isHouseish = cat === null || cat === 'house'
   const ctaTo = isHouseish ? '/design' : '/contact'
@@ -128,10 +134,8 @@ export function HomePage() {
   const models = FEATURED_IDS.map((id) => PLAN_TEMPLATES.find((m) => m.id === id)).filter(
     (m): m is (typeof PLAN_TEMPLATES)[number] => Boolean(m),
   )
-  const catProducts = cat ? productsByCategory(cat).slice(0, 3) : []
-  // The hero card leads with the line's best seller. House models are drawn as an
-  // isometric thumbnail of their plan; the other lines use their catalog photo.
-  const heroProduct = heroProductFor(cat ?? 'house')
+  // House models are drawn as an isometric thumbnail of their plan; the other
+  // lines use their catalog photo.
   const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id === heroProduct.slug) : undefined
 
   const defaultWork = [
@@ -140,7 +144,7 @@ export function HomePage() {
     { key: 'w3', place: 'อุดรธานี', year: '2566', title: t('templates.shop'), to: null as string | null },
   ]
   const work = cat
-    ? PROJECTS.filter((p) => p.category === cat).map((p) => ({
+    ? allProjects.filter((p) => p.category === cat).map((p) => ({
         key: p.id,
         place: L(p.location),
         year: p.year,

@@ -7,7 +7,7 @@ import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Pagination from '@mui/material/Pagination'
-import { productsByCategory } from '../catalog/products'
+import { useProductsByCategory } from '../catalog/CatalogProvider'
 import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { useLocalized } from '../catalog/useLocalized'
@@ -31,7 +31,7 @@ export function ProductsPage() {
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
   const { cat, query, requestedPage, update } = useCatalogQuery()
 
-  const matches = productsByCategory(cat).filter((p) =>
+  const matches = useProductsByCategory(cat).filter((p) =>
     matchesQuery([p.name.th, p.name.en, p.shortDesc.th, p.shortDesc.en, p.slug], query),
   )
   const { page, pageCount, items: products } = paginate(matches, requestedPage, PAGE_SIZE)

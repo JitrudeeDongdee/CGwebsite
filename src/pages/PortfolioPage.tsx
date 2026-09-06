@@ -5,7 +5,7 @@ import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Pagination from '@mui/material/Pagination'
-import { PROJECTS } from '../catalog/projects'
+import { useCatalog } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { useLocalized } from '../catalog/useLocalized'
 import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQuery'
@@ -27,7 +27,8 @@ export function PortfolioPage() {
 
   const { cat, query, requestedPage, update } = useCatalogQuery()
 
-  const matches = (cat === 'all' ? PROJECTS : PROJECTS.filter((p) => p.category === cat)).filter((p) =>
+  const { projects: allProjects } = useCatalog()
+  const matches = (cat === 'all' ? allProjects : allProjects.filter((p) => p.category === cat)).filter((p) =>
     matchesQuery(
       [p.title.th, p.title.en, p.location.th, p.location.en, p.description.th, p.description.en, p.year, p.slug],
       query,
