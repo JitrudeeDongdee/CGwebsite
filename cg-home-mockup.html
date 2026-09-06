@@ -1,0 +1,296 @@
+<style>
+  :root{
+    --paper:#FAF9F6; --card:#FFFFFF; --ink:#1F2028; --muted:#6B6862;
+    --line:#E3E0D9; --blue:#1B4965; --blue-d:#123449; --blue-l:#6E9CBB; --blue-pale:#EAF1F6;
+    --clay:#C1663F; --clay-l:#DFA083; --clay-pale:#F4DACD;
+    --grid: rgba(27,73,101,.06);
+    --maxw:1180px;
+    --sans:"IBM Plex Sans Thai Looped","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#14161B; --card:#1C1F26; --ink:#ECEAE3; --muted:#9C988E;
+      --line:#2C3038; --blue:#6E9CBB; --blue-d:#0B2231; --blue-l:#9BC0D6; --blue-pale:#182A36;
+      --clay:#DFA083; --clay-l:#C1663F; --clay-pale:#3A2418; --grid:rgba(110,156,187,.08);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#14161B; --card:#1C1F26; --ink:#ECEAE3; --muted:#9C988E;
+    --line:#2C3038; --blue:#6E9CBB; --blue-d:#0B2231; --blue-l:#9BC0D6; --blue-pale:#182A36;
+    --clay:#DFA083; --clay-l:#C1663F; --clay-pale:#3A2418; --grid:rgba(110,156,187,.08);
+  }
+  :root[data-theme="light"]{
+    --paper:#FAF9F6; --card:#FFFFFF; --ink:#1F2028; --muted:#6B6862;
+    --line:#E3E0D9; --blue:#1B4965; --blue-d:#123449; --blue-l:#6E9CBB; --blue-pale:#EAF1F6;
+    --clay:#C1663F; --clay-l:#DFA083; --clay-pale:#F4DACD; --grid:rgba(27,73,101,.06);
+  }
+  *{box-sizing:border-box}
+  .cg{font-family:var(--sans);background:var(--paper);color:var(--ink);line-height:1.6;
+    -webkit-font-smoothing:antialiased}
+  .cg h1,.cg h2,.cg h3{margin:0;line-height:1.15;text-wrap:balance;font-weight:600;letter-spacing:-.01em}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--clay);font-weight:600}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:12px 20px;
+    font:inherit;font-weight:600;font-size:15px;cursor:pointer;text-decoration:none;border:1px solid transparent;transition:.15s}
+  .btn-primary{background:var(--clay);color:#fff;border-color:var(--clay)}
+  .btn-primary:hover{background:#a8542f}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  .btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+  .btn-onblue{background:#fff;color:var(--blue-d)}
+  .btn-onblue:hover{background:var(--blue-pale)}
+
+  /* nav */
+  .nav{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;gap:28px;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em;font-size:20px}
+  .brand .mark{width:30px;height:30px;border:2px solid var(--blue);border-radius:7px;display:grid;place-items:center;color:var(--blue);font-weight:800;font-size:14px}
+  .navlinks{display:flex;gap:22px;margin-left:auto}
+  .navlinks a{color:var(--muted);text-decoration:none;font-size:15px;font-weight:500}
+  .navlinks a:hover{color:var(--ink)}
+  .navtools{display:flex;align-items:center;gap:12px}
+  .tgl{width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center}
+  .tgl:hover{color:var(--ink);border-color:var(--blue)}
+  @media(max-width:860px){.navlinks{display:none}}
+
+  /* hero */
+  .hero{position:relative;overflow:hidden;
+    background:
+      linear-gradient(0deg,var(--grid) 1px,transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/28px 28px,
+      var(--paper)}
+  .hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding-top:72px;padding-bottom:72px}
+  .hero h1{font-size:clamp(30px,4.4vw,52px)}
+  .hero p.lead{font-size:18px;color:var(--muted);margin:20px 0 28px;max-width:34em}
+  .hero .cta{display:flex;gap:14px;flex-wrap:wrap}
+  .trust{display:flex;gap:26px;margin-top:34px;flex-wrap:wrap}
+  .trust div{display:flex;flex-direction:column}
+  .trust b{font-size:22px;color:var(--blue);font-weight:700}
+  .trust span{font-size:13px;color:var(--muted)}
+  .plancard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 20px 40px -28px rgba(27,73,101,.5)}
+  .plancard .tag{display:inline-block;font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-pale);padding:4px 10px;border-radius:20px;margin-bottom:12px}
+  @media(max-width:860px){.hero .wrap{grid-template-columns:1fr;gap:28px}.plancard{order:-1}}
+
+  section{padding:64px 0}
+  .sec-head{max-width:40em;margin-bottom:36px}
+  .sec-head h2{font-size:clamp(24px,3vw,34px);margin-top:10px}
+  .sec-head p{color:var(--muted);margin:12px 0 0;font-size:16px}
+
+  .grid{display:grid;gap:18px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr}}
+  @media(max-width:560px){.g4{grid-template-columns:1fr}}
+
+  .svc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;transition:.15s}
+  .svc:hover{border-color:var(--blue);transform:translateY(-3px)}
+  .svc .ic{width:44px;height:44px;border-radius:11px;background:var(--blue-pale);color:var(--blue);display:grid;place-items:center;margin-bottom:14px}
+  .svc.main{border-color:var(--clay);position:relative}
+  .svc.main .ic{background:var(--clay-pale);color:var(--clay)}
+  .svc .badge{position:absolute;top:14px;right:14px;font-size:11px;font-weight:600;color:var(--clay);background:var(--clay-pale);padding:3px 9px;border-radius:20px}
+  .svc h3{font-size:17px;margin-bottom:6px}
+  .svc p{margin:0;color:var(--muted);font-size:14px}
+
+  .model{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:.15s}
+  .model:hover{border-color:var(--blue)}
+  .model .thumb{aspect-ratio:16/10;background:var(--blue-pale);border-bottom:1px solid var(--line);display:grid;place-items:center}
+  .model .body{padding:16px 18px}
+  .model h3{font-size:17px}
+  .model .meta{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
+  .model .price{color:var(--clay);font-weight:700}
+  .model .price small{color:var(--muted);font-weight:400;font-size:12px}
+  .chips{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .chip{font-size:12px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:20px}
+
+  .work{border-radius:14px;overflow:hidden;border:1px solid var(--line);position:relative;aspect-ratio:4/3;background:var(--blue-d)}
+  .work .ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:16px;color:#fff;
+    background:linear-gradient(0deg,rgba(11,34,49,.85),transparent 60%)}
+  .work .ov small{opacity:.8;font-size:12px}
+  .work .ov b{font-weight:600;font-size:15px}
+
+  .band{background:var(--blue);color:#fff;border-radius:20px;padding:44px;margin:0 24px}
+  .band .wrap{padding:0}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center}
+  .stats b{display:block;font-size:34px;font-weight:700;letter-spacing:-.02em}
+  .stats span{font-size:14px;color:var(--blue-l)}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr);gap:28px}}
+
+  .cta-final{text-align:center}
+  .cta-final h2{font-size:clamp(24px,3.4vw,36px)}
+  .cta-final p{color:var(--muted);margin:12px auto 24px;max-width:32em}
+
+  footer{border-top:1px solid var(--line);padding:44px 0;color:var(--muted);font-size:14px}
+  .fcols{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:28px}
+  footer h4{color:var(--ink);font-size:14px;margin:0 0 12px;font-weight:600}
+  footer a{color:var(--muted);text-decoration:none;display:block;padding:3px 0}
+  footer a:hover{color:var(--ink)}
+  .fbot{border-top:1px solid var(--line);margin-top:28px;padding-top:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  @media(max-width:760px){.fcols{grid-template-columns:1fr 1fr}}
+  .mocknote{background:var(--clay-pale);color:var(--clay);text-align:center;font-size:13px;font-weight:600;padding:8px}
+</style>
+
+<div class="cg">
+  <div class="mocknote">ตัวอย่างดีไซน์ (mockup) หน้า Home — ยังไม่ใช่หน้าเว็บจริง</div>
+
+  <nav class="nav"><div class="wrap">
+    <div class="brand"><span class="mark">CG</span> CG Home</div>
+    <div class="navlinks">
+      <a href="#">หน้าแรก</a><a href="#svc">บริการ</a><a href="#models">แบบบ้าน</a>
+      <a href="#work">ผลงาน</a><a href="#">เกี่ยวกับเรา</a><a href="#">ติดต่อ</a>
+    </div>
+    <div class="navtools">
+      <button class="tgl" id="theme" aria-label="สลับธีม">◐</button>
+      <a class="btn btn-primary" href="#">ออกแบบบ้าน</a>
+    </div>
+  </div></nav>
+
+  <header class="hero"><div class="wrap">
+    <div>
+      <span class="eyebrow">บ้านน็อคดาวน์ · ออกแบบเอง · ราคาชัดเจน</span>
+      <h1 style="margin-top:14px">ออกแบบบ้านในแบบคุณ<br>แล้วให้เราสร้างให้จริง</h1>
+      <p class="lead">เขียนแปลนบ้านน็อคดาวน์ได้เองบนเว็บ เห็นภาพ 3 มิติและราคาประเมินทันที
+        แล้วส่งให้ทีมช่างของเราติดต่อกลับ — ครบทั้งออกแบบ ผลิต ขนส่ง และติดตั้ง</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#">เริ่มออกแบบบ้านของคุณ →</a>
+        <a class="btn btn-ghost" href="#models">ดูแบบบ้านสำเร็จรูป</a>
+      </div>
+      <div class="trust">
+        <div><b>ราคาโปร่งใส</b><span>คำนวณต่อ ตร.ม. ทันที</span></div>
+        <div><b>3 มิติ</b><span>เห็นทรงบ้านก่อนสร้าง</span></div>
+        <div><b>ครบวงจร</b><span>ออกแบบถึงติดตั้ง</span></div>
+      </div>
+    </div>
+    <div class="plancard">
+      <span class="tag">แปลนตัวอย่าง · 2 ห้องนอน 8×6 ม.</span>
+      <svg viewBox="0 0 320 220" width="100%" aria-hidden style="display:block">
+        <rect x="8" y="8" width="304" height="204" fill="none" stroke="var(--blue)" stroke-width="4"/>
+        <line x1="8" y1="120" x2="312" y2="120" stroke="var(--blue)" stroke-width="3"/>
+        <line x1="120" y1="120" x2="120" y2="212" stroke="var(--blue)" stroke-width="3"/>
+        <line x1="210" y1="8" x2="210" y2="120" stroke="var(--blue)" stroke-width="3"/>
+        <path d="M60 212 A34 34 0 0 1 94 178" fill="none" stroke="var(--clay)" stroke-width="2.5"/>
+        <line x1="60" y1="212" x2="60" y2="188" stroke="var(--clay)" stroke-width="2.5"/>
+        <rect x="150" y="150" width="52" height="34" fill="none" stroke="var(--blue-l)" stroke-width="2"/>
+        <text x="52" y="70" fill="var(--muted)" font-size="13" font-family="var(--sans)">ห้องนอน 1</text>
+        <text x="230" y="70" fill="var(--muted)" font-size="13" font-family="var(--sans)">ห้องนอน 2</text>
+        <text x="40" y="170" fill="var(--muted)" font-size="13" font-family="var(--sans)">นั่งเล่น</text>
+        <text x="234" y="170" fill="var(--muted)" font-size="13" font-family="var(--sans)">น้ำ</text>
+      </svg>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <span style="color:var(--muted);font-size:13px">พื้นที่ใช้สอย 48 ตร.ม.</span>
+        <span style="color:var(--clay);font-weight:700">฿ 914,000</span>
+      </div>
+    </div>
+  </div></header>
+
+  <section id="svc"><div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">สิ่งที่เราทำ</span>
+      <h2>บ้านน็อคดาวน์คืองานหลัก — พร้อมสินค้าและบริการที่ครบจบในที่เดียว</h2>
+      <p>เริ่มจากบ้านสำเร็จรูปที่ออกแบบเองได้ ต่อยอดด้วยงานอิเล็กทรอนิกส์ เฟอร์นิเจอร์ และรถก่อสร้างให้เช่า</p>
+    </div>
+    <div class="grid g4">
+      <div class="svc main">
+        <span class="badge">งานหลัก</span>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></div>
+        <h3>บ้านน็อคดาวน์</h3>
+        <p>ออกแบบแปลนเอง ผลิตสำเร็จรูป ขนส่งและติดตั้งถึงหน้างาน รวดเร็วและควบคุมงบได้</p>
+      </div>
+      <div class="svc">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="12" rx="1"/><path d="M8 20h8M12 16v4"/></svg></div>
+        <h3>สินค้าอิเล็กทรอนิกส์</h3>
+        <p>อุปกรณ์และระบบไฟฟ้า-อิเล็กทรอนิกส์สำหรับบ้านและงานติดตั้ง</p>
+      </div>
+      <div class="svc">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M3 11h18v6H3zM6 17v3M18 17v3"/></svg></div>
+        <h3>เฟอร์นิเจอร์</h3>
+        <p>เฟอร์นิเจอร์บิลต์อินและลอยตัว จัดชุดให้เข้ากับแบบบ้านของคุณ</p>
+      </div>
+      <div class="svc">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h11v-4l3-1 4 3v2"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M3 17V9h6l3 4"/></svg></div>
+        <h3>เช่ารถก่อสร้าง</h3>
+        <p>รถและเครื่องจักรก่อสร้างให้เช่า พร้อมทีมสนับสนุนหน้างาน</p>
+      </div>
+    </div>
+  </div></section>
+
+  <section id="models" style="background:var(--blue-pale)"><div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">แบบบ้านแนะนำ</span>
+      <h2>เริ่มจากแบบสำเร็จรูป แล้วปรับให้เป็นของคุณ</h2>
+      <p>ทุกแบบเปิดในเครื่องออกแบบได้ทันที ปรับผนัง เพิ่มห้อง แล้วดูราคาใหม่</p>
+    </div>
+    <div class="grid g3">
+      <div class="model">
+        <div class="thumb"><svg width="120" height="80" viewBox="0 0 120 80" fill="none" stroke="var(--blue)" stroke-width="3"><rect x="6" y="6" width="108" height="68"/><line x1="60" y1="6" x2="60" y2="74"/><line x1="60" y1="40" x2="114" y2="40"/></svg></div>
+        <div class="body"><h3>สตูดิโอ 6×4</h3>
+          <div class="chips"><span class="chip">1 ห้องนอน</span><span class="chip">24 ตร.ม.</span></div>
+          <div class="meta"><span class="price">฿ 432,000 <small>เริ่มต้น</small></span><a href="#" style="color:var(--blue);text-decoration:none;font-weight:600;font-size:14px">ปรับแบบ →</a></div>
+        </div>
+      </div>
+      <div class="model">
+        <div class="thumb"><svg width="120" height="80" viewBox="0 0 120 80" fill="none" stroke="var(--blue)" stroke-width="3"><rect x="6" y="6" width="108" height="68"/><line x1="6" y1="44" x2="114" y2="44"/><line x1="46" y1="44" x2="46" y2="74"/><line x1="84" y1="6" x2="84" y2="44"/></svg></div>
+        <div class="body"><h3>2 ห้องนอน 8×6</h3>
+          <div class="chips"><span class="chip">2 ห้องนอน</span><span class="chip">48 ตร.ม.</span></div>
+          <div class="meta"><span class="price">฿ 914,000 <small>เริ่มต้น</small></span><a href="#" style="color:var(--blue);text-decoration:none;font-weight:600;font-size:14px">ปรับแบบ →</a></div>
+        </div>
+      </div>
+      <div class="model">
+        <div class="thumb"><svg width="120" height="80" viewBox="0 0 120 80" fill="none" stroke="var(--blue)" stroke-width="3"><rect x="6" y="6" width="108" height="68"/><line x1="6" y1="44" x2="114" y2="44"/><line x1="42" y1="44" x2="42" y2="74"/><line x1="78" y1="44" x2="78" y2="74"/></svg></div>
+        <div class="body"><h3>3 ห้องนอน 9×6</h3>
+          <div class="chips"><span class="chip">3 ห้องนอน</span><span class="chip">54 ตร.ม.</span></div>
+          <div class="meta"><span class="price">฿ 1,026,000 <small>เริ่มต้น</small></span><a href="#" style="color:var(--blue);text-decoration:none;font-weight:600;font-size:14px">ปรับแบบ →</a></div>
+        </div>
+      </div>
+    </div>
+  </div></section>
+
+  <section id="work"><div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">ผลงานที่ผ่านมา</span>
+      <h2>บ้านและงานติดตั้งที่เราสร้างจริง</h2>
+    </div>
+    <div class="grid g3">
+      <div class="work"><div class="ov"><small>ชัยภูมิ · 2567</small><b>บ้านพักอาศัย 2 ชั้น</b></div></div>
+      <div class="work"><div class="ov"><small>ขอนแก่น · 2566</small><b>บ้านน็อคดาวน์ 1 ห้องนอน</b></div></div>
+      <div class="work"><div class="ov"><small>อุดรธานี · 2566</small><b>ร้านค้า + ที่พักอาศัย</b></div></div>
+    </div>
+    <div style="margin-top:22px"><a class="btn btn-ghost" href="#">ดูผลงานทั้งหมด</a></div>
+  </div></section>
+
+  <section style="padding-top:0"><div class="band"><div class="wrap"><div class="stats">
+    <div><b>250+</b><span>หลังที่ส่งมอบ</span></div>
+    <div><b>12 ปี</b><span>ประสบการณ์</span></div>
+    <div><b>40+</b><span>ทีมช่าง</span></div>
+    <div><b>2 ปี</b><span>รับประกันโครงสร้าง</span></div>
+  </div></div></div></section>
+
+  <section class="cta-final"><div class="wrap">
+    <h2>พร้อมเริ่มออกแบบบ้านของคุณแล้วหรือยัง?</h2>
+    <p>ใช้เครื่องออกแบบฟรี ไม่ต้องสมัครก็เริ่มได้ — เห็นแปลน 3 มิติ และราคาประเมินทันที</p>
+    <a class="btn btn-primary" href="#">เริ่มออกแบบเลย →</a>
+  </div></section>
+
+  <footer><div class="wrap">
+    <div class="fcols">
+      <div>
+        <div class="brand" style="margin-bottom:12px"><span class="mark">CG</span> CG Home</div>
+        <p style="margin:0;max-width:24em">บ้านน็อคดาวน์ออกแบบเอง พร้อมสินค้าอิเล็กทรอนิกส์ เฟอร์นิเจอร์ และรถก่อสร้างให้เช่า</p>
+      </div>
+      <div><h4>บริการ</h4><a href="#">บ้านน็อคดาวน์</a><a href="#">อิเล็กทรอนิกส์</a><a href="#">เฟอร์นิเจอร์</a><a href="#">เช่ารถก่อสร้าง</a></div>
+      <div><h4>บริษัท</h4><a href="#">เกี่ยวกับเรา</a><a href="#">ผลงาน</a><a href="#">แบบบ้าน</a><a href="#">ติดต่อเรา</a></div>
+      <div><h4>ติดต่อ</h4><a href="#">โทร 0X-XXX-XXXX</a><a href="#">LINE @cghome</a><a href="#">อีเมล hello@cg.co.th</a></div>
+    </div>
+    <div class="fbot"><span>© 2567 CG Home. สงวนลิขสิทธิ์.</span><span>ไทย / English</span></div>
+  </div></footer>
+</div>
+
+<script>
+  (function(){
+    var root=document.documentElement, b=document.getElementById('theme');
+    b.addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')
+        || (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+      root.setAttribute('data-theme', cur==='dark'?'light':'dark');
+    });
+  })();
+</script>
