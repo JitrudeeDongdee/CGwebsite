@@ -64,7 +64,7 @@ export function SiteHeader() {
   const { user, logout } = useAuth()
   const [drawer, setDrawer] = useState(false)
 
-  const designActive = pathname === '/'
+  const designActive = pathname === '/design'
 
   return (
     <AppBar
@@ -97,7 +97,7 @@ export function SiteHeader() {
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', ml: 'auto' }}>
           <Button
             component={RouterLink}
-            to="/"
+            to="/design"
             variant={designActive ? 'contained' : 'outlined'}
             color="secondary"
             size="small"
@@ -174,7 +174,7 @@ export function SiteHeader() {
           </List>
           <Divider />
           <Stack spacing={1.5} sx={{ p: 2 }}>
-            <Button component={RouterLink} to="/" variant="contained" color="secondary" onClick={() => setDrawer(false)}>
+            <Button component={RouterLink} to="/design" variant="contained" color="secondary" onClick={() => setDrawer(false)}>
               {t('mkt.nav.designCta')}
             </Button>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>

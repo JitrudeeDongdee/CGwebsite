@@ -56,7 +56,7 @@ export function ProjectDetailPage() {
       <Typography sx={{ mt: 2, color: 'text.secondary', maxWidth: '46em', fontSize: 18 }}>{L(project.description)}</Typography>
 
       <Stack direction="row" spacing={1.5} sx={{ mt: 3, flexWrap: 'wrap', gap: 1.5 }}>
-        <Button component={RouterLink} to="/" variant="contained" color="secondary" size="large">{t('mkt.nav.designCta')}</Button>
+        <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large">{t('mkt.nav.designCta')}</Button>
         <Button component={RouterLink} to="/products" variant="outlined" size="large">{t('mkt.nav.products')}</Button>
       </Stack>
     </Wrap>

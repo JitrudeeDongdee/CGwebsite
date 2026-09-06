@@ -176,7 +176,7 @@ export function LoginPage() {
         </Typography>
 
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
-          <Link component={RouterLink} to="/" color="inherit">
+          <Link component={RouterLink} to="/design" color="inherit">
             ← {t('auth.backToApp')}
           </Link>
         </Typography>

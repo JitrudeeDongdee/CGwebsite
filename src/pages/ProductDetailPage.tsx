@@ -81,7 +81,7 @@ export function ProductDetailPage() {
 
           <Stack direction="row" spacing={1.5} sx={{ mt: 3, flexWrap: 'wrap', gap: 1.5 }}>
             {isHouse ? (
-              <Button component={RouterLink} to="/" variant="contained" color="secondary" size="large">
+              <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large">
                 {t('mkt.catalog.customize')}
               </Button>
             ) : (

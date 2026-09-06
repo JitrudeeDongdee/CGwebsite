@@ -113,7 +113,7 @@ Agreed direction to grow this from a tool into CG's company site.
 - `src/marketing/i18n.ts` — marketing strings registered as a `mkt.*` group via `i18n.addResourceBundle` (deliberately NOT edited into `locales/*.json`, to avoid colliding with concurrent edits there).
 - `src/pages/HomePage.tsx` — hero (CTA → `/` designer), 4 service cards (บ้านน็อคดาวน์ = core + electronics/furniture/equipment-rental), featured models from `PLAN_TEMPLATES` with `IsoThumbnail` 3D previews + prices, portfolio strip, stats band, final CTA. `AboutPage.tsx`, `ContactPage.tsx` (contact form → localStorage `cg:contact-messages`).
 - **One unified header** `src/ui/SiteHeader.tsx` (brand + marketing nav + "ออกแบบบ้าน" CTA → `/` + admin + login + lang/theme + mobile drawer), mounted by BOTH shells — dense 48px to keep the designer's `calc(100vh - 48px)` layout valid.
-- `App.tsx` split into two layout routes: `AppShell` (SiteHeader + fixed-height column) for `/ /login /admin`; `MarketingLayout` (SiteHeader + scroll + footer) for `/home /about /contact`. **Tool stays at `/`.**
+- `App.tsx` split into two layout routes: `AppShell` (SiteHeader + fixed-height column) for `/design /login /admin`; `MarketingLayout` (SiteHeader + scroll + footer) for `/home /products /portfolio /about /contact`. **Landing `/` redirects to `/home`; the designer tool lives at `/design`** (reversed from the earlier "tool at /" decision, per the user). All "ออกแบบบ้าน" CTAs point to `/design`.
 - `AboutPage` includes a CEO/leadership section — placeholder photo box (swap in a real `<img>`) + name/title/quote. Build + preview verified; content/figures/photo are placeholders pending real company data.
 
 **✅ Phase 2 — DONE (2026-07-29): Products + Portfolio.**
