@@ -18,9 +18,14 @@ import { RouteFallback } from './ui/RouteFallback'
  */
 const DesignerPage = lazy(() => import('./pages/DesignerPage').then((m) => ({ default: m.DesignerPage })))
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })))
-const AdminPortfolioPage = lazy(() =>
-  import('./pages/AdminPortfolioPage').then((m) => ({ default: m.AdminPortfolioPage })),
-)
+// Dev-only. Guarding the dynamic import behind `import.meta.env.DEV` (statically
+// `false` in a prod build) puts the `import()` in a dead branch, so Rollup drops
+// the whole AdminPortfolioPage chunk from the deployed bundle — the route below is
+// gated the same way. The tool needs `/api/*` from `vite-dev-api.mts`, which only
+// runs under `pnpm run dev`.
+const AdminPortfolioPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/AdminPortfolioPage').then((m) => ({ default: m.AdminPortfolioPage })))
+  : undefined
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })))
@@ -78,7 +83,12 @@ function App() {
         <Route path="/design" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin/portfolio" element={<AdminPortfolioPage />} />
+        {/* Dev-only (see the AdminPortfolioPage import above): present under
+            `pnpm run dev`, tree-shaken out of prod, where the URL falls through
+            to the catch-all redirect. */}
+        {import.meta.env.DEV && AdminPortfolioPage && (
+          <Route path="/admin/portfolio" element={<AdminPortfolioPage />} />
+        )}
       </Route>
 
       {/* Old service URLs, before they moved under /home. */}
