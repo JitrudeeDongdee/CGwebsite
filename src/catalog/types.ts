@@ -31,6 +31,8 @@ export interface Product {
   priceUnit?: Localized
   specs: ProductSpec[]
   featured: boolean
+  /** Marked as a best seller — shown with a badge, and picked for the hero card. */
+  bestSeller?: boolean
 }
 
 export interface Project {

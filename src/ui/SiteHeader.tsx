@@ -25,6 +25,14 @@ import { ensureMarketingI18n } from '../marketing/i18n'
 
 ensureMarketingI18n()
 
+/**
+ * Show the Admin entry in the header? Off until sign-in carries real roles —
+ * the mock auth in `AuthProvider` has no permissions, so a visible link would
+ * just advertise a page nobody should reach. Flip this to a role check
+ * (e.g. `user?.role === 'admin'`) once auth is real.
+ */
+const SHOW_ADMIN_LINK = false
+
 /** One header for the whole site — the marketing pages and the designer/admin
  *  app both mount this, so the top bar is identical everywhere. Dense (48px) to
  *  match the designer's `calc(100vh - 48px)` editor layout. */
@@ -107,15 +115,18 @@ export function SiteHeader() {
             {t('mkt.nav.designCta')}
           </Button>
 
-          <Button
-            component={RouterLink}
-            to="/admin"
-            size="small"
-            color={pathname === '/admin' ? 'primary' : 'inherit'}
-            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-          >
-            {t('app.navAdmin')}
-          </Button>
+          {/* Hidden until auth carries roles — see SHOW_ADMIN_LINK at the top of the file. */}
+          {SHOW_ADMIN_LINK && (
+            <Button
+              component={RouterLink}
+              to="/admin"
+              size="small"
+              color={pathname === '/admin' ? 'primary' : 'inherit'}
+              sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+            >
+              {t('app.navAdmin')}
+            </Button>
+          )}
 
           {user ? (
             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', display: { xs: 'none', sm: 'flex' } }}>
@@ -160,9 +171,11 @@ export function SiteHeader() {
                 <ListItemText primary={t(item.key)} />
               </ListItemButton>
             ))}
-            <ListItemButton component={RouterLink} to="/admin" onClick={() => setDrawer(false)}>
-              <ListItemText primary={t('app.navAdmin')} />
-            </ListItemButton>
+            {SHOW_ADMIN_LINK && (
+              <ListItemButton component={RouterLink} to="/admin" onClick={() => setDrawer(false)}>
+                <ListItemText primary={t('app.navAdmin')} />
+              </ListItemButton>
+            )}
             {user ? (
               <ListItemButton onClick={() => { logout(); setDrawer(false) }}>
                 <ListItemText primary={t('auth.logout')} secondary={user.name} />
