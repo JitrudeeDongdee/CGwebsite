@@ -20,7 +20,7 @@ import { IsoThumbnail } from '../ui/ItemPreview'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
-import { useCatalog, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
+import { useCatalog, useCommunity, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { productImagePath, projectImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
@@ -94,6 +94,7 @@ export function HomePage() {
   // Catalog hooks must run before the early return below — a hook that is
   // skipped on some renders breaks the hook order for the whole component.
   const { projects: allProjects } = useCatalog()
+  const communityItems = useCommunity()
   const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 3)
   // The hero card leads with the line's best seller.
   const heroProduct = useHeroProduct(cat ?? 'house')
@@ -250,11 +251,11 @@ export function HomePage() {
                   <Box sx={{ borderRadius: 2, overflow: 'hidden' }}>
                     <CatalogImage
                       src={productImagePath(heroProduct)}
-                      // Lines whose products have no photo yet (e.g. contracting)
-                      // fall back to one of the line's project photos, not the
-                      // flat placeholder. `eager` so the 404 fires at once and the
-                      // fallback swaps in without waiting to scroll into view.
-                      fallbackSrc={work.find((w) => w.img)?.img}
+                      // The hero card is the line's BEST-SELLING PRODUCT, so it shows
+                      // that product's own photo — borrowing a portfolio photo here
+                      // made the card look like a past job instead of something to
+                      // buy. With no product photo yet it falls back to the flat
+                      // category panel, which is at least honest about it.
                       eager
                       category={heroProduct.category}
                       alt={L(heroProduct.name)}
@@ -440,6 +441,47 @@ export function HomePage() {
             <Button variant="outlined" sx={{ mt: 3 }} component={RouterLink} to={allWorkTo} endIcon={<ArrowForwardIcon />}>
               {t('mkt.home.workAll')}
             </Button>
+          </Wrap>
+        </Box>
+      )}
+
+      {/* Public-benefit works & donations — shown on the house line (and /home). */}
+      {isHouseish && communityItems.length > 0 && (
+        <Box component="section" sx={{ py: 8, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
+          <Wrap>
+            <Stack direction="row" sx={{ mb: 4.5, alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ maxWidth: '42em' }}>
+                <Eyebrow>{t('mkt.home.communityEyebrow')}</Eyebrow>
+                <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
+                  {t('mkt.home.communityHeading')}
+                </Typography>
+                <Typography sx={{ mt: 1.5, color: 'text.secondary' }}>{t('mkt.home.communitySub')}</Typography>
+              </Box>
+              <Button component={RouterLink} to="/community" variant="outlined" endIcon={<ArrowForwardIcon />}>
+                {t('mkt.home.communityAll')}
+              </Button>
+            </Stack>
+            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+              {communityItems.slice(0, 3).map((item) => (
+                <Paper
+                  key={item.id}
+                  component={RouterLink}
+                  to="/community"
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden',
+                    display: 'block', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s',
+                    '&:hover': { borderColor: 'primary.main' },
+                  }}
+                >
+                  <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} />
+                  <Box sx={{ p: 2 }}>
+                    <Typography variant="caption" color="text.secondary">{L(item.location)} {item.year && `· ${item.year}`}</Typography>
+                    <Typography sx={{ fontWeight: 600, fontSize: 17, mt: 0.25 }}>{L(item.title)}</Typography>
+                  </Box>
+                </Paper>
+              ))}
+            </Box>
           </Wrap>
         </Box>
       )}
