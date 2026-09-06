@@ -153,7 +153,13 @@ starting Phase 3, so the DB work happens against a real deployment.
   `SITE_URL` = the canonical origin, used by `scripts/generate-seo-files.mjs` (robots/sitemap) *and* by the
   og:url/og:image tags. It **falls back to Cloudflare's own `CF_PAGES_URL`**, so a Pages build is
   self-configuring and needs no variable set; with neither, sitemap and og:url/og:image are skipped rather
-  than guessed. `VITE_GA_ID` = GA4 measurement ID, production only.
+  than guessed. `CF_PAGES_URL` is the *deployment's* URL (`https://<hash>.<project>.pages.dev`, a new hash
+  every build), so on a production build the deployment label is stripped to reach the stable
+  `<project>.pages.dev` — otherwise the sitemap advertises 25 URLs that go stale on the next deploy.
+  Workers Builds (the dashboard's newer "Create an app" flow) has **no** URL variable at all, so `SITE_URL`
+  must be set by hand there; it does provide `WORKERS_CI_BRANCH` / `WORKERS_CI_COMMIT_SHA`, which the build
+  reads alongside the `CF_PAGES_*` pair. `wrangler.jsonc` is committed for that flow — an assets-only Worker
+  whose `not_found_handling: "single-page-application"` is the Workers equivalent of `_redirects`. `VITE_GA_ID` = GA4 measurement ID, production only.
 - **Domain decision (2026-09-06):** no custom domain is being bought soon, so the site launches on
   `<project>.pages.dev` **and is indexed there** (the user's call, knowing that those URLs will later compete
   with a real domain and need redirects/canonicals when one arrives).
@@ -169,6 +175,12 @@ starting Phase 3, so the DB work happens against a real deployment.
   would report an entire SPA session as a single page.
 - **Share tags** — og/twitter tags injected into `index.html` at build. They are **site-wide, not per route**:
   a crawler that doesn't run JS only ever sees that one file. Per-page cards need prerendering (below).
+
+**LIVE since 2026-09-06: https://thai-dd.pages.dev** (Cloudflare Pages, Git integration, production branch
+`main`). Verified against the deployed site: every route returns 200 on a direct request (the `_redirects`
+proof), `/version` and `/version.json` both serve `{version:"main", sha, built_at}`, `robots.txt` allows
+indexing, `sitemap.xml` has 25 URLs, og/twitter tags are present, the home page loads ~215 kB of JS with no
+three.js, and GA is inert (no `VITE_GA_ID` set yet).
 
 **Accepted risks — the user decided to launch with these known-broken (2026-09-06), traffic being ~zero:**
 - **Prices on the site are placeholders.** `products.ts` (฿432k–฿972k) and the per-sqm rates in
