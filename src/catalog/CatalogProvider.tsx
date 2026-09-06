@@ -22,6 +22,8 @@ import type { Product, ProductCategory, Project } from './types'
 interface CatalogValue {
   products: Product[]
   projects: Project[]
+  /** Public-benefit works & donations — kept apart from the portfolio `projects`. */
+  community: Project[]
   loading: boolean
   /** Set when the remote fetch failed and the seed is being shown instead. */
   error: Error | null
@@ -33,6 +35,7 @@ const CatalogContext = createContext<CatalogValue | null>(null)
 export function CatalogProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [community, setCommunity] = useState<Project[]>([])
   const [loading, setLoading] = useState(supabaseEnabled)
   const [error, setError] = useState<Error | null>(null)
   const [source, setSource] = useState<'seed' | 'supabase'>('seed')
@@ -43,14 +46,16 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     // Seed first — synchronous data, no await, so there is never a blank frame.
     void seedRepository.listProducts().then((p) => !cancelled && setProducts(p))
     void seedRepository.listProjects().then((p) => !cancelled && setProjects(p))
+    void seedRepository.listCommunity().then((c) => !cancelled && setCommunity(c))
 
     if (!supabaseEnabled) return
 
     void (async () => {
       try {
-        const [p, j] = await Promise.all([
+        const [p, j, c] = await Promise.all([
           catalogRepository.listProducts(),
           catalogRepository.listProjects(),
+          catalogRepository.listCommunity(),
         ])
         if (cancelled) return
         // An empty catalog is never something worth rendering: it means the
@@ -66,6 +71,9 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         // its closure would see the initial value, not what the seed loaded.
         setProducts((prev) => (p.length > 0 ? p : prev))
         setProjects((prev) => (j.length > 0 ? j : prev))
+        // Community content is optional and small; show whatever is published,
+        // and an empty result simply hides its section rather than being an error.
+        setCommunity(c)
         setSource('supabase')
       } catch (e) {
         if (cancelled) return
@@ -83,8 +91,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<CatalogValue>(
-    () => ({ products, projects, loading, error, source }),
-    [products, projects, loading, error, source],
+    () => ({ products, projects, community, loading, error, source }),
+    [products, projects, community, loading, error, source],
   )
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
 }
@@ -106,14 +114,52 @@ export function useProductsByCategory(cat: ProductCategory | 'all'): Product[] {
   )
 }
 
-export function useProduct(slug: string | undefined): Product | undefined {
+export function useProduct(ref: string | undefined): Product | undefined {
   const { products } = useCatalog()
-  return useMemo(() => products.find((p) => p.slug === slug), [products, slug])
+  // The URL segment is a slug when the row has one, else its id — same rule as
+  // projects, so a product with no slug still has a working page.
+  return useMemo(
+    () => products.find((p) => (p.slug && p.slug === ref) || p.id === ref),
+    [products, ref],
+  )
 }
 
-export function useProject(slug: string | undefined): Project | undefined {
+/** Resolves the URL segment, which is a slug when the row has one, else its id. */
+export function useProject(ref: string | undefined): Project | undefined {
   const { projects } = useCatalog()
-  return useMemo(() => projects.find((p) => p.slug === slug), [projects, slug])
+  return useMemo(
+    () => projects.find((p) => (p.slug && p.slug === ref) || p.id === ref),
+    [projects, ref],
+  )
+}
+
+/** Public-benefit works & donations (kind = 'community'), newest first as loaded. */
+export function useCommunity(): Project[] {
+  return useCatalog().community
+}
+
+/** One community item by its slug-or-id URL segment. */
+export function useCommunityItem(ref: string | undefined): Project | undefined {
+  const { community } = useCatalog()
+  return useMemo(
+    () => community.find((p) => (p.slug && p.slug === ref) || p.id === ref),
+    [community, ref],
+  )
+}
+
+/** The product a project links to, looked up by id. */
+export function useProductById(id: string | undefined): Product | undefined {
+  const { products } = useCatalog()
+  return useMemo(() => (id ? products.find((p) => p.id === id) : undefined), [products, id])
+}
+
+/** The published projects delivered with a given product. */
+export function useProjectsForProduct(productId: string | undefined): Project[] {
+  const { projects } = useCatalog()
+  return useMemo(
+    () => (productId ? projects.filter((project) => project.productId === productId) : []),
+    [projects, productId],
+  )
 }
 
 /** The card the service home page leads with: the best seller, else the first featured. */

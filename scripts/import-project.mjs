@@ -36,7 +36,13 @@ import { downscaleJpeg } from './lib/image.mjs'
 import { uploadCatalogImage, storageConfigured } from './lib/storage.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const CATEGORIES = ['house', 'electronics', 'furniture', 'rental']
+/** Read from the app rather than copied here, so a new category needs one edit. */
+const CATEGORIES = [
+  ...new Set(
+    [...readFileSync(new URL('../src/catalog/categories.tsx', import.meta.url), 'utf8')
+      .matchAll(/^\s{2}(\w+):\s*\{ labelKey/gm)].map((m) => m[1]),
+  ),
+]
 /** Portfolio cards are 4:3 and detail heroes 16:9; 1600px wide covers both. */
 const MAX_WIDTH = 1600
 

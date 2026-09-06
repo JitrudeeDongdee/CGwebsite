@@ -24,7 +24,13 @@ import { downloadImage, fetchPostPreview } from './lib/facebook.mjs'
 import { downscaleJpeg } from './lib/image.mjs'
 import { storageConfigured, uploadCatalogImage } from './lib/storage.mjs'
 
-const CATEGORIES = ['house', 'electronics', 'furniture', 'rental']
+/** Read from the app rather than copied here, so a new category needs one edit. */
+const CATEGORIES = [
+  ...new Set(
+    [...readFileSync(new URL('../src/catalog/categories.tsx', import.meta.url), 'utf8')
+      .matchAll(/^\s{2}(\w+):\s*\{ labelKey/gm)].map((m) => m[1]),
+  ),
+]
 const MAX_WIDTH = 1600
 
 function parseArgs(argv) {

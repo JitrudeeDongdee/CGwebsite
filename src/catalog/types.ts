@@ -37,9 +37,38 @@ export interface Product {
   bestSeller?: boolean
 }
 
+/**
+ * One post documenting a project — several of them make its timeline.
+ *
+ * Each update carries its own photos and its own words; the project around them
+ * (id/slug, title, year, category) is shared.
+ */
+export interface ProjectSource {
+  /** The post this update came from. Optional: an update can keep its photos and
+   *  words after the link is removed. */
+  url?: string
+  /** What this update was, e.g. "ลงเสาเข็ม". Optional. */
+  label?: string
+  /** This update's own text. Optional — the label alone is often enough. */
+  caption?: Localized
+  /** This update's own photos, as paths in the catalog bucket. */
+  images?: string[]
+}
+
+/**
+ * `project` rows are portfolio work (shown on /portfolio and the service homes);
+ * `community` rows are public-benefit works & donations (ผลงานสาธารณประโยชน์และ
+ * การบริจาค — shown on /home/house and /community, never in the product/portfolio
+ * listings). Same shape, so they share the admin editor and Storage gallery.
+ */
+export type ProjectKind = 'project' | 'community'
+
 export interface Project {
+  /** Stable identity. Used in URLs when there is no slug. */
   id: string
-  /** URL slug, and the default image name: `portfolio/<slug>.jpg` */
+  /** What this row is and where it shows. Absent (older rows / seed) means 'project'. */
+  kind?: ProjectKind
+  /** Optional pretty URL segment; may be empty, and may be edited at any time. */
   slug: string
   title: Localized
   location: Localized
@@ -50,11 +79,22 @@ export interface Project {
   description: Localized
   /** Image path, when it isn't the `portfolio/<slug>.jpg` default (see catalog/images.ts). */
   imagePath?: string
+  /** The whole gallery, in display order, cover first. `imagePath` mirrors the cover. */
+  images?: string[]
   featured: boolean
   /**
    * Link to where this was originally posted (a Facebook post, usually). The
    * content itself is copied into our own record — this is only a "see the
    * original" link, so nothing breaks if the post is edited or taken down.
+   * Mirrors `sources[0]`.
    */
   sourceUrl?: string
+  /** Every post about this job, oldest first — rendered as a timeline. */
+  sources?: ProjectSource[]
+  /**
+   * The product/service this job delivered, when there is one — a fibre-optic
+   * install is the same service the catalogue sells. Lets a visitor go from
+   * "you did this" to "you can do this for me".
+   */
+  productId?: string
 }

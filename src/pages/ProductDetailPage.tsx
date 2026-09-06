@@ -9,9 +9,10 @@ import Chip from '@mui/material/Chip'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
-import { useProduct } from '../catalog/CatalogProvider'
+import { useProduct, useProjectsForProduct } from '../catalog/CatalogProvider'
 import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { projectImagePath, projectPath } from '../catalog/images'
 import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import { formatCurrency } from '../pricing/estimate'
@@ -29,6 +30,8 @@ export function ProductDetailPage() {
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
   const { slug } = useParams()
   const product = useProduct(slug)
+  // Jobs delivered with this service — proof that the listing is real work.
+  const relatedProjects = useProjectsForProduct(product?.id)
 
   if (!product) {
     return (
@@ -96,6 +99,43 @@ export function ProductDetailPage() {
           </Stack>
         </Box>
       </Box>
+
+      {relatedProjects.length > 0 && (
+        <Box sx={{ mt: 6 }}>
+          <Typography variant="h2" sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 600, mb: 2 }}>
+            {t('mkt.catalog.relatedProjects')}
+          </Typography>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
+            {relatedProjects.map((project) => (
+              <Box
+                key={project.id}
+                component={RouterLink}
+                to={projectPath(project)}
+                sx={{
+                  position: 'relative', borderRadius: 3, overflow: 'hidden', border: 1, borderColor: 'divider',
+                  textDecoration: 'none', display: 'block', transition: 'border-color .15s',
+                  '&:hover': { borderColor: 'primary.main' },
+                }}
+              >
+                <CatalogImage src={projectImagePath(project)} category={project.category} alt={L(project.title)} />
+                <Box
+                  sx={{
+                    position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column',
+                    justifyContent: 'flex-end', color: '#fff',
+                    background: 'linear-gradient(0deg, rgba(11,34,49,0.88), transparent 55%)',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ opacity: 0.85 }}>
+                    {L(project.location)}{project.year ? ` · ${project.year}` : ''}
+                  </Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{L(project.title)}</Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+
     </Wrap>
   )
 }

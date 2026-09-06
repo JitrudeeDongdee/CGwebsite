@@ -20,9 +20,9 @@ import { IsoThumbnail } from '../ui/ItemPreview'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
-import { useCatalog, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
+import { useCatalog, useCommunity, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
-import { productImagePath, projectPath } from '../catalog/images'
+import { productImagePath, projectImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
 
@@ -94,6 +94,7 @@ export function HomePage() {
   // Catalog hooks must run before the early return below — a hook that is
   // skipped on some renders breaks the hook order for the whole component.
   const { projects: allProjects } = useCatalog()
+  const communityItems = useCommunity()
   const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 3)
   // The hero card leads with the line's best seller.
   const heroProduct = useHeroProduct(cat ?? 'house')
@@ -141,18 +142,30 @@ export function HomePage() {
   // lines use their catalog photo.
   const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id === heroProduct.slug) : undefined
 
-  const defaultWork = [
-    { key: 'w1', place: 'ชัยภูมิ', year: '2567', title: `${t('mkt.nav.models')} 2 ${t('rooms.bedroom')}`, to: null as string | null },
-    { key: 'w2', place: 'ขอนแก่น', year: '2566', title: t('templates.oneBed'), to: null as string | null },
-    { key: 'w3', place: 'อุดรธานี', year: '2566', title: t('templates.shop'), to: null as string | null },
+  type WorkCard = {
+    key: string
+    place: string
+    year: string
+    title: string
+    to: string | null
+    /** Cover-image path (resolved by CatalogImage); undefined for the seed house samples. */
+    img?: string
+    category: ProductCategory
+  }
+  const defaultWork: WorkCard[] = [
+    { key: 'w1', place: 'ชัยภูมิ', year: '2567', title: `${t('mkt.nav.models')} 2 ${t('rooms.bedroom')}`, to: null, category: 'house' },
+    { key: 'w2', place: 'ขอนแก่น', year: '2566', title: t('templates.oneBed'), to: null, category: 'house' },
+    { key: 'w3', place: 'อุดรธานี', year: '2566', title: t('templates.shop'), to: null, category: 'house' },
   ]
-  const work = cat
+  const work: WorkCard[] = cat
     ? allProjects.filter((p) => p.category === cat).map((p) => ({
         key: p.id,
         place: L(p.location),
         year: p.year,
         title: L(p.title),
-        to: projectPath(p) as string | null,
+        to: projectPath(p),
+        img: projectImagePath(p),
+        category: p.category,
       }))
     : defaultWork
 
@@ -238,6 +251,12 @@ export function HomePage() {
                   <Box sx={{ borderRadius: 2, overflow: 'hidden' }}>
                     <CatalogImage
                       src={productImagePath(heroProduct)}
+                      // The hero card is the line's BEST-SELLING PRODUCT, so it shows
+                      // that product's own photo — borrowing a portfolio photo here
+                      // made the card look like a past job instead of something to
+                      // buy. With no product photo yet it falls back to the flat
+                      // category panel, which is at least honest about it.
+                      eager
                       category={heroProduct.category}
                       alt={L(heroProduct.name)}
                       height={HERO_MEDIA_HEIGHT}
@@ -400,6 +419,13 @@ export function HomePage() {
                     display: 'block', textDecoration: 'none',
                   }}
                 >
+                  {/* Cover photo behind the caption; falls back to the category-coloured
+                      panel (CatalogImage's own fallback) when a project has no image. */}
+                  {w.img && (
+                    <Box sx={{ position: 'absolute', inset: 0 }}>
+                      <CatalogImage src={w.img} category={w.category} alt={w.title} height="100%" />
+                    </Box>
+                  )}
                   <Box
                     sx={{
                       position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',
@@ -415,6 +441,47 @@ export function HomePage() {
             <Button variant="outlined" sx={{ mt: 3 }} component={RouterLink} to={allWorkTo} endIcon={<ArrowForwardIcon />}>
               {t('mkt.home.workAll')}
             </Button>
+          </Wrap>
+        </Box>
+      )}
+
+      {/* Public-benefit works & donations — shown on the house line (and /home). */}
+      {isHouseish && communityItems.length > 0 && (
+        <Box component="section" sx={{ py: 8, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
+          <Wrap>
+            <Stack direction="row" sx={{ mb: 4.5, alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ maxWidth: '42em' }}>
+                <Eyebrow>{t('mkt.home.communityEyebrow')}</Eyebrow>
+                <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
+                  {t('mkt.home.communityHeading')}
+                </Typography>
+                <Typography sx={{ mt: 1.5, color: 'text.secondary' }}>{t('mkt.home.communitySub')}</Typography>
+              </Box>
+              <Button component={RouterLink} to="/community" variant="outlined" endIcon={<ArrowForwardIcon />}>
+                {t('mkt.home.communityAll')}
+              </Button>
+            </Stack>
+            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+              {communityItems.slice(0, 3).map((item) => (
+                <Paper
+                  key={item.id}
+                  component={RouterLink}
+                  to="/community"
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden',
+                    display: 'block', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s',
+                    '&:hover': { borderColor: 'primary.main' },
+                  }}
+                >
+                  <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} />
+                  <Box sx={{ p: 2 }}>
+                    <Typography variant="caption" color="text.secondary">{L(item.location)} {item.year && `· ${item.year}`}</Typography>
+                    <Typography sx={{ fontWeight: 600, fontSize: 17, mt: 0.25 }}>{L(item.title)}</Typography>
+                  </Box>
+                </Paper>
+              ))}
+            </Box>
           </Wrap>
         </Box>
       )}

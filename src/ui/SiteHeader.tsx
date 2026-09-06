@@ -41,6 +41,7 @@ const NAV: { to: string; key: string }[] = [
   { to: '/home', key: 'mkt.nav.home' },
   { to: '/products', key: 'mkt.nav.products' },
   { to: '/portfolio', key: 'mkt.nav.work' },
+  { to: '/community', key: 'mkt.nav.community' },
   { to: '/about', key: 'mkt.nav.about' },
   { to: '/contact', key: 'mkt.nav.contact' },
 ]
