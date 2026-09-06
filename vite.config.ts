@@ -13,8 +13,6 @@ import react from '@vitejs/plugin-react'
  * og:url and og:image MUST be absolute, so they are emitted only when the domain
  * is actually known — a share card pointing at a guessed host is broken silently.
  */
-const SITE_URL = (process.env.SITE_URL || process.env.CF_PAGES_URL || '').replace(/\/+$/, '')
-
 const PRODUCTION_BRANCH = 'main'
 /** The branch being built. Cloudflare names this differently per product:
  *  CF_PAGES_BRANCH on Pages, WORKERS_CI_BRANCH on Workers Builds. */
@@ -24,6 +22,25 @@ const CI_BRANCH = process.env.CF_PAGES_BRANCH ?? process.env.WORKERS_CI_BRANCH
  *  writes the matching robots.txt. A local build has no branch var and counts as
  *  production, so `pnpm run build` keeps behaving normally. */
 const IS_PREVIEW = Boolean(CI_BRANCH) && CI_BRANCH !== PRODUCTION_BRANCH
+
+/**
+ * CF_PAGES_URL is the URL of *this deployment* — on Pages that is
+ * `https://<hash>.<project>.pages.dev`, and the hash changes every build. A
+ * sitemap or og:url pointing there would advertise a URL that is stale by the
+ * next deploy, so for a production build we drop the deployment label to get
+ * the stable `<project>.pages.dev`. SITE_URL, when set, always wins.
+ */
+function canonicalOrigin(raw: string | undefined, isProduction: boolean): string {
+  if (!raw) return ''
+  const url = raw.replace(/\/+$/, '')
+  if (!isProduction) return url
+  // 4+ labels on pages.dev means a per-deployment host; 3 is already canonical.
+  return url.replace(/^(https?:\/\/)[^.]+\.([^.]+\.pages\.dev)$/, '$1$2')
+}
+
+const SITE_URL = process.env.SITE_URL
+  ? process.env.SITE_URL.replace(/\/+$/, '')
+  : canonicalOrigin(process.env.CF_PAGES_URL, !IS_PREVIEW)
 
 /** The 1200x630 share card in public/brand — regenerate with `pnpm run og`. */
 const SHARE_IMAGE = 'og-card.png'
