@@ -34,17 +34,18 @@ export function buildTheme(mode: ThemeMode): Theme {
     scene: sceneColors[mode],
     palette: {
       mode,
+      // TDD brand red for both primary and secondary (red/black/white identity).
       primary: {
-        main: isDark ? brand.blueprint[300] : brand.blueprint[500],
-        dark: brand.blueprint[700],
-        light: brand.blueprint[100],
-        contrastText: isDark ? brand.neutral[950] : brand.neutral[0],
+        main: isDark ? brand.tdd[400] : brand.tdd[500],
+        dark: brand.tdd[700],
+        light: brand.tdd[100],
+        contrastText: brand.neutral[0],
       },
       secondary: {
-        main: isDark ? brand.terracotta[300] : brand.terracotta[500],
-        dark: brand.terracotta[700],
-        light: brand.terracotta[100],
-        contrastText: isDark ? brand.neutral[950] : brand.neutral[0],
+        main: isDark ? brand.tdd[400] : brand.tdd[500],
+        dark: brand.tdd[700],
+        light: brand.tdd[100],
+        contrastText: brand.neutral[0],
       },
       background: {
         default: isDark ? brand.neutral[950] : brand.neutral[50],

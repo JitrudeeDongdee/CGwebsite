@@ -20,6 +20,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { SettingsMenu } from './SettingsMenu'
 import { useAuth } from '../auth/AuthProvider'
+import { LogoMark } from './Logo'
 import { ensureMarketingI18n } from '../marketing/i18n'
 
 ensureMarketingI18n()
@@ -45,15 +46,15 @@ export function Brand() {
       spacing={1}
       sx={{ alignItems: 'center', textDecoration: 'none', color: 'text.primary', flexShrink: 0 }}
     >
-      <Box
-        sx={{
-          width: 28, height: 28, borderRadius: 1.5, border: 2, borderColor: 'primary.main',
-          color: 'primary.main', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12,
-        }}
-      >
-        CG
-      </Box>
-      <Typography sx={{ fontWeight: 700, letterSpacing: '-0.02em', fontSize: 18 }}>CG Home</Typography>
+      <LogoMark size={30} />
+      <Stack sx={{ lineHeight: 1 }}>
+        <Typography sx={{ fontWeight: 800, letterSpacing: '0.01em', fontSize: 15, lineHeight: 1.05 }}>
+          THAI DONGDEE
+        </Typography>
+        <Typography sx={{ fontSize: 9, letterSpacing: '0.24em', fontWeight: 600, color: 'text.secondary' }}>
+          ENGINEERING
+        </Typography>
+      </Stack>
     </Stack>
   )
 }

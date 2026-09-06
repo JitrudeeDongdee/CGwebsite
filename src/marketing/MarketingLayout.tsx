@@ -49,7 +49,7 @@ function MarketingFooter() {
         </Box>
         <Divider sx={{ my: 3 }} />
         <Stack direction="row" sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-          <Typography variant="caption" color="text.secondary">© 2567 CG Home. {t('mkt.footer.rights')}.</Typography>
+          <Typography variant="caption" color="text.secondary">© 2567 Thai Dongdee Engineering. {t('mkt.footer.rights')}.</Typography>
           <Typography variant="caption" color="text.secondary">{t('mkt.placeholderNote')}</Typography>
         </Stack>
       </Box>

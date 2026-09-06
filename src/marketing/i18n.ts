@@ -74,7 +74,7 @@ const th = {
   about: {
     eyebrow: 'เกี่ยวกับเรา',
     title: 'สร้างบ้านน็อคดาวน์คุณภาพ ในราคาที่จับต้องได้',
-    body: 'CG เริ่มจากงานบ้านน็อคดาวน์สำเร็จรูป และเติบโตสู่งานอิเล็กทรอนิกส์ เฟอร์นิเจอร์ และบริการเช่ารถก่อสร้าง เรารวมการออกแบบ ผลิต และติดตั้งไว้ในทีมเดียว เพื่อให้ลูกค้าคุมงบและคุณภาพได้ตั้งแต่ต้นจนจบ',
+    body: 'TDD (หจก. ไทย ดวงดี เอ็นจิเนียริ่ง) เริ่มจากงานบ้านน็อคดาวน์สำเร็จรูป และเติบโตสู่งานอิเล็กทรอนิกส์ เฟอร์นิเจอร์ และบริการเช่ารถก่อสร้าง เรารวมการออกแบบ ผลิต และติดตั้งไว้ในทีมเดียว เพื่อให้ลูกค้าคุมงบและคุณภาพได้ตั้งแต่ต้นจนจบ',
     val1: 'โปร่งใส', val1d: 'ราคาชัดเจนตั้งแต่แรก ไม่มีบวกเพิ่มทีหลัง',
     val2: 'ครบวงจร', val2d: 'ออกแบบ ผลิต ขนส่ง ติดตั้ง ในทีมเดียว',
     val3: 'รวดเร็ว', val3d: 'บ้านสำเร็จรูปติดตั้งไว ใช้เวลาน้อยกว่าก่อสร้างปกติ',
@@ -161,7 +161,7 @@ const en = {
   about: {
     eyebrow: 'About us',
     title: 'Quality knock-down homes at a price you can reach',
-    body: 'CG started with prefab knock-down houses and grew into electronics, furniture, and construction-equipment rental. We keep design, manufacturing and installation under one roof so customers control budget and quality from start to finish.',
+    body: 'TDD (Thai Dongdee Engineering) started with prefab knock-down houses and grew into electronics, furniture, and construction-equipment rental. We keep design, manufacturing and installation under one roof so customers control budget and quality from start to finish.',
     val1: 'Transparent', val1d: 'Clear pricing up front, no surprises later.',
     val2: 'End to end', val2d: 'Design, build, deliver and install in one team.',
     val3: 'Fast', val3d: 'Prefab installs quickly — less time than conventional builds.',

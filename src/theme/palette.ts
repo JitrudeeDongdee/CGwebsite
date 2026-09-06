@@ -9,6 +9,18 @@
  */
 
 export const brand = {
+  /** TDD (Thai Dongdee Engineering) brand red — official #C8102E. Primary. */
+  tdd: {
+    50: '#FCEAEC',
+    100: '#F4B9C0',
+    300: '#E75C70',
+    400: '#DC3A50',
+    500: '#C8102E',
+    700: '#98091F',
+    900: '#5C0512',
+  },
+  /** Brand ink (near-black) from the TDD sheet. */
+  ink: '#17130F',
   blueprint: {
     50: '#EAF1F6',
     100: '#C7DAE8',
