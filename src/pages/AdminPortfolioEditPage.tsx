@@ -278,7 +278,13 @@ export function AdminPortfolioEditPage() {
               ),
             }),
       }))
-      setMessage({ kind: 'success', text: `อัปโหลด ${added.length} รูปแล้ว` })
+      // The file is in Storage the moment it uploads, but the row only learns
+      // about it on save — and nothing said so, so people uploaded, left, and
+      // found the photo gone. Say the next step out loud.
+      setMessage({
+        kind: 'info',
+        text: `อัปโหลด ${added.length} รูปแล้ว — กดปุ่ม "${editing ? 'อัปเดตผลงาน' : 'บันทึก'}" ด้านล่างเพื่อบันทึกรูปเข้าผลงานนี้`,
+      })
     } catch (error) {
       setMessage({ kind: 'error', text: error instanceof Error ? error.message : String(error) })
     } finally {
@@ -297,11 +303,10 @@ export function AdminPortfolioEditPage() {
       )
       if (images.length === 0) return
       event.preventDefault()
-      if (pasteTarget === null) {
-        setMessage({ kind: 'info', text: 'คลิกที่การ์ดอัปเดตที่ต้องการก่อน แล้วค่อยวางรูป' })
-        return
-      }
-      void addFiles(images, pasteTarget)
+      // No card in focus is not an error — the photo belongs to the job rather
+      // than to one update. Refusing the paste here meant a job with no post at
+      // all had nowhere to put a photo.
+      void addFiles(images, pasteTarget ?? undefined)
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
@@ -502,24 +507,29 @@ export function AdminPortfolioEditPage() {
                     sx={{ width: 160, aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 2, border: 2, borderColor: 'secondary.main' }}
                   />
                   <Typography variant="body2" color="text.secondary">
-                    เปลี่ยนได้โดยกด "ตั้งเป็นปก" ใต้รูปที่ต้องการในไทม์ไลน์ด้านล่าง
+                    เปลี่ยนได้โดยกด "ตั้งเป็นปก" ใต้รูปที่ต้องการ — จะเป็นรูปของงานหรือรูปในไทม์ไลน์ก็ได้
                   </Typography>
                 </Stack>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  ยังไม่มีรูป — เพิ่มรูปในอัปเดตของไทม์ไลน์ด้านล่าง แล้วเลือกรูปปกได้
+                  ยังไม่มีรูป — เพิ่มรูปด้านล่าง (รูปของงาน หรือรูปในไทม์ไลน์) แล้วเลือกรูปปกได้
                 </Typography>
               )}
             </Box>
 
-            {/* Photos saved before updates carried their own — kept editable here
-                so they aren't stranded, but nothing new is added this way. */}
-            {form.images.length > 0 && (
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                  รูปที่ยังไม่ได้ผูกกับอัปเดต ({form.images.length})
-                </Typography>
-                <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))' }}>
+            {/* Photos that belong to the job rather than to one update. Always
+                shown, with its own add tile: plenty of jobs have photos and no
+                Facebook post at all, and routing every upload through a timeline
+                entry forced people to invent an update just to keep a photo. */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                รูปของงาน (ไม่ผูกกับอัปเดต){form.images.length > 0 ? ` (${form.images.length})` : ''}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                กด + เพื่อเลือกไฟล์ หรือวางจากคลิปบอร์ด (⌘V) เมื่อไม่ได้เลือกการ์ดอัปเดตไว้ · ไม่ต้องมีลิงก์โพสต์ก็ลงรูปได้
+                {busy === 'upload' ? ' · กำลังอัปโหลด…' : ''}
+              </Typography>
+              <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))' }}>
                   {form.images.map((path) => (
                     <Box key={path}>
                       <Box sx={{ position: 'relative' }}>
@@ -550,9 +560,33 @@ export function AdminPortfolioEditPage() {
                       </Button>
                     </Box>
                   ))}
+
+                  <Box
+                    component="label"
+                    onClick={() => setActiveSource(null)}
+                    sx={{
+                      aspectRatio: '4 / 3', display: 'grid', placeItems: 'center', cursor: 'pointer',
+                      border: '2px dashed', borderColor: 'divider', borderRadius: 2, color: 'text.secondary',
+                      '&:hover': { borderColor: 'primary.main', color: 'primary.main' },
+                    }}
+                  >
+                    <input
+                      hidden
+                      multiple
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        void addFiles(e.target.files)
+                        e.target.value = ''
+                      }}
+                    />
+                    <Stack sx={{ alignItems: 'center' }}>
+                      <AddIcon sx={{ fontSize: 28 }} />
+                      <Typography variant="caption">เพิ่มรูป</Typography>
+                    </Stack>
+                  </Box>
                 </Box>
               </Box>
-            )}
 
           </Stack>
         </Paper>
