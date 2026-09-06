@@ -1,0 +1,13 @@
+# Cloudflare Pages routing rules. Nearest match wins, so order matters:
+# specific rules first, the SPA catch-all last.
+
+# Global rule: every build exposes /version. This is a static site, so the real
+# file is version.json (emitted at build time by vite.config.ts) and this rewrite
+# gives it the required path.
+/version    /version.json   200
+
+# React Router uses BrowserRouter (real paths, no #). Without this, opening
+# /products directly — or just pressing F5 anywhere — is a 404 from the CDN,
+# because no such file exists on disk. 200 = rewrite (URL stays), NOT a redirect.
+# Static assets that DO exist are served before this rule is consulted.
+/*          /index.html     200
