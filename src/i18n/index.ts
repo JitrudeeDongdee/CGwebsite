@@ -21,13 +21,16 @@ i18n
       en: { translation: en },
     },
     supportedLngs: [...SUPPORTED_LANGUAGES],
-    // Thai audience first: anything that isn't detected as English falls
-    // back to Thai rather than to the i18next default of English.
+    // Thai audience first: the site opens in Thai for everyone, whatever the
+    // browser is set to. Only an explicit choice from the language switcher
+    // (stored in localStorage) changes it — hence 'localStorage' being the ONLY
+    // detector; adding 'navigator' back would open the site in English for
+    // anyone with an English browser.
     fallbackLng: 'th',
     // Treat 'en-US', 'th-TH' etc. as their base language.
     load: 'languageOnly',
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       lookupLocalStorage: 'cg:language',
       caches: ['localStorage'],
     },

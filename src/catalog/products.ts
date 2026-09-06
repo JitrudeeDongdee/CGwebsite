@@ -133,6 +133,33 @@ export const PRODUCTS: Product[] = [
     specs: [{ label: { th: 'พร้อม', en: 'Includes' }, value: { th: 'คนขับ', en: 'Operator' } }],
     featured: false,
   },
+  {
+    id: 'p-fiber-cabling',
+    slug: 'fiber-optic-cabling',
+    category: 'contracting',
+    name: { th: 'รับเหมาเดินสายไฟเบอร์ออปติก', en: 'Fiber-optic cabling' },
+    shortDesc: {
+      th: 'เดินสายไฟเบอร์ออปติกและงานระบบเครือข่าย พร้อมทีมช่างและอุปกรณ์',
+      en: 'Fiber-optic cabling and network systems, with crew and equipment.',
+    },
+    priceFrom: null,
+    specs: [{ label: { th: 'คิดราคา', en: 'Pricing' }, value: { th: 'ตามหน้างาน', en: 'Per site' } }],
+    featured: true,
+    bestSeller: true,
+  },
+  {
+    id: 'p-electrical-work',
+    slug: 'electrical-systems',
+    category: 'contracting',
+    name: { th: 'งานระบบไฟฟ้า', en: 'Electrical systems' },
+    shortDesc: {
+      th: 'ติดตั้งและซ่อมบำรุงระบบไฟฟ้าอาคาร พร้อมรับประกันงาน',
+      en: 'Building electrical installation and maintenance, with a warranty.',
+    },
+    priceFrom: null,
+    specs: [{ label: { th: 'คิดราคา', en: 'Pricing' }, value: { th: 'ตามหน้างาน', en: 'Per site' } }],
+    featured: false,
+  },
 ]
 
 export function getProduct(slug: string): Product | undefined {

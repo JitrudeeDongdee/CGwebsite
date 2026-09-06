@@ -32,6 +32,7 @@ function toProduct(row: Record<string, unknown>): Product {
     priceFrom: row.price_from == null ? null : Number(row.price_from),
     priceUnit: (row.price_unit as Product['priceUnit']) ?? undefined,
     specs: (row.specs as Product['specs']) ?? [],
+    imagePath: (row.image_path as string) ?? undefined,
     featured: Boolean(row.featured),
     bestSeller: Boolean(row.best_seller),
   }
@@ -47,7 +48,9 @@ function toProject(row: Record<string, unknown>): Project {
     category: row.category as Project['category'],
     area: (row.area as string) ?? undefined,
     description: row.description as Project['description'],
+    imagePath: (row.image_path as string) ?? undefined,
     featured: Boolean(row.featured),
+    sourceUrl: (row.source_url as string) ?? undefined,
   }
 }
 

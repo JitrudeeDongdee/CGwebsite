@@ -12,6 +12,7 @@ import Link from '@mui/material/Link'
 import { useProduct } from '../catalog/CatalogProvider'
 import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
@@ -48,7 +49,7 @@ export function ProductDetailPage() {
 
       <Box sx={{ display: 'grid', gap: { xs: 3, md: 5 }, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, mt: 2, alignItems: 'start' }}>
         <Paper elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
-          <CatalogImage src={`products/${product.slug}.jpg`} category={product.category} alt={L(product.name)} ratio="4 / 3" />
+          <CatalogImage src={productImagePath(product)} category={product.category} alt={L(product.name)} ratio="4 / 3" />
         </Paper>
 
         <Box>

@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { devApi } from './vite-dev-api.mts'
 
 /**
  * The public origin, e.g. https://www.tdd.co.th — set as SITE_URL in the host's
@@ -175,7 +176,8 @@ function secretGuard(mode: string): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [secretGuard(mode), react(), siteMeta()],
+  // devApi is development-only (apply: 'serve') — see vite-dev-api.mts.
+  plugins: [secretGuard(mode), react(), siteMeta(), devApi()],
   // Honour the PORT the launcher assigns (autoPort); fall back to Vite's default.
   server: { port: process.env.PORT ? Number(process.env.PORT) : undefined },
 }))

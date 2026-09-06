@@ -12,6 +12,7 @@ import HomeIcon from '@mui/icons-material/Home'
 import MemoryIcon from '@mui/icons-material/Memory'
 import ChairIcon from '@mui/icons-material/Chair'
 import AgricultureIcon from '@mui/icons-material/Agriculture'
+import EngineeringIcon from '@mui/icons-material/Engineering'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import StarIcon from '@mui/icons-material/Star'
 import { PLAN_TEMPLATES } from '../drawing/templates'
@@ -21,6 +22,7 @@ import { ensureMarketingI18n } from '../marketing/i18n'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
 import { useCatalog, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { productImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
 
@@ -111,6 +113,7 @@ export function HomePage() {
     { cat: 'electronics' as const, icon: <MemoryIcon />, title: t('mkt.home.svc2'), desc: t('mkt.home.svc2d') },
     { cat: 'furniture' as const, icon: <ChairIcon />, title: t('mkt.home.svc3'), desc: t('mkt.home.svc3d') },
     { cat: 'rental' as const, icon: <AgricultureIcon />, title: t('mkt.home.svc4'), desc: t('mkt.home.svc4d') },
+    { cat: 'contracting' as const, icon: <EngineeringIcon />, title: t('mkt.home.svc5'), desc: t('mkt.home.svc5d') },
   ]
   const activeService = cat ? services.find((s) => s.cat === cat)! : null
 
@@ -149,7 +152,7 @@ export function HomePage() {
         place: L(p.location),
         year: p.year,
         title: L(p.title),
-        to: `/portfolio/${p.slug}` as string | null,
+        to: projectPath(p) as string | null,
       }))
     : defaultWork
 
@@ -234,7 +237,7 @@ export function HomePage() {
                 ) : (
                   <Box sx={{ borderRadius: 2, overflow: 'hidden' }}>
                     <CatalogImage
-                      src={`products/${heroProduct.slug}.jpg`}
+                      src={productImagePath(heroProduct)}
                       category={heroProduct.category}
                       alt={L(heroProduct.name)}
                       height={HERO_MEDIA_HEIGHT}
@@ -356,7 +359,7 @@ export function HomePage() {
                     '&:hover': { borderColor: 'primary.main' },
                   }}
                 >
-                  <CatalogImage src={`products/${p.slug}.jpg`} category={p.category} alt={L(p.name)} />
+                  <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
                   <Box sx={{ p: 2 }}>
                     <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, minHeight: 40 }}>{L(p.shortDesc)}</Typography>

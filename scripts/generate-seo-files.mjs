@@ -50,6 +50,17 @@ const site = process.env.SITE_URL
   : canonicalOrigin(process.env.CF_PAGES_URL, !isPreview)
 const sitemapPath = join(root, 'public/sitemap.xml')
 
+/** Pull `{ category, slug }` pairs out of a catalog seed file, in file order. */
+function entries(file) {
+  const src = readFileSync(join(root, 'src/catalog', file), 'utf8')
+  const found = [...src.matchAll(/slug:\s*'([^']+)'[\s\S]*?category:\s*'([^']+)'/g)].map((m) => ({
+    slug: m[1],
+    category: m[2],
+  }))
+  if (found.length === 0) throw new Error(`no slug/category pairs found in ${file} — did the format change?`)
+  return found
+}
+
 /** Pull the `slug: '...'` values out of a catalog seed file. */
 function slugs(file) {
   const src = readFileSync(join(root, 'src/catalog', file), 'utf8')
@@ -68,7 +79,12 @@ const routes = [
   { path: '/products', priority: '0.8', changefreq: 'weekly' },
   ...slugs('products.ts').map((s) => ({ path: `/products/${s}`, priority: '0.7', changefreq: 'monthly' })),
   { path: '/portfolio', priority: '0.8', changefreq: 'monthly' },
-  ...slugs('projects.ts').map((s) => ({ path: `/portfolio/${s}`, priority: '0.6', changefreq: 'yearly' })),
+  // Project pages live under their category: /portfolio/<category>/<slug>.
+  ...entries('projects.ts').map((p) => ({
+    path: `/portfolio/${p.category}/${p.slug}`,
+    priority: '0.6',
+    changefreq: 'yearly',
+  })),
   { path: '/about', priority: '0.5', changefreq: 'yearly' },
   { path: '/contact', priority: '0.5', changefreq: 'yearly' },
   { path: '/design', priority: '0.7', changefreq: 'monthly' },

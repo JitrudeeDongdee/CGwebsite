@@ -15,6 +15,7 @@ import FacebookIcon from '@mui/icons-material/Facebook'
 import PlaceIcon from '@mui/icons-material/Place'
 import { CONTACT_CHANNELS, contactHref, contactLabelKey, contactValue, type ContactKind } from '../content/contact'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { messagesReachTheTeam, sendContactMessage } from '../content/messages'
 
 ensureMarketingI18n()
 
@@ -22,30 +23,33 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>
 }
 
-const STORAGE_KEY = 'cg:contact-messages'
-
 export function ContactPage() {
   const { t, i18n } = useTranslation()
   const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' })
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // No backend yet — keep messages in localStorage so the form is real-ish.
+    setFailed(false)
+    setSending(true)
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      const list = raw ? JSON.parse(raw) : []
-      list.push({ ...form, at: new Date().toISOString() })
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
-    } catch {
-      /* ignore storage errors */
+      await sendContactMessage(form)
+      setSent(true)
+      setForm({ name: '', phone: '', email: '', message: '' })
+    } catch (err) {
+      // Never clear the form on failure — the customer would have to retype
+      // everything, and most people just leave instead.
+      console.error('[contact] could not send the message:', err)
+      setFailed(true)
+    } finally {
+      setSending(false)
     }
-    setSent(true)
-    setForm({ name: '', phone: '', email: '', message: '' })
   }
 
   // Same source as the footer: `src/content/contact.json`.
@@ -87,12 +91,28 @@ export function ContactPage() {
               <TextField label={t('mkt.contact.email')} type="email" value={form.email} onChange={set('email')} fullWidth size="small" />
             </Stack>
             <TextField label={t('mkt.contact.message')} value={form.message} onChange={set('message')} multiline minRows={4} fullWidth size="small" />
-            <Button type="submit" variant="contained" color="secondary" size="large" sx={{ alignSelf: 'flex-start' }}>
-              {t('mkt.contact.send')}
+            <Button
+              type="submit"
+              variant="contained"
+              color="secondary"
+              size="large"
+              disabled={sending}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              {t(sending ? 'mkt.contact.sending' : 'mkt.contact.send')}
             </Button>
-            <Alert severity="info" variant="outlined">
-              <Typography variant="caption">{t('mkt.contact.localNotice')}</Typography>
-            </Alert>
+            {failed && (
+              <Alert severity="error" onClose={() => setFailed(false)}>
+                {t('mkt.contact.failed')}
+              </Alert>
+            )}
+            {/* Only shown while there is no backend — with one, the message really
+                does reach the team and the warning would be a lie. */}
+            {!messagesReachTheTeam && (
+              <Alert severity="info" variant="outlined">
+                <Typography variant="caption">{t('mkt.contact.localNotice')}</Typography>
+              </Alert>
+            )}
           </Stack>
         </Paper>
 

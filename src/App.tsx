@@ -18,6 +18,9 @@ import { RouteFallback } from './ui/RouteFallback'
  */
 const DesignerPage = lazy(() => import('./pages/DesignerPage').then((m) => ({ default: m.DesignerPage })))
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })))
+const AdminPortfolioPage = lazy(() =>
+  import('./pages/AdminPortfolioPage').then((m) => ({ default: m.AdminPortfolioPage })),
+)
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })))
@@ -63,6 +66,9 @@ function App() {
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:slug" element={<ProductDetailPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
+        {/* The category is in the path so the page can show service-specific CTAs. */}
+        <Route path="/portfolio/:service/:slug" element={<ProjectDetailPage />} />
+        {/* Links made before that change (and any typed by hand) still resolve. */}
         <Route path="/portfolio/:slug" element={<ProjectDetailPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
@@ -72,6 +78,7 @@ function App() {
         <Route path="/design" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/portfolio" element={<AdminPortfolioPage />} />
       </Route>
 
       {/* Old service URLs, before they moved under /home. */}

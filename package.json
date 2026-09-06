@@ -8,6 +8,7 @@
     "dev": "vite",
     "seo": "node scripts/generate-seo-files.mjs",
     "og": "python3 scripts/make-og-card.py",
+    "images:upload": "node scripts/upload-catalog-images.mjs",
     "prebuild": "node scripts/generate-seo-files.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",

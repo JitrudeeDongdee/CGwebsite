@@ -86,6 +86,19 @@ export const PROJECTS: Project[] = [
     },
     featured: false,
   },
+  {
+    id: 'j-fiber-site',
+    slug: 'fiber-cabling-udon',
+    title: { th: 'เดินสายไฟเบอร์ออปติก', en: 'Fiber-optic cabling' },
+    location: { th: 'อุดรธานี', en: 'Udon Thani' },
+    year: '2567',
+    category: 'contracting',
+    description: {
+      th: 'รับเหมาเดินสายไฟเบอร์ออปติกและงานระบบให้อาคารพาณิชย์',
+      en: 'Fiber-optic cabling and systems work for a commercial building.',
+    },
+    featured: false,
+  },
 ]
 
 export function getProject(slug: string): Project | undefined {
