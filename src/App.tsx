@@ -17,14 +17,24 @@ import { RouteFallback } from './ui/RouteFallback'
  * it would just add a round trip before the first paint.
  */
 const DesignerPage = lazy(() => import('./pages/DesignerPage').then((m) => ({ default: m.DesignerPage })))
+const AdminHomePage = lazy(() => import('./pages/AdminHomePage').then((m) => ({ default: m.AdminHomePage })))
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })))
-// Dev-only. Guarding the dynamic import behind `import.meta.env.DEV` (statically
-// `false` in a prod build) puts the `import()` in a dead branch, so Rollup drops
-// the whole AdminPortfolioPage chunk from the deployed bundle — the route below is
-// gated the same way. The tool needs `/api/*` from `vite-dev-api.mts`, which only
-// runs under `pnpm run dev`.
-const AdminPortfolioPage = import.meta.env.DEV
-  ? lazy(() => import('./pages/AdminPortfolioPage').then((m) => ({ default: m.AdminPortfolioPage })))
+// The two admin portfolio screens. Guarding the dynamic import behind
+// `import.meta.env.DEV` (statically `false` in a prod build) puts the `import()`
+// in a dead branch, so Rollup drops both chunks from the deployed bundle — the
+// routes below are gated the same way. They need `/api/*` from
+// `vite-dev-api.mts`, which only runs under `pnpm run dev`.
+const AdminPortfolioListPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/AdminPortfolioListPage').then((m) => ({ default: m.AdminPortfolioListPage })))
+  : undefined
+const AdminPortfolioEditPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/AdminPortfolioEditPage').then((m) => ({ default: m.AdminPortfolioEditPage })))
+  : undefined
+const AdminProductListPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/AdminProductListPage').then((m) => ({ default: m.AdminProductListPage })))
+  : undefined
+const AdminProductEditPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/AdminProductEditPage').then((m) => ({ default: m.AdminProductEditPage })))
   : undefined
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })))
@@ -33,6 +43,7 @@ const ProductsPage = lazy(() => import('./pages/ProductsPage').then((m) => ({ de
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })))
 const PortfolioPage = lazy(() => import('./pages/PortfolioPage').then((m) => ({ default: m.PortfolioPage })))
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage })))
+const CommunityPage = lazy(() => import('./pages/CommunityPage').then((m) => ({ default: m.CommunityPage })))
 
 /**
  * Chrome for the app routes (designer / admin / login): the shared `SiteHeader`
@@ -75,6 +86,9 @@ function App() {
         <Route path="/portfolio/:service/:slug" element={<ProjectDetailPage />} />
         {/* Links made before that change (and any typed by hand) still resolve. */}
         <Route path="/portfolio/:slug" element={<ProjectDetailPage />} />
+        {/* Public-benefit works & donations — its own public page (reads published
+            community rows through the anon client, so it works in production too). */}
+        <Route path="/community" element={<CommunityPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
       </Route>
@@ -82,12 +96,30 @@ function App() {
       <Route element={<AppShell />}>
         <Route path="/design" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        {/* Dev-only (see the AdminPortfolioPage import above): present under
-            `pnpm run dev`, tree-shaken out of prod, where the URL falls through
-            to the catch-all redirect. */}
-        {import.meta.env.DEV && AdminPortfolioPage && (
-          <Route path="/admin/portfolio" element={<AdminPortfolioPage />} />
+        {/* Admin home lists the modules; the legacy leads table moves to /admin/leads. */}
+        <Route path="/admin" element={<AdminHomePage />} />
+        <Route path="/admin/leads" element={<AdminPage />} />
+        {/* Dev-only: the admin API these screens call lives in the dev server
+            (vite-dev-api.mts), so in a production build the routes are tree-shaken
+            out and the URLs fall through to the catch-all redirect. The list is
+            for scanning and publishing; the editor is its own screen. */}
+        {AdminProductListPage && AdminProductEditPage && (
+          <>
+            <Route path="/admin/products" element={<AdminProductListPage />} />
+            <Route path="/admin/products/edit" element={<AdminProductEditPage />} />
+            <Route path="/admin/products/edit/:id" element={<AdminProductEditPage />} />
+          </>
+        )}
+        {AdminPortfolioListPage && AdminPortfolioEditPage && (
+          <>
+            <Route path="/admin/portfolio" element={<AdminPortfolioListPage />} />
+            <Route path="/admin/portfolio/edit" element={<AdminPortfolioEditPage />} />
+            <Route path="/admin/portfolio/edit/:id" element={<AdminPortfolioEditPage />} />
+            {/* Same two screens, in "community" mode (chosen by the path). */}
+            <Route path="/admin/community" element={<AdminPortfolioListPage />} />
+            <Route path="/admin/community/edit" element={<AdminPortfolioEditPage />} />
+            <Route path="/admin/community/edit/:id" element={<AdminPortfolioEditPage />} />
+          </>
         )}
       </Route>
 
