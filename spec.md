@@ -204,7 +204,7 @@ use it (import cycle).
 **Still open after this phase:** per-route `<title>`/meta/OG (needs prerender or SSG) · a real 1200×630 share
 image (`brand/logo-shield.png` is 540×515 and will be cropped) · a PDPA cookie-consent banner before GA4 counts as compliant · custom domain + DNS.
 
-**📋 Phase 3 — PLANNED: real backend (Supabase) + admin for catalog content.**
+**🔨 Phase 3 — IN PROGRESS: real backend (Supabase) + admin for catalog content.** Schema/RLS/repositories/Storage + a dev-only portfolio import have landed on `feat/supabase-catalog-admin` (see Current state); real auth and the production admin UI are still pending.
 
 **Decision (2026-09-06, reverses the earlier "separate repo" note): the admin stays in THIS repo**, as a
 self-contained `src/admin/` folder behind lazy-loaded `/admin/*` routes. Reasons: `Product` / `Project` /
@@ -344,5 +344,15 @@ The 2D view is being moved off react-three-fiber onto a **pure-SVG vector render
 - **TODO next**: (1) remove the right-panel Material-grade toggle → single estimate + a bottom-toolbar **material mode** where clicking a room assigns materials for a detailed per-area estimate (requested, not yet designed/built); (2) PDF A4 export (cover + plan + elevations + 3D snapshot + door/window schedule + BOQ) auto-download after design; (3) delete the now-dead r3f `scene/` 2D files once the SVG editor is signed off; (4) touch-device testing of the new pointer path.
 
 ## Current state
-On branch `spike/drawing-engine` (latest commit `644f181`, 2026-07-27). **Working tree has substantial uncommitted work** added this session — plan gallery + `planFile.ts` + `public/plans/*`, mock auth (`src/auth/`), `/login` page, iso thumbnails, a traced pilot plan (`public/plans/chaiyaphum-bedroom-floor.json`) — plus an in-progress `src/sheet/PlanSheet.tsx` (printable plan sheet) being edited by the user. `pnpm run build` passes with only the chunk-size warning. Nothing committed/pushed yet; per the no-direct-push rule a human opens any PR.
-The app is a working bilingual, themed, MUI house-design tool with 2D editing, 3D massing, pricing, lead capture, a plan gallery with import/export, and a visual login page. Next concrete steps: (1) build the company website per the Roadmap above (Phase 1: marketing shell + Home), (2) finish the remaining Chaiyaphum floor plans traced from the `.skp` (approximate, one plan per floor), (3) **Phase 3** — Supabase backend + repositories + real auth + admin for catalog content (see Roadmap; backend lands before any admin UI), (4) real pricing rates, (5) SEO/prerender + route code-splitting.
+Phases 1, 2, 2.5 are live on `main` (merged via PR #5, `origin/main` tip `081314d`). **Phase 3 is now partly landed** on branch **`feat/supabase-catalog-admin`** (pushed 2026-09-07, PR not yet opened — per NEVER MERGE a human opens/merges it). That branch carries five commits on top of `main`:
+- `feat(db)` — Supabase schema + RLS + catalog repository + migrations (`supabase/migrations/`).
+- `ci` — bump `upload-artifact` to v5.
+- `feat(db)` — `projects.source_url` column + public `catalog` image bucket.
+- `fix(security)` — build fails if a secret gains a `VITE_` prefix.
+- `feat(catalog)` — Supabase-backed catalog behind `CatalogProvider` (falls back to the seed arrays when `VITE_SUPABASE_URL` is unset), `storage.ts`/`images.ts` image resolution, marketing pages read through the repo + `SmartImage`, a **dev-only** Facebook-unfurl portfolio import (`vite-dev-api.mts` + `AdminPortfolioPage`, no auth yet — banner says so), and the **`contracting`** service category (see the contracting note above).
+
+**Done in Phase 3 so far:** 3.1 schema, 3.2 RLS, 3.3 repositories (`SupabaseProduct/ProjectRepository` + seed fallback + `CatalogProvider` — marketing pages no longer import `PRODUCTS`/`PROJECTS` directly), catalog Storage bucket + `imageUrl()`. **Still pending:** 3.4 real Supabase Auth (still the localStorage mock), the full admin UI (only the dev-only portfolio import exists — products/pricing/leads screens + `AdminGuard` + staff-auth gate not built), and 3.6 RLS verification against the live API.
+
+Verification for the pushed branch: `tsc -b` clean, `oxlint` warnings-only (pre-existing fast-refresh `only-export-components`), rebased onto `origin/main` with no conflicts, `/home/contracting` + `/products?category=contracting` render with no console errors.
+
+The app is a working bilingual, themed, MUI house-design tool with 2D editing, 3D massing, pricing, lead capture, a plan gallery with import/export, a marketing site (Home/Products/Portfolio/About/Contact, per-service home pages), and a visual login page. Next concrete steps: (1) open + merge the `feat/supabase-catalog-admin` PR, (2) **Phase 3.4/3.5** — real Supabase Auth + the production admin UI behind `AdminGuard` (move the dev import handlers to a `supabase/functions/import-post` Edge Function gated on staff role), (3) real pricing rates, (4) finish the remaining Chaiyaphum floor plans traced from the `.skp`, (5) per-route meta/OG via prerender/SSG.
