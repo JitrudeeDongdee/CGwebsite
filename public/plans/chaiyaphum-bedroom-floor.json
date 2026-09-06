@@ -1,0 +1,40 @@
+{
+  "format": "cg-house-plan",
+  "version": 1,
+  "name": "บ้านชัยภูมิ – ชั้นห้องนอน (ร่าง)",
+  "width": 5,
+  "depth": 6,
+  "state": {
+    "nodes": {
+      "n0": { "id": "n0", "x": 0, "y": 0 },
+      "n1": { "id": "n1", "x": 5, "y": 0 },
+      "n2": { "id": "n2", "x": 5, "y": 6 },
+      "n3": { "id": "n3", "x": 0, "y": 6 },
+      "n4": { "id": "n4", "x": 3.3, "y": 6 },
+      "n5": { "id": "n5", "x": 3.3, "y": 4 },
+      "n6": { "id": "n6", "x": 5, "y": 4 }
+    },
+    "walls": [
+      { "id": "w0", "a": "n0", "b": "n1" },
+      { "id": "w1", "a": "n1", "b": "n6" },
+      { "id": "w2", "a": "n6", "b": "n2" },
+      { "id": "w3", "a": "n2", "b": "n4" },
+      { "id": "w4", "a": "n4", "b": "n3" },
+      { "id": "w5", "a": "n3", "b": "n0" },
+      { "id": "w6", "a": "n4", "b": "n5" },
+      { "id": "w7", "a": "n5", "b": "n6" }
+    ],
+    "openings": [
+      { "id": "o0", "wallId": "w0", "offset": 1.0, "width": 0.9, "kind": "door" },
+      { "id": "o1", "wallId": "w1", "offset": 2.0, "width": 1.0, "kind": "window" },
+      { "id": "o2", "wallId": "w4", "offset": 1.65, "width": 1.5, "kind": "window" },
+      { "id": "o3", "wallId": "w5", "offset": 3.0, "width": 1.5, "kind": "window" },
+      { "id": "o4", "wallId": "w6", "offset": 1.0, "width": 0.8, "kind": "door" }
+    ],
+    "fixtures": [],
+    "roomLabels": [
+      { "id": "l0", "x": 1.4, "y": 2.5, "name": "rooms.bedroom" },
+      { "id": "l1", "x": 4.15, "y": 5.0, "name": "rooms.bathroom" }
+    ]
+  }
+}
