@@ -49,6 +49,7 @@ export const PRODUCTS: Product[] = [
       { label: { th: 'ห้องน้ำ', en: 'Bathrooms' }, value: { th: '1', en: '1' } },
     ],
     featured: true,
+    bestSeller: true,
   },
   {
     id: 'p-three-bed-9x6',
@@ -76,6 +77,7 @@ export const PRODUCTS: Product[] = [
       { label: { th: 'ติดตั้ง', en: 'Install' }, value: { th: 'พร้อมงานบ้าน', en: 'With the build' } },
     ],
     featured: false,
+    bestSeller: true,
   },
   {
     id: 'p-power-cabinet',
@@ -96,6 +98,7 @@ export const PRODUCTS: Product[] = [
     priceFrom: null,
     specs: [{ label: { th: 'วัสดุ', en: 'Material' }, value: { th: 'กันชื้น', en: 'Moisture-resistant' } }],
     featured: true,
+    bestSeller: true,
   },
   {
     id: 'p-wardrobe',
@@ -117,6 +120,7 @@ export const PRODUCTS: Product[] = [
     priceUnit: perDay,
     specs: [{ label: { th: 'พร้อม', en: 'Includes' }, value: { th: 'คนขับ', en: 'Operator' } }],
     featured: true,
+    bestSeller: true,
   },
   {
     id: 'p-crane-truck',
@@ -137,4 +141,10 @@ export function getProduct(slug: string): Product | undefined {
 
 export function productsByCategory(category: ProductCategory | 'all'): Product[] {
   return category === 'all' ? PRODUCTS : PRODUCTS.filter((p) => p.category === category)
+}
+
+/** The product to lead with for a line: its best seller, else a featured one, else the first. */
+export function heroProductFor(category: ProductCategory): Product | undefined {
+  const list = productsByCategory(category)
+  return list.find((p) => p.bestSeller) ?? list.find((p) => p.featured) ?? list[0]
 }

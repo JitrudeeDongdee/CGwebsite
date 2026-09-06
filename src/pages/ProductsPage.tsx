@@ -1,21 +1,25 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Stack from '@mui/material/Stack'
+import Pagination from '@mui/material/Pagination'
 import { productsByCategory } from '../catalog/products'
-import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
+import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { useLocalized } from '../catalog/useLocalized'
-import type { ProductCategory } from '../catalog/types'
+import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQuery'
+import { CatalogToolbar } from '../ui/CatalogToolbar'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 
 ensureMarketingI18n()
+
+/** Products per page in the catalog grid. */
+const PAGE_SIZE = 6
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>
@@ -25,8 +29,12 @@ export function ProductsPage() {
   const { t, i18n } = useTranslation()
   const L = useLocalized()
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
-  const [cat, setCat] = useState<ProductCategory | 'all'>('all')
-  const products = productsByCategory(cat)
+  const { cat, query, requestedPage, update } = useCatalogQuery()
+
+  const matches = productsByCategory(cat).filter((p) =>
+    matchesQuery([p.name.th, p.name.en, p.shortDesc.th, p.shortDesc.en, p.slug], query),
+  )
+  const { page, pageCount, items: products } = paginate(matches, requestedPage, PAGE_SIZE)
 
   const priceLabel = (from: number | null) =>
     from == null ? t('mkt.catalog.quote') : `${t('mkt.catalog.from')} ${formatCurrency(from, 'THB', locale)}`
@@ -41,20 +49,20 @@ export function ProductsPage() {
       </Typography>
       <Typography sx={{ mt: 1.5, color: 'text.secondary', maxWidth: '44em' }}>{t('mkt.products.sub')}</Typography>
 
-      <ToggleButtonGroup
-        exclusive
-        size="small"
-        value={cat}
-        onChange={(_, next: ProductCategory | 'all' | null) => next && setCat(next)}
-        sx={{ mt: 3, flexWrap: 'wrap' }}
-      >
-        <ToggleButton value="all">{t('mkt.catalog.all')}</ToggleButton>
-        {PRODUCT_CATEGORIES.map((c) => (
-          <ToggleButton key={c} value={c}>{t(CATEGORY_META[c].labelKey)}</ToggleButton>
-        ))}
-      </ToggleButtonGroup>
+      <CatalogToolbar
+        category={cat}
+        query={query}
+        onCategory={(next) => update({ category: next })}
+        onQuery={(next) => update({ q: next })}
+        searchPlaceholder={t('mkt.catalog.search')}
+        resultCount={matches.length}
+      />
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' }, mt: 3 }}>
+      {matches.length === 0 && (
+        <Typography color="text.secondary" sx={{ mt: 4 }}>{t('mkt.catalog.noResults')}</Typography>
+      )}
+
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' }, mt: 2 }}>
         {products.map((p) => (
           <Paper
             key={p.id}
@@ -75,6 +83,18 @@ export function ProductsPage() {
           </Paper>
         ))}
       </Box>
+
+      {pageCount > 1 && (
+        <Stack direction="row" sx={{ justifyContent: 'center', mt: 4 }}>
+          <Pagination
+            page={page}
+            count={pageCount}
+            color="primary"
+            shape="rounded"
+            onChange={(_, next) => update({ page: next })}
+          />
+        </Stack>
+      )}
     </Wrap>
   )
 }

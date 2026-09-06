@@ -61,7 +61,7 @@ export function AboutPage() {
             mt: 7,
             display: 'grid',
             gap: { xs: 3, md: 5 },
-            gridTemplateColumns: { xs: '1fr', sm: '260px 1fr' },
+            gridTemplateColumns: { xs: '1fr', sm: '380px 1fr' },
             alignItems: 'center',
           }}
         >

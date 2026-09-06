@@ -4,21 +4,25 @@ import { CATEGORY_META } from './categories'
 import type { ProductCategory } from './types'
 
 /** A catalog image slot: shows the real photo at `src` once it exists, else a
- *  flat category-coloured panel with the category icon. */
+ *  flat category-coloured panel with the category icon. Sized by `ratio` by
+ *  default, or by a fixed `height` when the slot has to match a neighbour. */
 export function CatalogImage({
   src,
   category,
   alt,
   ratio = '4 / 3',
+  height,
 }: {
   src?: string
   category: ProductCategory
   alt?: string
   ratio?: string
+  /** Fixed height instead of a ratio — for slots that must line up with other content. */
+  height?: number | string
 }) {
   const meta = CATEGORY_META[category]
   return (
-    <Box sx={{ aspectRatio: ratio, overflow: 'hidden' }}>
+    <Box sx={{ ...(height === undefined ? { aspectRatio: ratio } : { height }), overflow: 'hidden' }}>
       <SmartImage
         src={src}
         alt={alt}

@@ -6,6 +6,9 @@
   "packageManager": "pnpm@9.1.0",
   "scripts": {
     "dev": "vite",
+    "seo": "node scripts/generate-seo-files.mjs",
+    "og": "python3 scripts/make-og-card.py",
+    "prebuild": "node scripts/generate-seo-files.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

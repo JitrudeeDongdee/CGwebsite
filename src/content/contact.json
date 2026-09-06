@@ -1,0 +1,15 @@
+{
+  "channels": [
+    { "kind": "phone", "value": "081-887-5231" },
+    { "kind": "line", "value": "-", "url": "-" },
+    { "kind": "email", "value": "cg97239723@gmail.com" },
+    { "kind": "facebook", "value": "-", "url": "-" },
+    {
+      "kind": "address",
+      "value": {
+        "th": "21 หมู่บ้าน บ้านกกน่อง หมู่ที่ 11 ตำบลบ้านโตก อำเภอเมืองเพชรบูรณ์ จ.เพชรบูรณ์ 67000",
+        "en": "21 Ban Kok Nong Village, Moo 11, Ban Tok, Mueang Phetchabun, Phetchabun 67000"
+      }
+    }
+  ]
+}

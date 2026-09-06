@@ -1,9 +1,28 @@
+import { useState } from 'react'
+
 /**
- * TDD (Thai Dongdee Engineering) logo mark — a red shield with the white "TDD"
- * lettering and the diagonal stripe motif, rebuilt as inline SVG so it stays
- * crisp at any size and needs no image file. Brand red is #C8102E.
+ * TDD (Thai Dongdee Engineering) logo mark — renders `public/favicon.svg`, the
+ * same file the browser tab icon uses, so the logo only ever changes in one
+ * place. Vector, so it stays crisp at any size and on any background. Falls
+ * back to an inline copy of the same artwork if the file can't be loaded.
  */
-export function LogoMark({ size = 28 }: { size?: number }) {
+export function LogoMark({ size = 30 }: { size?: number }) {
+  const [failed, setFailed] = useState(false)
+  const src = `${import.meta.env.BASE_URL}favicon.svg`
+
+  if (!failed) {
+    return (
+      <img
+        src={src}
+        alt="TDD"
+        height={size}
+        onError={() => setFailed(true)}
+        style={{ display: 'block', height: size, width: 'auto', flexShrink: 0 }}
+      />
+    )
+  }
+
+  // Fallback approximation (only if the PNG is unavailable).
   return (
     <svg
       width={size}
@@ -22,7 +41,7 @@ export function LogoMark({ size = 28 }: { size?: number }) {
         y="53"
         textAnchor="middle"
         fill="#FFFFFF"
-        fontFamily="'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif"
+        fontFamily="'Archivo Black','Arial Black',system-ui,sans-serif"
         fontWeight={900}
         fontSize="31"
         letterSpacing="-2"
