@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
@@ -19,7 +19,16 @@ import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
 import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
-import { Scene3D, type Building3DOptions } from '../scene3d/Scene3D'
+import { RouteFallback } from '../ui/RouteFallback'
+import type { Building3DOptions } from '../scene3d/Scene3D'
+
+/**
+ * three.js + r3f + drei is ~570 kB of the designer's chunk, and it is only needed
+ * once someone actually switches to the 3D view. Splitting it here means opening
+ * /design loads the 2D editor alone; the 3D engine downloads on the first click
+ * of the "3D" toggle.
+ */
+const Scene3D = lazy(() => import('../scene3d/Scene3D').then((m) => ({ default: m.Scene3D })))
 import { Building3DPanel } from '../ui/Building3DPanel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -225,7 +234,9 @@ export function DesignerPage() {
       </ToggleButtonGroup>
 
       {view === 'three' ? (
-        <Scene3D state={state} exteriorWallIds={exteriorWallIds} options={building3d} />
+        <Suspense fallback={<RouteFallback />}>
+          <Scene3D state={state} exteriorWallIds={exteriorWallIds} options={building3d} />
+        </Suspense>
       ) : (
       <>
       <PlanEditor
