@@ -233,6 +233,23 @@ export const PRODUCTS: Product[] = [
     featured: false,
   },
   {
+    id: 'p-steel-sections',
+    slug: 'steel-sections',
+    category: 'contracting',
+    name: { th: 'เหล็กรูปพรรณ', en: 'Steel sections' },
+    shortDesc: {
+      th: 'เหล็กกล่อง เหล็กแป๊บ และเหล็กตัวซี สำหรับงานโครงสร้าง มีสต๊อกหน้าร้าน ตัดตามขนาดและส่งถึงหน้างาน',
+      en: 'Square and rectangular tube and C-channel for structural work, in stock, cut to size and delivered to site.',
+    },
+    priceFrom: null,
+    specs: [
+      { label: { th: 'ชนิด', en: 'Sections' }, value: { th: 'เหล็กกล่อง / แป๊บเหลี่ยม / ตัวซี', en: 'Square tube / rectangular tube / C-channel' } },
+      { label: { th: 'บริการ', en: 'Service' }, value: { th: 'ตัดตามขนาด ส่งถึงหน้างาน', en: 'Cut to size, site delivery' } },
+      { label: { th: 'คิดราคา', en: 'Pricing' }, value: { th: 'ตามขนาดและน้ำหนัก', en: 'By size and weight' } },
+    ],
+    featured: false,
+  },
+  {
     id: 'p-air-conditioner',
     slug: 'air-conditioner',
     category: 'electronics',

@@ -203,7 +203,43 @@ def air_conditioner():
     return img
 
 
+def steel():
+    """A stock pile seen end-on: square tube, rectangular tube and C-channel.
+    Steel is sold by section, so the profiles ARE the product — a photo of a
+    grey stack from the side says nothing a drawing of the ends does not."""
+    img, d = room()
+    STEEL_F, STEEL_S, HOLE = (188, 193, 198), (146, 152, 158), (86, 92, 98)
+
+    def tube(x, y, w, h, depth=26):
+        # End face plus a short side face, so the pile reads as lengths going back.
+        d.polygon([(x, y), (x + depth, y - depth), (x + w + depth, y - depth), (x + w, y)], fill=STEEL_S, outline=EDGE)
+        d.polygon([(x + w, y), (x + w + depth, y - depth), (x + w + depth, y + h - depth), (x + w, y + h)],
+                  fill=(120, 126, 132), outline=EDGE)
+        d.rectangle([x, y, x + w, y + h], fill=STEEL_F, outline=EDGE, width=3)
+        d.rectangle([x + 9, y + 9, x + w - 9, y + h - 9], fill=HOLE)      # the bore
+
+    # Everything rests ON the floor line (y = 640), not above it.
+    # Square tube, stacked two rows deep.
+    for row in range(2):
+        for col in range(5):
+            tube(150 + col * 84, 565 - row * 84, 70, 70)
+    # Rectangular tube, a wider section beside it.
+    for col in range(3):
+        tube(620 + col * 104, 575, 90, 60)
+    # C-channel / purlin, the open section, stacked on top of those.
+    for col in range(2):
+        x, y = 640 + col * 120, 465
+        d.polygon([(x, y), (x + 24, y - 24), (x + 104, y - 24), (x + 80, y)], fill=STEEL_S, outline=EDGE)
+        d.rectangle([x, y, x + 80, y + 96], fill=STEEL_F, outline=EDGE, width=3)
+        d.rectangle([x + 22, y + 14, x + 80, y + 82], fill=HOLE)          # open on one side
+    # Banding straps, the way a bundle actually arrives.
+    for y in (516, 600):
+        d.line([(140, y), (570, y)], fill=ACCENT, width=7)
+    return img
+
+
 DRAWINGS = {
+    'steel-sections': steel,
     'air-conditioner': air_conditioner,
     'built-in-kitchen': kitchen,
     'built-in-wardrobe': wardrobe,
