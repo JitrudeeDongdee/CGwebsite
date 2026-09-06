@@ -177,7 +177,34 @@ def bed():
     return img
 
 
+def air_conditioner():
+    """Wall unit plus the condenser it always ships with — the pair is what an
+    install actually is, and one white box on a wall reads as nothing."""
+    img, d = room()
+    # Indoor wall unit, mounted high the way it would be fitted.
+    d.rounded_rectangle([180, 180, 720, 330], 22, fill=BODY, outline=EDGE, width=4)
+    d.rounded_rectangle([200, 300, 700, 330], 12, fill=BODY_D, outline=EDGE, width=3)   # louvre
+    d.line([(220, 316), (680, 316)], fill=EDGE, width=3)
+    d.rounded_rectangle([600, 210, 690, 246], 8, fill=GLASS)                            # display
+    d.ellipse([620, 222, 636, 238], fill=ACCENT)                                        # power light
+    # Airflow, angled down from the louvre.
+    for i, y in enumerate((372, 420, 468)):
+        d.arc([250 + i * 20, y, 690 - i * 20, y + 150], 200, 340, fill=(168, 196, 208), width=7)
+    # Outdoor condenser on its bracket, to the right.
+    d.rounded_rectangle([790, 380, 1030, 560], 14, fill=BODY_D, outline=EDGE, width=4)
+    d.ellipse([830, 410, 990, 530], fill=(196, 200, 206), outline=EDGE, width=3)        # fan grille
+    for a in range(0, 360, 45):
+        import math
+        r = math.radians(a)
+        d.line([(910, 470), (910 + 72 * math.cos(r), 470 + 54 * math.sin(r))], fill=(160, 166, 172), width=4)
+    d.rectangle([800, 560, 820, 610], fill=EDGE)                                        # bracket
+    d.rectangle([1000, 560, 1020, 610], fill=EDGE)
+    d.line([(720, 300), (790, 400)], fill=(200, 196, 190), width=10)                    # pipe run
+    return img
+
+
 DRAWINGS = {
+    'air-conditioner': air_conditioner,
     'built-in-kitchen': kitchen,
     'built-in-wardrobe': wardrobe,
     'refrigerator': refrigerator,

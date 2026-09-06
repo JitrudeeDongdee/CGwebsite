@@ -233,6 +233,23 @@ export const PRODUCTS: Product[] = [
     featured: false,
   },
   {
+    id: 'p-air-conditioner',
+    slug: 'air-conditioner',
+    category: 'electronics',
+    name: { th: 'เครื่องปรับอากาศ', en: 'Air conditioner' },
+    shortDesc: {
+      th: 'แอร์ติดผนังระบบอินเวอร์เตอร์ พร้อมทีมช่างติดตั้งและเดินท่อของเราเอง',
+      en: 'Wall-mounted inverter air conditioners, fitted and piped by our own crew.',
+    },
+    priceFrom: null,
+    specs: [
+      { label: { th: 'ขนาด', en: 'Capacity' }, value: { th: '9,000–24,000 BTU', en: '9,000–24,000 BTU' } },
+      { label: { th: 'ระบบ', en: 'Type' }, value: { th: 'อินเวอร์เตอร์', en: 'Inverter' } },
+      { label: { th: 'บริการ', en: 'Service' }, value: { th: 'ติดตั้งและเดินท่อ', en: 'Install and pipework' } },
+    ],
+    featured: false,
+  },
+  {
     id: 'p-bed-frame',
     slug: 'bed-frame',
     category: 'furniture',
