@@ -9,7 +9,7 @@ import Chip from '@mui/material/Chip'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
-import { getProduct } from '../catalog/products'
+import { useProduct } from '../catalog/CatalogProvider'
 import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { useLocalized } from '../catalog/useLocalized'
@@ -27,7 +27,7 @@ export function ProductDetailPage() {
   const L = useLocalized()
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
   const { slug } = useParams()
-  const product = slug ? getProduct(slug) : undefined
+  const product = useProduct(slug)
 
   if (!product) {
     return (
