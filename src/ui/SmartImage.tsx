@@ -12,11 +12,15 @@ export function SmartImage({
   alt = '',
   fallback,
   sx,
+  eager = false,
 }: {
   src?: string
   alt?: string
   fallback: ReactNode
   sx?: object
+  /** Load immediately instead of lazily — for above-the-fold slots (the hero),
+   *  and so a 404 fires its error promptly to trigger a fallback chain. */
+  eager?: boolean
 }) {
   const [failed, setFailed] = useState(false)
   // An absolute URL (Supabase Storage) is used as-is; a bare path is relative
@@ -31,7 +35,7 @@ export function SmartImage({
       component="img"
       src={full}
       alt={alt}
-      loading="lazy"
+      loading={eager ? 'eager' : 'lazy'}
       onError={() => setFailed(true)}
       sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...sx }}
     />

@@ -15,6 +15,8 @@ export function CatalogImage({
   alt,
   ratio = '4 / 3',
   height,
+  fallbackSrc,
+  eager = false,
 }: {
   src?: string
   category: ProductCategory
@@ -22,22 +24,37 @@ export function CatalogImage({
   ratio?: string
   /** Fixed height instead of a ratio — for slots that must line up with other content. */
   height?: number | string
+  /** A second image path tried when `src` is missing (404), before the coloured
+   *  placeholder — e.g. a service line whose product has no photo falls back to
+   *  one of its project photos. */
+  fallbackSrc?: string
+  /** Load immediately (above-the-fold slots like the hero). Also makes a 404 fire
+   *  promptly so `fallbackSrc` swaps in without waiting to scroll into view. */
+  eager?: boolean
 }) {
   const meta = CATEGORY_META[category]
+  const placeholder = (
+    <Box
+      sx={{
+        width: '100%', height: '100%', bgcolor: meta.color, color: '#fff',
+        display: 'grid', placeItems: 'center', '& svg': { fontSize: 48, opacity: 0.9 },
+      }}
+    >
+      {meta.icon}
+    </Box>
+  )
   return (
     <Box sx={{ ...(height === undefined ? { aspectRatio: ratio } : { height }), overflow: 'hidden' }}>
       <SmartImage
         src={imageUrl(src)}
         alt={alt}
+        eager={eager}
         fallback={
-          <Box
-            sx={{
-              width: '100%', height: '100%', bgcolor: meta.color, color: '#fff',
-              display: 'grid', placeItems: 'center', '& svg': { fontSize: 48, opacity: 0.9 },
-            }}
-          >
-            {meta.icon}
-          </Box>
+          fallbackSrc ? (
+            <SmartImage src={imageUrl(fallbackSrc)} alt={alt} eager={eager} fallback={placeholder} />
+          ) : (
+            placeholder
+          )
         }
       />
     </Box>

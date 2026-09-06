@@ -22,7 +22,7 @@ import { ensureMarketingI18n } from '../marketing/i18n'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
 import { useCatalog, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
-import { productImagePath, projectPath } from '../catalog/images'
+import { productImagePath, projectImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
 
@@ -141,18 +141,30 @@ export function HomePage() {
   // lines use their catalog photo.
   const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id === heroProduct.slug) : undefined
 
-  const defaultWork = [
-    { key: 'w1', place: 'ชัยภูมิ', year: '2567', title: `${t('mkt.nav.models')} 2 ${t('rooms.bedroom')}`, to: null as string | null },
-    { key: 'w2', place: 'ขอนแก่น', year: '2566', title: t('templates.oneBed'), to: null as string | null },
-    { key: 'w3', place: 'อุดรธานี', year: '2566', title: t('templates.shop'), to: null as string | null },
+  type WorkCard = {
+    key: string
+    place: string
+    year: string
+    title: string
+    to: string | null
+    /** Cover-image path (resolved by CatalogImage); undefined for the seed house samples. */
+    img?: string
+    category: ProductCategory
+  }
+  const defaultWork: WorkCard[] = [
+    { key: 'w1', place: 'ชัยภูมิ', year: '2567', title: `${t('mkt.nav.models')} 2 ${t('rooms.bedroom')}`, to: null, category: 'house' },
+    { key: 'w2', place: 'ขอนแก่น', year: '2566', title: t('templates.oneBed'), to: null, category: 'house' },
+    { key: 'w3', place: 'อุดรธานี', year: '2566', title: t('templates.shop'), to: null, category: 'house' },
   ]
-  const work = cat
+  const work: WorkCard[] = cat
     ? allProjects.filter((p) => p.category === cat).map((p) => ({
         key: p.id,
         place: L(p.location),
         year: p.year,
         title: L(p.title),
-        to: projectPath(p) as string | null,
+        to: projectPath(p),
+        img: projectImagePath(p),
+        category: p.category,
       }))
     : defaultWork
 
@@ -238,6 +250,12 @@ export function HomePage() {
                   <Box sx={{ borderRadius: 2, overflow: 'hidden' }}>
                     <CatalogImage
                       src={productImagePath(heroProduct)}
+                      // Lines whose products have no photo yet (e.g. contracting)
+                      // fall back to one of the line's project photos, not the
+                      // flat placeholder. `eager` so the 404 fires at once and the
+                      // fallback swaps in without waiting to scroll into view.
+                      fallbackSrc={work.find((w) => w.img)?.img}
+                      eager
                       category={heroProduct.category}
                       alt={L(heroProduct.name)}
                       height={HERO_MEDIA_HEIGHT}
@@ -400,6 +418,13 @@ export function HomePage() {
                     display: 'block', textDecoration: 'none',
                   }}
                 >
+                  {/* Cover photo behind the caption; falls back to the category-coloured
+                      panel (CatalogImage's own fallback) when a project has no image. */}
+                  {w.img && (
+                    <Box sx={{ position: 'absolute', inset: 0 }}>
+                      <CatalogImage src={w.img} category={w.category} alt={w.title} height="100%" />
+                    </Box>
+                  )}
                   <Box
                     sx={{
                       position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',
