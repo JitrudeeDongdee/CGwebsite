@@ -1,8 +1,9 @@
 import { execSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { devApi } from './vite-dev-api.mts'
 
 /**
  * The public origin, e.g. https://www.tdd.co.th — set as SITE_URL in the host's
@@ -126,9 +127,57 @@ function siteMeta(): Plugin {
   }
 }
 
+
+/**
+ * Refuses to build if a secret has been given a `VITE_` prefix.
+ *
+ * Vite inlines every VITE_* variable into the JavaScript it ships, so one
+ * rename — `SUPABASE_SERVICE_ROLE_KEY` to `VITE_SUPABASE_SERVICE_ROLE_KEY` —
+ * publishes a key that bypasses every RLS policy to anyone who opens devtools.
+ * Nothing warns you: the build succeeds and the site looks fine.
+ *
+ * Checks the name AND the value, because the name can be anything: Supabase
+ * secret keys start with `sb_secret_`, and the legacy service_role key is a JWT
+ * whose payload literally contains "service_role".
+ */
+function secretGuard(mode: string): Plugin {
+  return {
+    name: 'tdd-secret-guard',
+    enforce: 'pre',
+    config(_, { command }) {
+      const env = loadEnv(mode, process.cwd(), 'VITE_')
+      const offenders: string[] = []
+      for (const [name, value] of Object.entries(env)) {
+        const nameLooksSecret = /SERVICE_ROLE|SECRET|PASSWORD|PRIVATE_KEY/i.test(name)
+        const valueLooksSecret =
+          value.startsWith('sb_secret_') ||
+          // A JWT: decode the payload and look for the service_role claim.
+          (value.split('.').length === 3 &&
+            (() => {
+              try {
+                return atob(value.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')).includes('service_role')
+              } catch {
+                return false
+              }
+            })())
+        if (nameLooksSecret || valueLooksSecret) offenders.push(name)
+      }
+      if (offenders.length > 0) {
+        throw new Error(
+          `\n\n  Refusing to ${command}: ${offenders.join(', ')} would be inlined into the browser bundle.\n` +
+            `  Anything prefixed VITE_ is PUBLIC. Drop the prefix and use it from a server or a local\n` +
+            `  script instead — and if this key has already been built or deployed, rotate it in\n` +
+            `  Supabase (Settings -> API Keys) before doing anything else.\n`,
+        )
+      }
+    },
+  }
+}
+
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), siteMeta()],
+export default defineConfig(({ mode }) => ({
+  // devApi is development-only (apply: 'serve') — see vite-dev-api.mts.
+  plugins: [secretGuard(mode), react(), siteMeta(), devApi()],
   // Honour the PORT the launcher assigns (autoPort); fall back to Vite's default.
   server: { port: process.env.PORT ? Number(process.env.PORT) : undefined },
-})
+}))

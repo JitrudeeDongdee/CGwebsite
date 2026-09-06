@@ -5,6 +5,14 @@ import GlobalStyles from '@mui/material/GlobalStyles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { buildTheme, type ThemeMode } from './theme'
 
+/**
+ * The site opens in light mode for everyone (`DEFAULT_PREFERENCE`), regardless of
+ * the OS setting — the brand is a light, drafting-paper look. 'system' is still
+ * offered in the settings menu for anyone who wants to follow their OS; picking
+ * it is stored like any other explicit choice.
+ */
+const DEFAULT_PREFERENCE: ThemePreference = 'light'
+
 /** 'system' follows the browser/OS; the other two are explicit user overrides. */
 export type ThemePreference = ThemeMode | 'system'
 
@@ -20,19 +28,17 @@ const STORAGE_KEY = 'cg:theme-preference'
 
 function readStoredPreference(): ThemePreference {
   const stored = localStorage.getItem(STORAGE_KEY)
-  return stored === 'light' || stored === 'dark' ? stored : 'system'
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : DEFAULT_PREFERENCE
 }
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState<ThemePreference>(readStoredPreference)
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)')
 
+  // Every choice is stored now, 'system' included — with a light default, an
+  // empty key has to mean "hasn't chosen", not "follow the OS".
   useEffect(() => {
-    if (preference === 'system') {
-      localStorage.removeItem(STORAGE_KEY)
-    } else {
-      localStorage.setItem(STORAGE_KEY, preference)
-    }
+    localStorage.setItem(STORAGE_KEY, preference)
   }, [preference])
 
   const resolvedMode: ThemeMode =

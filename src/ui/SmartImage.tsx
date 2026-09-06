@@ -19,8 +19,10 @@ export function SmartImage({
   sx?: object
 }) {
   const [failed, setFailed] = useState(false)
+  // An absolute URL (Supabase Storage) is used as-is; a bare path is relative
+  // to the deployed base, the way files in public/ have always been.
   const base = import.meta.env.BASE_URL
-  const full = src ? `${base}${src.replace(/^\//, '')}` : undefined
+  const full = src ? (/^https?:\/\//i.test(src) ? src : `${base}${src.replace(/^\//, '')}`) : undefined
 
   if (!full || failed) return <>{fallback}</>
 

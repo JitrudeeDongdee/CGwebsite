@@ -1,11 +1,14 @@
 import Box from '@mui/material/Box'
 import { SmartImage } from '../ui/SmartImage'
+import { imageUrl } from '../supabase/storage'
 import { CATEGORY_META } from './categories'
 import type { ProductCategory } from './types'
 
-/** A catalog image slot: shows the real photo at `src` once it exists, else a
- *  flat category-coloured panel with the category icon. Sized by `ratio` by
- *  default, or by a fixed `height` when the slot has to match a neighbour. */
+/** A catalog image slot: shows the real photo once it exists, else a flat
+ *  category-coloured panel with the category icon. `src` is a catalog image
+ *  PATH (`portfolio/<slug>.jpg`), resolved by `imageUrl` to Supabase Storage or
+ *  to `public/` — never a URL built by the caller. Sized by `ratio` by default,
+ *  or by a fixed `height` when the slot has to line up with a neighbour. */
 export function CatalogImage({
   src,
   category,
@@ -24,7 +27,7 @@ export function CatalogImage({
   return (
     <Box sx={{ ...(height === undefined ? { aspectRatio: ratio } : { height }), overflow: 'hidden' }}>
       <SmartImage
-        src={src}
+        src={imageUrl(src)}
         alt={alt}
         fallback={
           <Box

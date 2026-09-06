@@ -6,7 +6,7 @@
  * helpers exported alongside the seed.
  */
 
-export type ProductCategory = 'house' | 'electronics' | 'furniture' | 'rental'
+export type ProductCategory = 'house' | 'electronics' | 'furniture' | 'rental' | 'contracting'
 
 export interface Localized {
   th: string
@@ -20,7 +20,7 @@ export interface ProductSpec {
 
 export interface Product {
   id: string
-  /** URL slug + image filename stem: public/products/<slug>.jpg */
+  /** URL slug, and the default image name: `products/<slug>.jpg` */
   slug: string
   category: ProductCategory
   name: Localized
@@ -30,6 +30,8 @@ export interface Product {
   /** e.g. "ต่อวัน" for rentals; omitted for one-off prices. */
   priceUnit?: Localized
   specs: ProductSpec[]
+  /** Image path, when it isn't the `products/<slug>.jpg` default (see catalog/images.ts). */
+  imagePath?: string
   featured: boolean
   /** Marked as a best seller — shown with a badge, and picked for the hero card. */
   bestSeller?: boolean
@@ -37,7 +39,7 @@ export interface Product {
 
 export interface Project {
   id: string
-  /** URL slug + image filename stem: public/portfolio/<slug>.jpg */
+  /** URL slug, and the default image name: `portfolio/<slug>.jpg` */
   slug: string
   title: Localized
   location: Localized
@@ -46,5 +48,13 @@ export interface Project {
   category: ProductCategory
   area?: string
   description: Localized
+  /** Image path, when it isn't the `portfolio/<slug>.jpg` default (see catalog/images.ts). */
+  imagePath?: string
   featured: boolean
+  /**
+   * Link to where this was originally posted (a Facebook post, usually). The
+   * content itself is copied into our own record — this is only a "see the
+   * original" link, so nothing breaks if the post is edited or taken down.
+   */
+  sourceUrl?: string
 }

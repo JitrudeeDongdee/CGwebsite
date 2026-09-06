@@ -1,4 +1,6 @@
 import type { Lead, LeadRepository, LeadStatus } from './types'
+import { supabase } from '../supabase/client'
+import { SupabaseLeadRepository } from './supabaseRepository'
 
 const STORAGE_KEY = 'cg:leads'
 
@@ -52,4 +54,10 @@ export class LocalStorageLeadRepository implements LeadRepository {
   }
 }
 
-export const leadRepository: LeadRepository = new LocalStorageLeadRepository()
+/**
+ * The repository the app uses: Postgres when Supabase is configured, this
+ * browser otherwise. Kept here so every existing import keeps working.
+ */
+export const leadRepository: LeadRepository = supabase
+  ? new SupabaseLeadRepository()
+  : new LocalStorageLeadRepository()

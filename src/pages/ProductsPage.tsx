@@ -7,9 +7,10 @@ import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Pagination from '@mui/material/Pagination'
-import { productsByCategory } from '../catalog/products'
+import { useProductsByCategory } from '../catalog/CatalogProvider'
 import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQuery'
 import { CatalogToolbar } from '../ui/CatalogToolbar'
@@ -31,7 +32,7 @@ export function ProductsPage() {
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
   const { cat, query, requestedPage, update } = useCatalogQuery()
 
-  const matches = productsByCategory(cat).filter((p) =>
+  const matches = useProductsByCategory(cat).filter((p) =>
     matchesQuery([p.name.th, p.name.en, p.shortDesc.th, p.shortDesc.en, p.slug], query),
   )
   const { page, pageCount, items: products } = paginate(matches, requestedPage, PAGE_SIZE)
@@ -71,7 +72,7 @@ export function ProductsPage() {
             elevation={0}
             sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' } }}
           >
-            <CatalogImage src={`products/${p.slug}.jpg`} category={p.category} alt={L(p.name)} />
+            <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
             <Box sx={{ p: 2 }}>
               <Chip size="small" variant="outlined" label={t(CATEGORY_META[p.category].labelKey)} sx={{ mb: 1 }} />
               <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>

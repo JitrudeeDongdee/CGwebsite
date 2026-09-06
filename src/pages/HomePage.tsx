@@ -12,6 +12,7 @@ import HomeIcon from '@mui/icons-material/Home'
 import MemoryIcon from '@mui/icons-material/Memory'
 import ChairIcon from '@mui/icons-material/Chair'
 import AgricultureIcon from '@mui/icons-material/Agriculture'
+import EngineeringIcon from '@mui/icons-material/Engineering'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import StarIcon from '@mui/icons-material/Star'
 import { PLAN_TEMPLATES } from '../drawing/templates'
@@ -19,9 +20,9 @@ import { IsoThumbnail } from '../ui/ItemPreview'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
-import { heroProductFor, productsByCategory } from '../catalog/products'
-import { PROJECTS } from '../catalog/projects'
+import { useCatalog, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { productImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
 
@@ -88,10 +89,17 @@ export function HomePage() {
   const L = useLocalized()
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
 
+  const cat: ProductCategory | null = isCategory(service) ? service : null
+
+  // Catalog hooks must run before the early return below — a hook that is
+  // skipped on some renders breaks the hook order for the whole component.
+  const { projects: allProjects } = useCatalog()
+  const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 3)
+  // The hero card leads with the line's best seller.
+  const heroProduct = useHeroProduct(cat ?? 'house')
+
   // `/home/<something unknown>` is not a service — fall back to the main home.
   if (service !== undefined && !isCategory(service)) return <Navigate to="/home" replace />
-
-  const cat: ProductCategory | null = isCategory(service) ? service : null
   /** The house line keeps the designer as its call to action; the others lead to contact. */
   const isHouseish = cat === null || cat === 'house'
   const ctaTo = isHouseish ? '/design' : '/contact'
@@ -105,6 +113,7 @@ export function HomePage() {
     { cat: 'electronics' as const, icon: <MemoryIcon />, title: t('mkt.home.svc2'), desc: t('mkt.home.svc2d') },
     { cat: 'furniture' as const, icon: <ChairIcon />, title: t('mkt.home.svc3'), desc: t('mkt.home.svc3d') },
     { cat: 'rental' as const, icon: <AgricultureIcon />, title: t('mkt.home.svc4'), desc: t('mkt.home.svc4d') },
+    { cat: 'contracting' as const, icon: <EngineeringIcon />, title: t('mkt.home.svc5'), desc: t('mkt.home.svc5d') },
   ]
   const activeService = cat ? services.find((s) => s.cat === cat)! : null
 
@@ -128,10 +137,8 @@ export function HomePage() {
   const models = FEATURED_IDS.map((id) => PLAN_TEMPLATES.find((m) => m.id === id)).filter(
     (m): m is (typeof PLAN_TEMPLATES)[number] => Boolean(m),
   )
-  const catProducts = cat ? productsByCategory(cat).slice(0, 3) : []
-  // The hero card leads with the line's best seller. House models are drawn as an
-  // isometric thumbnail of their plan; the other lines use their catalog photo.
-  const heroProduct = heroProductFor(cat ?? 'house')
+  // House models are drawn as an isometric thumbnail of their plan; the other
+  // lines use their catalog photo.
   const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id === heroProduct.slug) : undefined
 
   const defaultWork = [
@@ -140,12 +147,12 @@ export function HomePage() {
     { key: 'w3', place: 'อุดรธานี', year: '2566', title: t('templates.shop'), to: null as string | null },
   ]
   const work = cat
-    ? PROJECTS.filter((p) => p.category === cat).map((p) => ({
+    ? allProjects.filter((p) => p.category === cat).map((p) => ({
         key: p.id,
         place: L(p.location),
         year: p.year,
         title: L(p.title),
-        to: `/portfolio/${p.slug}` as string | null,
+        to: projectPath(p) as string | null,
       }))
     : defaultWork
 
@@ -230,7 +237,7 @@ export function HomePage() {
                 ) : (
                   <Box sx={{ borderRadius: 2, overflow: 'hidden' }}>
                     <CatalogImage
-                      src={`products/${heroProduct.slug}.jpg`}
+                      src={productImagePath(heroProduct)}
                       category={heroProduct.category}
                       alt={L(heroProduct.name)}
                       height={HERO_MEDIA_HEIGHT}
@@ -352,7 +359,7 @@ export function HomePage() {
                     '&:hover': { borderColor: 'primary.main' },
                   }}
                 >
-                  <CatalogImage src={`products/${p.slug}.jpg`} category={p.category} alt={L(p.name)} />
+                  <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
                   <Box sx={{ p: 2 }}>
                     <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, minHeight: 40 }}>{L(p.shortDesc)}</Typography>

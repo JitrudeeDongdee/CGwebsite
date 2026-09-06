@@ -6,14 +6,17 @@ import './index.css'
 import App from './App.tsx'
 import { AppThemeProvider } from './theme/AppThemeProvider'
 import { AuthProvider } from './auth/AuthProvider'
+import { CatalogProvider } from './catalog/CatalogProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <CatalogProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </CatalogProvider>
       </AuthProvider>
     </AppThemeProvider>
   </StrictMode>,
