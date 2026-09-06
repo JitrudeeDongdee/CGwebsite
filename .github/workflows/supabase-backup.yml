@@ -1,0 +1,72 @@
+# Daily pg_dump of the Supabase database, kept as a workflow artifact.
+#
+# The FREE tier has NO backups. `public.leads` and `public.contact_messages`
+# hold real customer contact data — one bad DELETE and it is gone for good.
+# Paid Pro adds daily backups with 7-day retention; until then, this is it.
+#
+# Scope: the `public` schema only. Supabase's internal schemas (auth, storage,
+# realtime, ...) need their own tooling to restore and are not ours to own — so
+# a restore from this artifact brings back the DATA, not the auth users. Rotate
+# in a proper Pro backup before that distinction matters.
+#
+# Setup: same SUPABASE_DB_URL secret as supabase-keepalive.yml.
+
+name: supabase-backup
+
+on:
+  schedule:
+    # 18:00 UTC = 01:00 ICT, daily — off-hours for a Thai business.
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    # pg_dump refuses to run against a NEWER server, so pin the client to the
+    # major version Supabase runs and bump it when they upgrade.
+    container: postgres:17-alpine
+    steps:
+      - name: Dump the public schema
+        id: dump
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DB_URL}" ]; then
+            echo "::warning title=Backup skipped::SUPABASE_DB_URL is not set — NO backup was taken."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          stamp="$(date -u +%Y%m%d-%H%M%S)"
+          echo "name=supabase-$stamp" >> "$GITHUB_OUTPUT"
+          # --format=custom keeps pg_restore's selective-restore ability;
+          # --no-owner/--no-privileges so it restores into a fresh project
+          # without Supabase's role grants tripping it up.
+          pg_dump "${DB_URL}" \
+            --schema=public \
+            --format=custom \
+            --no-owner \
+            --no-privileges \
+            --file="supabase-$stamp.dump"
+          # A 'successful' dump of nothing is the failure mode that goes
+          # unnoticed for months — refuse to upload one.
+          size=$(wc -c < "supabase-$stamp.dump")
+          echo "Dump size: ${size} bytes"
+          if [ "$size" -lt 1024 ]; then
+            echo "::error title=Backup looks empty::Dump is only ${size} bytes — treating as a failed backup."
+            exit 1
+          fi
+
+      - name: Upload the dump
+        if: steps.dump.outputs.skipped != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.dump.outputs.name }}
+          path: '*.dump'
+          # 90 days is the GitHub maximum for artifacts.
+          retention-days: 90
+          if-no-files-found: error

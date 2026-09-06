@@ -1,0 +1,52 @@
+# Keeps the Supabase FREE project from auto-pausing.
+#
+# Free projects are paused after 1 week with no activity. A quiet marketing site
+# genuinely hits that, and once paused every page that reads the catalog errors
+# out until someone opens the dashboard and un-pauses it by hand. One trivial
+# query a day is enough to keep it awake.
+#
+# This buys uptime on the free tier — it does NOT buy an SLA. When downtime
+# starts costing a real customer, move to Pro ($25/mo) and delete this file.
+#
+# Setup: repo Settings -> Secrets and variables -> Actions -> New secret
+#   SUPABASE_DB_URL = postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres?sslmode=require
+#   (on an IPv4-only runner/network use the session pooler instead:
+#    postgresql://postgres.<ref>:<password>@aws-<region>.pooler.supabase.com:5432/postgres?sslmode=require)
+
+name: supabase-keepalive
+
+on:
+  schedule:
+    # 03:00 UTC = 10:00 ICT, daily. Cron on GitHub can drift by a few minutes
+    # or be dropped under load — daily against a 7-day pause window is ample slack.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    # Pinned client image so psql never has to match whatever the server runs.
+    container: postgres:17-alpine
+    steps:
+      - name: Ping the database
+        env:
+          # Note: `secrets` is not available in a job-level `if`, so the check
+          # lives in the step itself.
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DB_URL}" ]; then
+            # Not configured yet (no Supabase project). A warning, not a failure:
+            # "not set up" and "set up but broken" must not look the same.
+            echo "::warning title=Keepalive skipped::SUPABASE_DB_URL is not set — the project is NOT being kept awake."
+            exit 0
+          fi
+          # Any connection/auth error below is a HARD failure on purpose: a
+          # keepalive that quietly stopped working is worse than none at all,
+          # because the pause then arrives unannounced.
+          psql "${DB_URL}" -v ON_ERROR_STOP=1 -Atc 'select 1' > /dev/null
+          echo "OK — database responded at $(date -u +%FT%TZ)"
