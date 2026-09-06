@@ -53,7 +53,9 @@ jobs:
             --no-privileges \
             --file="supabase-$stamp.dump"
           # A 'successful' dump of nothing is the failure mode that goes
-          # unnoticed for months — refuse to upload one.
+          # unnoticed for months — refuse to upload one. Note the floor only
+          # catches a truly empty file: a schema-only dump of an empty database
+          # is already ~4 KB, so raise this once the catalog holds real rows.
           size=$(wc -c < "supabase-$stamp.dump")
           echo "Dump size: ${size} bytes"
           if [ "$size" -lt 1024 ]; then
@@ -63,7 +65,7 @@ jobs:
 
       - name: Upload the dump
         if: steps.dump.outputs.skipped != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ steps.dump.outputs.name }}
           path: '*.dump'
