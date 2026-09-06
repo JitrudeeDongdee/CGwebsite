@@ -51,19 +51,23 @@ export function ProjectDetailPage() {
 
   // House work sends people to the designer; every other line to a conversation.
   const isHouse = project.category === 'house'
+  // A job is often posted about more than once — start, progress, handover.
+  // Several posts become a timeline below the text; a single one is not a
+  // timeline, so it collapses to one "ดูโพสต์ต้นฉบับ" button.
+  const sources = project.sources ?? []
+  const timeline: ProjectSource[] = sources.length > 1 ? sources : []
+  const lone = sources.length === 1 ? sources[0] : undefined
+  const sourceUrl = sources[0]?.url ?? project.sourceUrl
+
   // The page always opens with the cover — hiding it because it also belongs to a
   // timeline update left the page starting with a wall of text. After it come the
-  // photos that belong to no update; each update shows its own further down.
-  const timelinePhotos = new Set((project.sources ?? []).flatMap((source) => source.images ?? []))
+  // photos that belong to no *rendered* update; each update shows its own further
+  // down. A lone update has no timeline to show its photos in, so they stay loose
+  // — filtering on `sources` instead of `timeline` here dropped them from the page
+  // entirely (a one-post job showed its cover and nothing else).
+  const timelinePhotos = new Set(timeline.flatMap((source) => source.images ?? []))
   const cover = projectImagePath(project)
   const photos = [cover, ...projectImagePaths(project).filter((path) => path !== cover && !timelinePhotos.has(path))]
-  // A job is often posted about more than once — start, progress, handover.
-  // One link keeps the single button; several become a timeline below the text.
-  const timeline: ProjectSource[] = project.sources?.length
-    ? project.sources
-    : project.sourceUrl
-      ? [{ url: project.sourceUrl }]
-      : []
 
   return (
     <Wrap sx={{ py: { xs: 4, md: 6 } }}>
@@ -95,6 +99,13 @@ export function ProjectDetailPage() {
 
       <Typography variant="h1" sx={{ mt: 1.5, fontSize: { xs: 26, md: 34 }, fontWeight: 600 }}>{L(project.title)}</Typography>
       <Typography sx={{ mt: 2, color: 'text.secondary', maxWidth: '46em', fontSize: 18 }}>{L(project.description)}</Typography>
+      {/* A lone update renders no timeline entry, so its own words would vanish
+          with it. Shown only when they add something the description does not. */}
+      {lone?.caption && L(lone.caption).trim() && L(lone.caption).trim() !== L(project.description).trim() && (
+        <Typography sx={{ mt: 1.5, color: 'text.secondary', maxWidth: '46em', whiteSpace: 'pre-line' }}>
+          {L(lone.caption)}
+        </Typography>
+      )}
 
       <Stack direction="row" spacing={1.5} sx={{ mt: 3, flexWrap: 'wrap', gap: 1.5 }}>
         <Button
@@ -108,9 +119,9 @@ export function ProjectDetailPage() {
         </Button>
         {/* The write-up and images above are ours; this just points at where the
             job was posted. With several posts the timeline below replaces it. */}
-        {timeline.length === 1 && timeline[0].url && (
+        {timeline.length === 0 && sourceUrl && (
           <Button
-            href={timeline[0].url}
+            href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
             variant="text"
