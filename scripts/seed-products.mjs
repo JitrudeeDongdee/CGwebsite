@@ -6,8 +6,9 @@
  *   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/seed-products.mjs [--mock-images]
  *
  * Placeholder photos, uploaded to `products/<slug>.jpg`:
- *   --mock-images  a flat brand-colour card with the product's name
- *   --web-images   a stock photo matching the product, fetched from LoremFlickr
+ *   --mock-images   a flat brand-colour card with the product's name
+ *   --drawn-images  a flat vector illustration of the product (scripts/lib/draw-product.py)
+ *   --web-images    a stock photo matching the product, fetched from LoremFlickr
  *
  * ⚠️ `--web-images` pulls other people's Flickr photos through a placeholder
  * service. They are stand-ins for layout only — NOT licensed as this company's
@@ -27,6 +28,7 @@ import { storageConfigured, uploadCatalogImage } from './lib/storage.mjs'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const withMockImages = process.argv.includes('--mock-images')
 const withWebImages = process.argv.includes('--web-images')
+const withDrawnImages = process.argv.includes('--drawn-images')
 
 /** What each product should look like, for the stock-photo search. */
 const PHOTO_KEYWORDS = {
@@ -116,6 +118,23 @@ img.save(sys.argv[3], quality=85)
 }
 
 /**
+ * A flat illustration of the product, drawn by us — on-topic by construction,
+ * with no licence question, unlike the stock photos below. Only some slugs have
+ * a drawing; the rest fall back to the flat colour card.
+ */
+function drawnImage(product) {
+  const out = `/tmp/drawn-${product.slug}.jpg`
+  try {
+    execFileSync('python3', [join(root, 'scripts/lib/draw-product.py'), product.slug, product.name.th, out], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    })
+  } catch {
+    return mockImage(product)
+  }
+  return readFileSync(out)
+}
+
+/**
  * A stock photo for this product, tagged so it can't be mistaken for real work.
  * LoremFlickr keeps the keyword relevant; Picsum is the fallback when it fails.
  */
@@ -174,8 +193,9 @@ console.log(`seeding ${rows.length} products…`)
 for (const product of rows) {
   if (onlySlugs.length > 0 && !onlySlugs.includes(product.slug)) continue
   let imagePath = null
-  if ((withMockImages || withWebImages) && storageConfigured()) {
-    const bytes = downscaleJpeg(withWebImages ? await webImage(product) : mockImage(product), 1600)
+  if ((withMockImages || withWebImages || withDrawnImages) && storageConfigured()) {
+    const source = withWebImages ? await webImage(product) : withDrawnImages ? drawnImage(product) : mockImage(product)
+    const bytes = downscaleJpeg(source, 1600)
     // The filename carries a hash of the bytes. Re-running with a different photo
     // writes a NEW url, so a browser that cached the old one still sees the change
     // — overwriting `products/<slug>.jpg` left viewers on the stale copy for an hour.
@@ -212,7 +232,7 @@ for (const product of rows) {
   )
   if (!response.ok) throw new Error(`${product.slug}: ${response.status} ${await response.text()}`)
   console.log(
-    `  ${existing ? 'updated' : 'inserted'}  ${product.slug}${imagePath ? (withWebImages ? '  + stock photo' : '  + mock image') : ''}`,
+    `  ${existing ? 'updated' : 'inserted'}  ${product.slug}${imagePath ? (withWebImages ? '  + stock photo' : withDrawnImages ? '  + drawing' : '  + mock image') : ''}`,
   )
 }
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -10,7 +10,16 @@ import VerifiedIcon from '@mui/icons-material/Verified'
 import HandshakeIcon from '@mui/icons-material/Handshake'
 import BoltIcon from '@mui/icons-material/Bolt'
 import PersonIcon from '@mui/icons-material/Person'
+import ConstructionIcon from '@mui/icons-material/Construction'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import IconButton from '@mui/material/IconButton'
 import { SmartImage } from '../ui/SmartImage'
+import { CatalogImage } from '../catalog/CatalogImage'
+import { useCatalog } from '../catalog/CatalogProvider'
+import { useLocalized } from '../catalog/useLocalized'
+import { projectImagePath, projectPath } from '../catalog/images'
 import { ensureMarketingI18n } from '../marketing/i18n'
 
 ensureMarketingI18n()
@@ -25,6 +34,7 @@ export function AboutPage() {
     { icon: <VerifiedIcon />, title: t('mkt.about.val1'), desc: t('mkt.about.val1d') },
     { icon: <HandshakeIcon />, title: t('mkt.about.val2'), desc: t('mkt.about.val2d') },
     { icon: <BoltIcon />, title: t('mkt.about.val3'), desc: t('mkt.about.val3d') },
+    { icon: <ConstructionIcon />, title: t('mkt.about.val4'), desc: t('mkt.about.val4d') },
   ]
   return (
     <Box>
@@ -43,7 +53,7 @@ export function AboutPage() {
       </Box>
 
       <Wrap sx={{ py: 8 }}>
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
           {values.map((v) => (
             <Paper key={v.title} elevation={0} sx={{ p: 3, borderRadius: 3, border: 1, borderColor: 'divider' }}>
               <Box sx={{ width: 44, height: 44, borderRadius: 2, display: 'grid', placeItems: 'center', mb: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
@@ -103,6 +113,8 @@ export function AboutPage() {
           </Box>
         </Box>
 
+        <WorkStrip />
+
         <Stack direction="row" spacing={1.5} sx={{ mt: 5, flexWrap: 'wrap', gap: 1.5 }}>
           <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large">
             {t('mkt.nav.designCta')}
@@ -112,6 +124,98 @@ export function AboutPage() {
           </Button>
         </Stack>
       </Wrap>
+    </Box>
+  )
+}
+
+/**
+ * Work from every service line, side by side in one horizontal rail.
+ *
+ * A rail rather than a grid on purpose: the point here is breadth — that TDD
+ * does houses AND contracting AND systems AND furniture — and a rail shows a
+ * dozen jobs in the height of one row. Native scrolling does the work (so touch
+ * and trackpad already behave); the arrows are just a mouse affordance.
+ */
+function WorkStrip() {
+  const { t } = useTranslation()
+  const L = useLocalized()
+  const { projects } = useCatalog()
+  const rail = useRef<HTMLDivElement | null>(null)
+
+  if (projects.length === 0) return null
+
+  const scroll = (direction: 1 | -1) => {
+    const el = rail.current
+    if (!el) return
+    el.scrollBy({ left: direction * Math.max(280, el.clientWidth * 0.8), behavior: 'smooth' })
+  }
+
+  return (
+    <Box component="section" sx={{ mt: 8 }}>
+      <Stack direction="row" sx={{ mb: 3, alignItems: 'flex-end', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ maxWidth: '42em' }}>
+          <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            {t('mkt.about.workEyebrow')}
+          </Typography>
+          <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
+            {t('mkt.about.workHeading')}
+          </Typography>
+          <Typography sx={{ mt: 1.5, color: 'text.secondary' }}>{t('mkt.about.workSub')}</Typography>
+        </Box>
+        <Stack direction="row" spacing={1} sx={{ display: { xs: 'none', md: 'flex' } }}>
+          <IconButton aria-label={t('mkt.about.scrollPrev')} onClick={() => scroll(-1)} sx={{ border: 1, borderColor: 'divider' }}>
+            <ChevronLeftIcon />
+          </IconButton>
+          <IconButton aria-label={t('mkt.about.scrollNext')} onClick={() => scroll(1)} sx={{ border: 1, borderColor: 'divider' }}>
+            <ChevronRightIcon />
+          </IconButton>
+        </Stack>
+      </Stack>
+
+      <Box
+        ref={rail}
+        sx={{
+          display: 'flex', gap: 2, overflowX: 'auto', scrollSnapType: 'x mandatory',
+          // Room for the cards' shadow/edge, and a scrollbar that does not sit
+          // on top of the cards on the platforms that always show one.
+          pb: 1.5,
+          scrollbarWidth: 'thin',
+          '&::-webkit-scrollbar': { height: 8 },
+          '&::-webkit-scrollbar-thumb': { borderRadius: 4, bgcolor: 'divider' },
+        }}
+      >
+        {projects.map((project) => (
+          <Box
+            key={project.id}
+            component={RouterLink}
+            to={projectPath(project)}
+            sx={{
+              flex: '0 0 auto', width: { xs: 260, md: 300 }, scrollSnapAlign: 'start',
+              position: 'relative', aspectRatio: '4 / 3', borderRadius: 3, overflow: 'hidden',
+              border: 1, borderColor: 'divider', bgcolor: 'primary.dark', textDecoration: 'none',
+            }}
+          >
+            <Box sx={{ position: 'absolute', inset: 0 }}>
+              <CatalogImage src={projectImagePath(project)} category={project.category} alt={L(project.title)} height="100%" />
+            </Box>
+            <Box
+              sx={{
+                position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                color: '#fff', background: 'linear-gradient(0deg, rgba(11,34,49,0.85), transparent 60%)',
+              }}
+            >
+              <Typography variant="caption" sx={{ opacity: 0.85 }}>
+                {L(project.location)} · {project.year}
+              </Typography>
+              <Typography sx={{ fontWeight: 600, fontSize: 15 }}>{L(project.title)}</Typography>
+            </Box>
+          </Box>
+        ))}
+      </Box>
+
+      <Button component={RouterLink} to="/portfolio" variant="outlined" endIcon={<ArrowForwardIcon />} sx={{ mt: 2.5 }}>
+        {t('mkt.about.workAll')}
+      </Button>
     </Box>
   )
 }
