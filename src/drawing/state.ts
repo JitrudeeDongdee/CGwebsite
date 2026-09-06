@@ -118,7 +118,13 @@ function pruneOpenings(state: DrawingState): DrawingState {
   return openings.length === state.openings.length ? state : { ...state, openings }
 }
 
-export function commitWall(state: DrawingState, start: Point, end: Point): DrawingState {
+export function commitWall(
+  state: DrawingState,
+  start: Point,
+  end: Point,
+  /** Explicit wall thickness (from the chosen wall type); omit for auto. */
+  thickness?: number,
+): DrawingState {
   const startResolved = resolveEndpoint(state, start)
   const endResolved = resolveEndpoint(startResolved.state, end, startResolved.nodeId)
 
@@ -126,7 +132,12 @@ export function commitWall(state: DrawingState, start: Point, end: Point): Drawi
     return endResolved.state
   }
 
-  const wall: DrawWall = { id: nextId('wall'), a: startResolved.nodeId, b: endResolved.nodeId }
+  const wall: DrawWall = {
+    id: nextId('wall'),
+    a: startResolved.nodeId,
+    b: endResolved.nodeId,
+    ...(thickness !== undefined ? { thickness } : {}),
+  }
   return syncStructuralColumns({
     ...endResolved.state,
     walls: [...endResolved.state.walls, wall],

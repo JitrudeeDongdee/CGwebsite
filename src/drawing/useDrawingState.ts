@@ -64,7 +64,8 @@ export function useDrawingState() {
   }, [])
 
   const addWall = useCallback(
-    (start: Point, end: Point) => commit((prev) => commitWall(prev, start, end)),
+    (start: Point, end: Point, thickness?: number) =>
+      commit((prev) => commitWall(prev, start, end, thickness)),
     [commit],
   )
 

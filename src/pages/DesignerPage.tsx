@@ -8,13 +8,13 @@ import Alert from '@mui/material/Alert'
 import { useDrawingState } from '../drawing/useDrawingState'
 import { findNodeAt, findWallAt } from '../drawing/geometry'
 import type { Point } from '../drawing/types'
-import { DrawingCanvas } from '../scene/DrawingCanvas'
+import { PlanEditor } from '../sheet/PlanEditor'
 import { AreaSummary } from '../ui/AreaSummary'
 import { EstimatePanel } from '../ui/EstimatePanel'
 import { LeadFormDialog } from '../ui/LeadFormDialog'
 import { CanvasContextMenu, type ContextTarget } from '../ui/CanvasContextMenu'
 import { ToolSidebar } from '../ui/ToolSidebar'
-import { PLAN_TEMPLATES } from '../drawing/templates'
+import { wallTypeById } from '../drawing/wallTypes'
 import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
 import { pointInPolygon } from '../drawing/rooms'
@@ -30,9 +30,13 @@ import { PLACEHOLDER_PRICE_CONFIG, loadPriceConfig } from '../pricing/config'
 import type { MaterialGrade } from '../pricing/types'
 import { leadRepository } from '../leads/localStorageRepository'
 import type { LeadContact } from '../leads/types'
+import { PlanGallery } from '../ui/PlanGallery'
+import { useAuth } from '../auth/AuthProvider'
+import type { DrawingState } from '../drawing/types'
 
 export function DesignerPage() {
   const { t } = useTranslation()
+  const { requireAuth } = useAuth()
   const {
     state,
     roomArea,
@@ -162,23 +166,40 @@ export function DesignerPage() {
     setSent(true)
   }
 
-  const handleLoadTemplate = (templateId: string) => {
-    const template = PLAN_TEMPLATES.find((item) => item.id === templateId)
-    if (!template) return
-    applyTemplate(template.build())
+  // A plan arrives either as a template id (sidebar) or a full state (gallery
+  // card / uploaded file); both funnel through here so loading behaves the same.
+  const handleLoadPlanState = (next: DrawingState) => {
+    applyTemplate(next)
     setTool(SELECT_TOOL)
     cancelDrawingRef.current?.()
     setFitToken((n) => n + 1)
   }
 
+  // Picking a wall type arms draw mode with that thickness.
+  const handleSelectWallType = (id: string) => {
+    setTool({ type: 'draw', wallTypeId: id, thickness: wallTypeById(id).thickness })
+  }
+
   return (
-    <Box sx={{ display: 'flex', flexGrow: 1, minHeight: 0 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        flexGrow: 1,
+        minHeight: 0,
+        overflowY: 'auto',
+      }}
+    >
+      {/* Editor fills the viewport; the gallery sits just below the fold so
+          it's reached by scrolling down, per the agreed layout. */}
+      <Box sx={{ display: 'flex', height: 'calc(100vh - 48px)', flexShrink: 0 }}>
       <ToolSidebar
         activeOpening={tool.type === 'opening' ? { kind: tool.kind, width: tool.width } : null}
         onSelectOpening={(next) =>
           setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)
         }
-        onLoadTemplate={handleLoadTemplate}
+        activeWallTypeId={tool.type === 'draw' ? tool.wallTypeId : null}
+        onSelectWallType={handleSelectWallType}
         activeFixture={tool.type === 'fixture' ? tool.kind : null}
         onSelectFixture={(kind) =>
           setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)
@@ -207,7 +228,7 @@ export function DesignerPage() {
         <Scene3D state={state} exteriorWallIds={exteriorWallIds} options={building3d} />
       ) : (
       <>
-      <DrawingCanvas
+      <PlanEditor
         state={state}
         rooms={rooms}
         exteriorWallIds={exteriorWallIds}
@@ -274,10 +295,13 @@ export function DesignerPage() {
           grade={grade}
           onGradeChange={setGrade}
           estimate={estimate}
-          onSubmit={() => setFormOpen(true)}
+          onSubmit={() => requireAuth(() => setFormOpen(true))}
           usingPlaceholderRates={usingPlaceholderRates}
         />
       </Stack>
+      </Box>
+
+      <PlanGallery currentState={state} onLoadPlan={handleLoadPlanState} />
 
       <CanvasContextMenu
         target={contextTarget}

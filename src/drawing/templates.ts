@@ -373,4 +373,87 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
         ],
       }),
   },
+  {
+    id: 'tiny-4x4',
+    nameKey: 'templates.tiny',
+    width: 4,
+    depth: 4,
+    // A single living space with a bathroom boxed into the back-right corner.
+    expectedRooms: 2,
+    expectedOpenings: 4,
+    build: () =>
+      buildFromSpec({
+        width: 4,
+        depth: 4,
+        partitions: [
+          [2.5, 4, 2.5, 2.5],
+          [2.5, 2.5, 4, 2.5],
+        ],
+        openings: [
+          { x: 1, y: 0, width: 0.9, kind: 'door' }, // entrance
+          { x: 2.5, y: 3.2, width: 0.8, kind: 'door' }, // bathroom
+          { x: 1.5, y: 4, width: 1, kind: 'window' },
+          { x: 0, y: 2, width: 1, kind: 'window' },
+        ],
+        furniture: [
+          { kind: 'bedSingle', x: 0.9, y: 2.6 },
+          { kind: 'kitchen', x: 1.8, y: 0.6 },
+          { kind: 'toilet', x: 3.5, y: 3.4 },
+          { kind: 'sink', x: 2.9, y: 3.6 },
+        ],
+        labels: [
+          { x: 1.2, y: 1.4, nameKey: 'rooms.studio' },
+          { x: 3.2, y: 3.2, nameKey: 'rooms.bathroom' },
+        ],
+      }),
+  },
+  {
+    id: 'three-bed-9x6',
+    nameKey: 'templates.threeBed',
+    width: 9,
+    depth: 6,
+    // Three bedrooms along the back, living + bathroom across the front.
+    expectedRooms: 5,
+    expectedOpenings: 9,
+    build: () =>
+      buildFromSpec({
+        width: 9,
+        depth: 6,
+        partitions: [
+          [0, 3.5, 9, 3.5],
+          [3, 3.5, 3, 6],
+          [6, 3.5, 6, 6],
+          [7, 0, 7, 1.8],
+          [7, 1.8, 9, 1.8],
+        ],
+        openings: [
+          { x: 2, y: 0, width: 0.9, kind: 'door' }, // entrance
+          { x: 1.5, y: 3.5, width: 0.8, kind: 'door' }, // bedroom 1
+          { x: 4.5, y: 3.5, width: 0.8, kind: 'door' }, // bedroom 2
+          { x: 7.5, y: 3.5, width: 0.8, kind: 'door' }, // bedroom 3
+          { x: 7, y: 0.9, width: 0.8, kind: 'door' }, // bathroom
+          { x: 1.5, y: 6, width: 1, kind: 'window' },
+          { x: 4.5, y: 6, width: 1, kind: 'window' },
+          { x: 7.5, y: 6, width: 1, kind: 'window' },
+          { x: 0, y: 1.75, width: 1.5, kind: 'window' },
+        ],
+        furniture: [
+          { kind: 'bedDouble', x: 1.4, y: 4.8 },
+          { kind: 'bedSingle', x: 4.4, y: 4.8 },
+          { kind: 'bedSingle', x: 7.6, y: 4.8 },
+          { kind: 'sofa', x: 2.4, y: 0.7 },
+          { kind: 'table', x: 4.6, y: 1.4 },
+          { kind: 'kitchen', x: 1.5, y: 2.9 },
+          { kind: 'toilet', x: 8.2, y: 1.3 },
+          { kind: 'sink', x: 7.5, y: 0.5 },
+        ],
+        labels: [
+          { x: 1.5, y: 4.8, nameKey: 'rooms.bedroom1' },
+          { x: 4.5, y: 4.8, nameKey: 'rooms.bedroom2' },
+          { x: 7.5, y: 4.8, nameKey: 'rooms.bedroom3' },
+          { x: 3.5, y: 1.6, nameKey: 'rooms.living' },
+          { x: 8.0, y: 0.9, nameKey: 'rooms.bathroom' },
+        ],
+      }),
+  },
 ]

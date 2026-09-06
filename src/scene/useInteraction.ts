@@ -32,7 +32,7 @@ interface Press {
 
 interface UseInteractionOptions {
   state: DrawingState
-  addWall: (start: Point, end: Point) => void
+  addWall: (start: Point, end: Point, thickness?: number) => void
   beginNodeDrag: () => void
   updateNodePosition: (nodeId: string, point: Point) => void
   finalizeNodeMove: (nodeId: string, point: Point) => void
@@ -225,7 +225,7 @@ export function useInteraction({
 
       // One wall per pair of clicks: placing it ends the gesture, so the
       // preview stops following the cursor until you start the next wall.
-      addWall(anchor, placed)
+      addWall(anchor, placed, tool.type === 'draw' ? tool.thickness : undefined)
       anchorRef.current = null
       setDraft(null)
     },

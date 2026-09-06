@@ -1,65 +1,54 @@
-import { useTranslation } from 'react-i18next'
-import { Link as RouterLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import AppBar from '@mui/material/AppBar'
-import Toolbar from '@mui/material/Toolbar'
-import Typography from '@mui/material/Typography'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
 import { DesignerPage } from './pages/DesignerPage'
 import { AdminPage } from './pages/AdminPage'
-import { SettingsMenu } from './ui/SettingsMenu'
-import { LanguageSwitcher } from './ui/LanguageSwitcher'
+import { LoginPage } from './pages/LoginPage'
+import { HomePage } from './pages/HomePage'
+import { AboutPage } from './pages/AboutPage'
+import { ContactPage } from './pages/ContactPage'
+import { ProductsPage } from './pages/ProductsPage'
+import { ProductDetailPage } from './pages/ProductDetailPage'
+import { PortfolioPage } from './pages/PortfolioPage'
+import { ProjectDetailPage } from './pages/ProjectDetailPage'
+import { MarketingLayout } from './marketing/MarketingLayout'
+import { SiteHeader } from './ui/SiteHeader'
 
-function App() {
-  const { t } = useTranslation()
-  const { pathname } = useLocation()
-
+/**
+ * Chrome for the app routes (designer / admin / login): the shared `SiteHeader`
+ * plus a fixed-height column the designer's own scroll lives inside. Marketing
+ * routes use `MarketingLayout`, which mounts the SAME header — so the top bar is
+ * one unified component everywhere.
+ */
+function AppShell() {
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <AppBar
-        position="static"
-        color="default"
-        elevation={0}
-        sx={{ borderBottom: 1, borderColor: 'divider' }}
-      >
-        <Toolbar variant="dense">
-          <Typography variant="h3" component="h1" sx={{ mr: 3 }}>
-            {t('app.title')}
-          </Typography>
-
-          <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
-            <Button
-              component={RouterLink}
-              to="/"
-              size="small"
-              color={pathname === '/' ? 'primary' : 'inherit'}
-            >
-              {t('app.navDesigner')}
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/admin"
-              size="small"
-              color={pathname === '/admin' ? 'primary' : 'inherit'}
-            >
-              {t('app.navAdmin')}
-            </Button>
-          </Stack>
-
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <LanguageSwitcher />
-            <SettingsMenu />
-          </Stack>
-        </Toolbar>
-      </AppBar>
-
-      <Routes>
-        <Route path="/" element={<DesignerPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <SiteHeader />
+      <Outlet />
     </Box>
+  )
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route element={<MarketingLayout />}>
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/products/:slug" element={<ProductDetailPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/portfolio/:slug" element={<ProjectDetailPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+      </Route>
+
+      <Route element={<AppShell />}>
+        <Route path="/" element={<DesignerPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 

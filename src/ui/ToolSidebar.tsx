@@ -4,10 +4,10 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
-import { PLAN_TEMPLATES } from '../drawing/templates'
 import { OPENING_PRESETS } from '../drawing/openings'
 import { FIXTURE_CATALOG } from '../drawing/fixtures'
-import { FixturePreview, OpeningPreview, TemplatePreview } from './ItemPreview'
+import { WALL_TYPES } from '../drawing/wallTypes'
+import { FixturePreview, OpeningPreview, WallTypePreview } from './ItemPreview'
 import type { FixtureKind, OpeningKind } from '../drawing/types'
 
 export interface OpeningTool {
@@ -18,7 +18,9 @@ export interface OpeningTool {
 interface ToolSidebarProps {
   activeOpening: OpeningTool | null
   onSelectOpening: (tool: OpeningTool | null) => void
-  onLoadTemplate: (templateId: string) => void
+  /** Currently armed wall type (draw mode), or null when not drawing walls. */
+  activeWallTypeId: string | null
+  onSelectWallType: (id: string) => void
   activeFixture: FixtureKind | null
   onSelectFixture: (kind: FixtureKind | null) => void
 }
@@ -26,7 +28,8 @@ interface ToolSidebarProps {
 export function ToolSidebar({
   activeOpening,
   onSelectOpening,
-  onLoadTemplate,
+  activeWallTypeId,
+  onSelectWallType,
   activeFixture,
   onSelectFixture,
 }: ToolSidebarProps) {
@@ -46,26 +49,26 @@ export function ToolSidebar({
       }}
     >
       <Typography variant="overline" color="text.secondary">
-        {t('templates.title')}
+        {t('wallTypes.title')}
       </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        {t('templates.hint')}
+        {t('wallTypes.hint')}
       </Typography>
 
       <Stack spacing={1}>
-        {PLAN_TEMPLATES.map((template) => (
+        {WALL_TYPES.map((wallType) => (
           <Button
-            key={template.id}
-            variant="outlined"
+            key={wallType.id}
+            variant={activeWallTypeId === wallType.id ? 'contained' : 'outlined'}
             size="small"
-            onClick={() => onLoadTemplate(template.id)}
+            onClick={() => onSelectWallType(wallType.id)}
             sx={{ justifyContent: 'flex-start', textAlign: 'left', gap: 1, py: 0.75 }}
           >
-            <TemplatePreview template={template} />
+            <WallTypePreview thickness={wallType.thickness} />
             <Stack sx={{ flexGrow: 1, alignItems: 'flex-start' }}>
-              <span>{t(template.nameKey)}</span>
+              <span>{t(wallType.labelKey)}</span>
               <Typography variant="caption" color="text.secondary">
-                {template.width}×{template.depth}
+                {wallType.thickness ? `${(wallType.thickness * 100).toFixed(0)} cm` : t('wallTypes.autoHint')}
               </Typography>
             </Stack>
           </Button>

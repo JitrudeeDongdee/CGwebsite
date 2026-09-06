@@ -15,7 +15,19 @@
     "studio": "Studio",
     "oneBed": "1 bedroom",
     "twoBed": "2 bedrooms",
-    "shop": "Shop unit"
+    "shop": "Shop unit",
+    "tiny": "Tiny home",
+    "threeBed": "3 bedrooms"
+  },
+  "wallTypes": {
+    "title": "Wall types",
+    "hint": "Pick a wall style, then click to draw",
+    "autoHint": "auto thickness",
+    "auto": "Auto",
+    "exterior": "Exterior wall",
+    "loadBearing": "Load-bearing wall",
+    "interior": "Interior wall",
+    "partition": "Light partition"
   },
   "openings": {
     "title": "Doors / windows",
@@ -133,6 +145,7 @@
     "bedroom": "Bedroom",
     "bedroom1": "Bedroom 1",
     "bedroom2": "Bedroom 2",
+    "bedroom3": "Bedroom 3",
     "living": "Living",
     "bathroom": "Bathroom",
     "shopfront": "Shop floor",
@@ -176,5 +189,39 @@
   "view": {
     "plan": "2D plan",
     "three": "3D"
+  },
+  "gallery": {
+    "title": "Knock-down house plans",
+    "hint": "Pick a plan to view or customize · your own designs can be uploaded too",
+    "upload": "Upload a file",
+    "download": "Download current plan",
+    "importError": "Couldn't open that plan file"
+  },
+  "auth": {
+    "login": "Sign in",
+    "logout": "Sign out",
+    "loginTitle": "Sign in to continue",
+    "name": "Name",
+    "password": "Password",
+    "submit": "Sign in",
+    "cancel": "Cancel",
+    "required": "Please fill this in",
+    "demoNote": "Demo sign-in — any name and password works. Downloading, uploading and sending to the team need you signed in.",
+    "signInTitle": "Sign in",
+    "signUpTitle": "Create an account",
+    "pageSubtitle": "Save your designs and send them to our team.",
+    "demoPageNotice": "Preview only — sign in / sign up isn't wired up yet. The buttons show the layout but don't do anything.",
+    "signInTab": "Sign in",
+    "signUpTab": "Sign up",
+    "email": "Email",
+    "confirmPassword": "Confirm password",
+    "forgotPassword": "Forgot password?",
+    "orContinue": "or continue with",
+    "continueGoogle": "Continue with Google",
+    "continueFacebook": "Continue with Facebook",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "backToApp": "Back to the app",
+    "demoActionNotice": "Preview mode — this isn't enabled yet."
   }
 }

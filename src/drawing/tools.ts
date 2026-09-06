@@ -9,9 +9,10 @@ import type { FixtureKind, OpeningKind } from './types'
  */
 export type ToolMode =
   | { type: 'select' }
-  | { type: 'draw' }
+  | { type: 'draw'; wallTypeId: string; thickness?: number }
   | { type: 'opening'; kind: OpeningKind; width: number }
   | { type: 'fixture'; kind: FixtureKind }
 
 export const SELECT_TOOL: ToolMode = { type: 'select' }
-export const DRAW_TOOL: ToolMode = { type: 'draw' }
+/** Default draw mode: `auto` thickness, matching the previous behaviour. */
+export const DRAW_TOOL: ToolMode = { type: 'draw', wallTypeId: 'auto', thickness: undefined }

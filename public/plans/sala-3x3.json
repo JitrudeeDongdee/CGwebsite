@@ -1,0 +1,29 @@
+{
+  "format": "cg-house-plan",
+  "version": 1,
+  "name": "Sala 3×3",
+  "width": 3,
+  "depth": 3,
+  "state": {
+    "nodes": {
+      "n0": { "id": "n0", "x": -1.5, "y": -1.5 },
+      "n1": { "id": "n1", "x": 1.5, "y": -1.5 },
+      "n2": { "id": "n2", "x": 1.5, "y": 1.5 },
+      "n3": { "id": "n3", "x": -1.5, "y": 1.5 }
+    },
+    "walls": [
+      { "id": "w0", "a": "n0", "b": "n1" },
+      { "id": "w1", "a": "n1", "b": "n2" },
+      { "id": "w2", "a": "n2", "b": "n3" },
+      { "id": "w3", "a": "n3", "b": "n0" }
+    ],
+    "openings": [
+      { "id": "o0", "wallId": "w0", "offset": 1.5, "width": 0.9, "kind": "door" },
+      { "id": "o1", "wallId": "w2", "offset": 1.5, "width": 1, "kind": "window" }
+    ],
+    "fixtures": [],
+    "roomLabels": [
+      { "id": "l0", "x": 0, "y": 0, "name": "Sala" }
+    ]
+  }
+}
