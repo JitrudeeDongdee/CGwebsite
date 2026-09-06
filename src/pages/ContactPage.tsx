@@ -7,10 +7,13 @@ import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
+import Link from '@mui/material/Link'
 import PhoneIcon from '@mui/icons-material/Phone'
 import ChatIcon from '@mui/icons-material/Chat'
 import MailIcon from '@mui/icons-material/Mail'
+import FacebookIcon from '@mui/icons-material/Facebook'
 import PlaceIcon from '@mui/icons-material/Place'
+import { CONTACT_CHANNELS, contactHref, contactLabelKey, contactValue, type ContactKind } from '../content/contact'
 import { ensureMarketingI18n } from '../marketing/i18n'
 
 ensureMarketingI18n()
@@ -22,7 +25,8 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
 const STORAGE_KEY = 'cg:contact-messages'
 
 export function ContactPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' })
   const [sent, setSent] = useState(false)
 
@@ -44,12 +48,20 @@ export function ContactPage() {
     setForm({ name: '', phone: '', email: '', message: '' })
   }
 
-  const info = [
-    { icon: <PhoneIcon fontSize="small" />, label: t('mkt.contact.phoneLabel'), value: '0X-XXX-XXXX' },
-    { icon: <ChatIcon fontSize="small" />, label: t('mkt.contact.lineLabel'), value: '@cghome' },
-    { icon: <MailIcon fontSize="small" />, label: t('mkt.contact.emailLabel'), value: 'hello@cg.co.th' },
-    { icon: <PlaceIcon fontSize="small" />, label: t('mkt.contact.addressLabel'), value: '—' },
-  ]
+  // Same source as the footer: `src/content/contact.json`.
+  const icons: Record<ContactKind, ReactNode> = {
+    phone: <PhoneIcon fontSize="small" />,
+    line: <ChatIcon fontSize="small" />,
+    email: <MailIcon fontSize="small" />,
+    facebook: <FacebookIcon fontSize="small" />,
+    address: <PlaceIcon fontSize="small" />,
+  }
+  const info = CONTACT_CHANNELS.map((c) => ({
+    icon: icons[c.kind],
+    label: t(contactLabelKey(c)),
+    value: contactValue(c, lang),
+    href: contactHref(c, lang),
+  }))
 
   return (
     <Wrap sx={{ py: { xs: 6, md: 8 } }}>
@@ -93,7 +105,21 @@ export function ContactPage() {
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">{i.label}</Typography>
-                  <Typography sx={{ fontWeight: 500 }}>{i.value}</Typography>
+                  {i.href ? (
+                    <Typography
+                      component={Link}
+                      href={i.href}
+                      target={i.href.startsWith('http') ? '_blank' : undefined}
+                      rel={i.href.startsWith('http') ? 'noopener' : undefined}
+                      underline="hover"
+                      color="text.primary"
+                      sx={{ fontWeight: 500, display: 'block' }}
+                    >
+                      {i.value}
+                    </Typography>
+                  ) : (
+                    <Typography sx={{ fontWeight: 500 }}>{i.value}</Typography>
+                  )}
                 </Box>
               </Stack>
             ))}
