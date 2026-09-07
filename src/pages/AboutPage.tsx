@@ -55,11 +55,24 @@ export function AboutPage() {
         </Wrap>
       </Box>
 
-      <Wrap sx={{ py: 8 }}>
+      <Wrap sx={{ py: { xs: 5, md: 8 } }}>
+        {/* On a phone the CEO comes first and the supporting points follow him;
+            on desktop the four cards still lead, where they cost no scrolling.
+            Done with `order` rather than two copies of the markup — the DOM
+            keeps the desktop order, which is the sensible reading order either
+            way (both blocks are self-contained). */}
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
         {/* Two per row on a phone, and compact: these are supporting points, so
             on a small screen the icon sits beside the title rather than above
             it and the card gives its height back to the CEO block below. */}
-        <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
+        <Box
+          sx={{
+            order: { xs: 2, sm: 1 },
+            mt: { xs: 4, sm: 0 },
+            display: 'grid', gap: { xs: 1, sm: 2 },
+            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+          }}
+        >
           {values.map((v) => (
             <Paper key={v.title} elevation={0} sx={{ p: { xs: 1.25, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, border: 1, borderColor: 'divider' }}>
               <Stack
@@ -94,7 +107,8 @@ export function AboutPage() {
         {/* CEO */}
         <Box
           sx={{
-            mt: { xs: 5, md: 7 },
+            order: { xs: 1, sm: 2 },
+            mt: { xs: 0, md: 7 },
             display: 'grid',
             gap: { xs: 0, md: 5 },
             gridTemplateColumns: { xs: '1fr', sm: '380px 1fr' },
@@ -169,6 +183,7 @@ export function AboutPage() {
               {t('mkt.about.ceoQuote')}
             </Typography>
           </Box>
+        </Box>
         </Box>
 
         <WorkStrip />
