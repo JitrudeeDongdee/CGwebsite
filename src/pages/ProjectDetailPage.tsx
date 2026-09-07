@@ -10,6 +10,7 @@ import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { useProductById, useProject } from '../catalog/CatalogProvider'
+import { joinMeta } from '../catalog/meta'
 import { CATEGORY_META } from '../catalog/categories'
 import type { ProjectSource } from '../catalog/types'
 import { CatalogImage } from '../catalog/CatalogImage'
@@ -93,7 +94,7 @@ export function ProjectDetailPage() {
       <Stack direction="row" spacing={1} sx={{ mt: 3, alignItems: 'center', flexWrap: 'wrap' }}>
         <Chip size="small" variant="outlined" label={t(CATEGORY_META[project.category].labelKey)} />
         <Typography variant="body2" color="text.secondary">
-          {L(project.location)} · {project.year}{project.area ? ` · ${project.area}` : ''}
+          {joinMeta(L(project.location), project.year, project.area)}
         </Typography>
       </Stack>
 

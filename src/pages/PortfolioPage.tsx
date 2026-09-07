@@ -6,6 +6,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Pagination from '@mui/material/Pagination'
 import { useCatalog } from '../catalog/CatalogProvider'
+import { joinMeta } from '../catalog/meta'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { projectImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
@@ -79,7 +80,7 @@ export function PortfolioPage() {
                 background: 'linear-gradient(0deg, rgba(11,34,49,0.88), transparent 55%)',
               }}
             >
-              <Typography variant="caption" sx={{ opacity: 0.85 }}>{L(p.location)} · {p.year}</Typography>
+              <Typography variant="caption" sx={{ opacity: 0.85 }}>{joinMeta(L(p.location), p.year)}</Typography>
               <Typography sx={{ fontWeight: 600 }}>{L(p.title)}</Typography>
             </Box>
           </Box>

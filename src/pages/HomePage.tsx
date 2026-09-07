@@ -20,6 +20,7 @@ import { IsoThumbnail } from '../ui/ItemPreview'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
+import { joinMeta } from '../catalog/meta'
 import { useCatalog, useCommunity, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { productImagePath, projectImagePath, projectPath } from '../catalog/images'
@@ -432,7 +433,7 @@ export function HomePage() {
                       background: 'linear-gradient(0deg, rgba(11,34,49,0.85), transparent 60%)',
                     }}
                   >
-                    <Typography variant="caption" sx={{ opacity: 0.85 }}>{w.place} · {w.year}</Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.85 }}>{joinMeta(w.place, w.year)}</Typography>
                     <Typography sx={{ fontWeight: 600 }}>{w.title}</Typography>
                   </Box>
                 </Box>
@@ -476,7 +477,7 @@ export function HomePage() {
                 >
                   <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} />
                   <Box sx={{ p: 2 }}>
-                    <Typography variant="caption" color="text.secondary">{L(item.location)} {item.year && `· ${item.year}`}</Typography>
+                    <Typography variant="caption" color="text.secondary">{joinMeta(L(item.location), item.year)}</Typography>
                     <Typography sx={{ fontWeight: 600, fontSize: 17, mt: 0.25 }}>{L(item.title)}</Typography>
                   </Box>
                 </Paper>

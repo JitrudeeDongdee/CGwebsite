@@ -17,6 +17,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import IconButton from '@mui/material/IconButton'
 import { SmartImage } from '../ui/SmartImage'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { joinMeta } from '../catalog/meta'
 import { useCatalog } from '../catalog/CatalogProvider'
 import { useLocalized } from '../catalog/useLocalized'
 import { projectImagePath, projectPath } from '../catalog/images'
@@ -205,7 +206,7 @@ function WorkStrip() {
               }}
             >
               <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                {L(project.location)} · {project.year}
+                {joinMeta(L(project.location), project.year)}
               </Typography>
               <Typography sx={{ fontWeight: 600, fontSize: 15 }}>{L(project.title)}</Typography>
             </Box>
