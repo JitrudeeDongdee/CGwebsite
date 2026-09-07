@@ -40,14 +40,16 @@ export function AboutPage() {
   return (
     <Box>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-        <Wrap sx={{ py: { xs: 6, md: 8 } }}>
-          <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        {/* The intro is context, not the pitch — at 30/18px it filled a phone
+            screen before the reader reached a single card. */}
+        <Wrap sx={{ py: { xs: 4, md: 8 } }}>
+          <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: { xs: 11, md: 12 }, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             {t('mkt.about.eyebrow')}
           </Typography>
-          <Typography variant="h1" sx={{ mt: 1.5, fontSize: { xs: 30, md: 42 }, fontWeight: 600, maxWidth: '18em' }}>
+          <Typography variant="h1" sx={{ mt: { xs: 1, md: 1.5 }, fontSize: { xs: 23, md: 42 }, lineHeight: 1.3, fontWeight: 600, maxWidth: '18em' }}>
             {t('mkt.about.title')}
           </Typography>
-          <Typography sx={{ mt: 2.5, color: 'text.secondary', fontSize: 18, maxWidth: '46em' }}>
+          <Typography sx={{ mt: { xs: 1.5, md: 2.5 }, color: 'text.secondary', fontSize: { xs: 14.5, md: 18 }, lineHeight: 1.65, maxWidth: '46em' }}>
             {t('mkt.about.body')}
           </Typography>
         </Wrap>
