@@ -193,28 +193,28 @@ export function HomePage() {
       >
         {/* The hero keeps the same height on every service page (HERO_MIN_HEIGHT),
             so switching services doesn't make the page jump. */}
-        <Wrap sx={{ py: { xs: 6, md: 9 }, display: 'flex', alignItems: 'center', height: HERO_HEIGHT }}>
-          <Box sx={{ width: '100%', display: 'grid', gap: 5, gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' }, alignItems: 'center' }}>
+        <Wrap sx={{ py: { xs: 4, md: 9 }, display: 'flex', alignItems: 'center', height: HERO_HEIGHT }}>
+          <Box sx={{ width: '100%', display: 'grid', gap: { xs: 3, md: 5 }, gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' }, alignItems: 'center' }}>
             <Box>
               <Eyebrow>{hero.eyebrow}</Eyebrow>
               <Typography variant="h1" sx={{ mt: 1.5, fontSize: { xs: 32, md: 48 }, fontWeight: 600, letterSpacing: '-0.01em', ...clamp({ md: 3, lg: 2 }, 1.15, 48) }}>
                 {hero.title}
               </Typography>
-              <Typography sx={{ mt: 2.5, mb: 3.5, color: 'text.secondary', fontSize: 18, maxWidth: '34em', ...clamp({ md: 4, lg: 3 }, 1.5, 18) }}>
+              <Typography sx={{ mt: { xs: 1.5, md: 2.5 }, mb: { xs: 2.5, md: 3.5 }, color: 'text.secondary', fontSize: { xs: 16, md: 18 }, maxWidth: '34em', ...clamp({ md: 4, lg: 3 }, 1.5, 18) }}>
                 {hero.lead}
               </Typography>
               <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1.5 }}>
                 <Button component={RouterLink} to={ctaTo} variant="contained" color="secondary" size="large" endIcon={<ArrowForwardIcon />}>
                   {hero.ctaPrimary}
                 </Button>
-                <Button component={RouterLink} to={allProductsTo} variant="outlined" size="large">
+                <Button component={RouterLink} to={allProductsTo} variant="outlined" size="large" sx={{ flexShrink: 0 }}>
                   {cat ? t('mkt.service.allProducts') : t('mkt.home.ctaSecondary')}
                 </Button>
               </Stack>
-              <Box sx={{ mt: 4, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
-                {hero.trust.map((item) => (
-                  <Box key={item.head}>
-                    <Typography sx={{ fontWeight: 700, fontSize: 20, color: 'primary.main', ...clamp({ md: 2, lg: 2 }, 1.3, 20) }}>{item.head}</Typography>
+              <Box sx={{ mt: { xs: 2.5, md: 4 }, display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)' } }}>
+                {hero.trust.map((item, i) => (
+                  <Box key={item.head} sx={{ gridColumn: { xs: i === 2 ? '1 / -1' : 'auto', sm: 'auto' } }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: { xs: 17, md: 20 }, color: 'primary.main', ...clamp({ md: 2, lg: 2 }, 1.3, 20) }}>{item.head}</Typography>
                     <Typography variant="caption" color="text.secondary" sx={clamp({ md: 4, lg: 3 }, 1.4, 12)}>{item.sub}</Typography>
                   </Box>
                 ))}
@@ -275,14 +275,14 @@ export function HomePage() {
       </Box>
 
       {/* Services */}
-      <Box id="services" component="section" sx={{ py: 8 }}>
+      <Box id="services" component="section" sx={{ py: { xs: 4.5, md: 8 } }}>
         <Wrap>
-          <Box sx={{ maxWidth: '42em', mb: 4.5 }}>
+          <Box sx={{ maxWidth: '42em', mb: { xs: 2.5, md: 4.5 } }}>
             <Eyebrow>{t('mkt.home.svcEyebrow')}</Eyebrow>
             <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>{t('mkt.home.svcHeading')}</Typography>
             <Typography sx={{ mt: 1.5, color: 'text.secondary' }}>{t('mkt.home.svcSub')}</Typography>
           </Box>
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
+          <Box sx={{ display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
             {services.map((s) => {
               const active = s.cat === cat
               return (
@@ -292,7 +292,7 @@ export function HomePage() {
                   to={`/home/${s.cat}`}
                   elevation={0}
                   sx={{
-                    p: 2.5, borderRadius: 3,
+                    p: { xs: 1.75, md: 2.5 }, borderRadius: 3,
                     // Only the service being viewed is outlined — the main line is
                     // marked by its badge, not by a permanent border.
                     border: active ? 2 : 1,
@@ -304,20 +304,31 @@ export function HomePage() {
                   }}
                 >
                   {s.main && (
-                    <Chip label={t('mkt.home.svcMainBadge')} size="small" color="secondary" sx={{ position: 'absolute', top: 14, right: 14 }} />
+                    <Chip
+                      label={t('mkt.home.svcMainBadge')}
+                      size="small"
+                      color="secondary"
+                      sx={{ position: 'absolute', top: { xs: 8, md: 14 }, right: { xs: 8, md: 14 }, height: { xs: 20, md: 24 }, fontSize: { xs: 11, md: 13 } }}
+                    />
                   )}
                   <Box
                     sx={{
-                      width: 44, height: 44, borderRadius: 2, display: 'grid', placeItems: 'center', mb: 1.5,
+                      width: { xs: 36, md: 44 }, height: { xs: 36, md: 44 },
+                      borderRadius: 2, display: 'grid', placeItems: 'center', mb: { xs: 1, md: 1.5 },
                       bgcolor: s.main ? 'secondary.main' : 'primary.main',
                       color: s.main ? 'secondary.contrastText' : 'primary.contrastText',
                     }}
                   >
                     {s.icon}
                   </Box>
-                  <Typography sx={{ fontWeight: 600, fontSize: 17, mb: 0.5 }}>{s.title}</Typography>
+                  <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, md: 17 }, mb: 0.5 }}>{s.title}</Typography>
                   <Typography variant="body2" color="text.secondary">{s.desc}</Typography>
-                  <Stack direction="row" spacing={0.5} sx={{ mt: 1.5, alignItems: 'center', color: 'secondary.main' }}>
+                  {/* The whole card is a link; on a phone this row is only height. */}
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    sx={{ mt: 1.5, alignItems: 'center', color: 'secondary.main', display: { xs: 'none', md: 'flex' } }}
+                  >
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{t('mkt.catalog.viewDetail')}</Typography>
                     <ArrowForwardIcon sx={{ fontSize: 16 }} />
                   </Stack>
@@ -329,9 +340,9 @@ export function HomePage() {
       </Box>
 
       {/* Featured: house plans on the home + house line, catalog products on the others */}
-      <Box id="models" component="section" sx={{ py: 8, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
+      <Box id="models" component="section" sx={{ py: { xs: 4.5, md: 8 }, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
         <Wrap>
-          <Box sx={{ maxWidth: '42em', mb: 4.5 }}>
+          <Box sx={{ maxWidth: '42em', mb: { xs: 2.5, md: 4.5 } }}>
             <Eyebrow>{isHouseish ? t('mkt.home.modelsEyebrow') : t('mkt.service.eyebrow')}</Eyebrow>
             <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
               {isHouseish ? t('mkt.home.modelsHeading') : t('mkt.service.productsHead')}
@@ -340,22 +351,37 @@ export function HomePage() {
           </Box>
 
           {isHouseish ? (
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+            <Box sx={{ display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
               {models.map((m) => (
                 <Paper key={m.id} elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
                   <Box sx={{ display: 'grid', placeItems: 'center', py: 2.5, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
                     <IsoThumbnail state={m.build()} size={120} />
                   </Box>
-                  <Box sx={{ p: 2 }}>
-                    <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{t(m.nameKey)}</Typography>
+                  <Box sx={{ p: { xs: 1.5, md: 2 } }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, md: 17 } }}>{t(m.nameKey)}</Typography>
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                       <Chip size="small" variant="outlined" label={`${m.width}×${m.depth} ${t('summary.squareMeters')}`} />
                     </Stack>
-                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mt: 1.5 }}>
+                    {/* Two columns leave ~150px: price and button side by side wrapped
+                        the button onto three lines, so they stack on a phone. */}
+                    <Stack
+                      direction={{ xs: 'column', md: 'row' }}
+                      sx={{
+                        justifyContent: 'space-between',
+                        alignItems: { xs: 'flex-start', md: 'baseline' },
+                        mt: 1.5,
+                      }}
+                    >
                       <Typography sx={{ color: 'secondary.main', fontWeight: 700 }}>
                         {formatCurrency(m.width * m.depth * RATE, 'THB', locale)}
                       </Typography>
-                      <Button component={RouterLink} to="/design" size="small" endIcon={<ArrowForwardIcon />}>
+                      <Button
+                        component={RouterLink}
+                        to="/design"
+                        size="small"
+                        endIcon={<ArrowForwardIcon />}
+                        sx={{ px: { xs: 0, md: 1 }, minWidth: 0, whiteSpace: 'nowrap' }}
+                      >
                         {t('mkt.home.modelCustomize')}
                       </Button>
                     </Stack>
@@ -366,7 +392,7 @@ export function HomePage() {
           ) : catProducts.length === 0 ? (
             <Typography color="text.secondary">{t('mkt.service.productsEmpty')}</Typography>
           ) : (
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+            <Box sx={{ display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
               {catProducts.map((p) => (
                 <Paper
                   key={p.id}
@@ -380,9 +406,21 @@ export function HomePage() {
                   }}
                 >
                   <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
-                  <Box sx={{ p: 2 }}>
-                    <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, minHeight: 40 }}>{L(p.shortDesc)}</Typography>
+                  <Box sx={{ p: { xs: 1.5, md: 2 } }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, md: 17 } }}>{L(p.name)}</Typography>
+                    {/* Clamped rather than free-flowing: in two columns a long
+                        description made one card twice the height of its neighbour. */}
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 0.5, minHeight: { md: 40 },
+                        display: '-webkit-box', WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: { xs: 2, md: 'none' }, overflow: 'hidden',
+                      }}
+                    >
+                      {L(p.shortDesc)}
+                    </Typography>
                     <Typography sx={{ mt: 1, color: 'secondary.main', fontWeight: 700 }}>{priceLabel(p.priceFrom)}</Typography>
                   </Box>
                 </Paper>
@@ -403,18 +441,37 @@ export function HomePage() {
 
       {/* Portfolio */}
       {work.length > 0 && (
-        <Box id="work" component="section" sx={{ py: 8 }}>
+        <Box id="work" component="section" sx={{ py: { xs: 4.5, md: 8 } }}>
           <Wrap>
-            <Box sx={{ mb: 4.5 }}>
+            <Box sx={{ mb: { xs: 2.5, md: 4.5 } }}>
               <Eyebrow>{t('mkt.home.workEyebrow')}</Eyebrow>
               <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>{t('mkt.home.workHeading')}</Typography>
             </Box>
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+            <Box
+              sx={{
+                // Photo cards are tall: six of them stacked turned this section
+                // into three screens of scrolling on a phone. A rail shows the
+                // first one whole, the next one peeking, and costs one screen.
+                display: { xs: 'flex', md: 'grid' },
+                gap: 2,
+                gridTemplateColumns: { md: 'repeat(3, 1fr)' },
+                overflowX: { xs: 'auto', md: 'visible' },
+                scrollSnapType: { xs: 'x mandatory', md: 'none' },
+                // Bleed to the screen edge so the peeking card reads as "more
+                // to the right" rather than as a cut-off card.
+                mx: { xs: -3, md: 0 },
+                px: { xs: 3, md: 0 },
+                pb: { xs: 1, md: 0 },
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+              }}
+            >
               {work.map((w) => (
                 <Box
                   key={w.key}
                   {...(w.to ? { component: RouterLink, to: w.to } : {})}
                   sx={{
+                    flex: { xs: '0 0 78%', md: '1 1 auto' }, scrollSnapAlign: 'start',
                     position: 'relative', aspectRatio: '4 / 3', borderRadius: 3, overflow: 'hidden',
                     border: 1, borderColor: 'divider', bgcolor: 'primary.dark',
                     display: 'block', textDecoration: 'none',
@@ -448,9 +505,9 @@ export function HomePage() {
 
       {/* Public-benefit works & donations — shown on the house line (and /home). */}
       {isHouseish && communityItems.length > 0 && (
-        <Box component="section" sx={{ py: 8, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
+        <Box component="section" sx={{ py: { xs: 4.5, md: 8 }, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
           <Wrap>
-            <Stack direction="row" sx={{ mb: 4.5, alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Stack direction="row" sx={{ mb: { xs: 2.5, md: 4.5 }, alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
               <Box sx={{ maxWidth: '42em' }}>
                 <Eyebrow>{t('mkt.home.communityEyebrow')}</Eyebrow>
                 <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
@@ -462,7 +519,25 @@ export function HomePage() {
                 {t('mkt.home.communityAll')}
               </Button>
             </Stack>
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+            <Box
+              sx={{
+                // Photo cards are tall: six of them stacked turned this section
+                // into three screens of scrolling on a phone. A rail shows the
+                // first one whole, the next one peeking, and costs one screen.
+                display: { xs: 'flex', md: 'grid' },
+                gap: 2,
+                gridTemplateColumns: { md: 'repeat(3, 1fr)' },
+                overflowX: { xs: 'auto', md: 'visible' },
+                scrollSnapType: { xs: 'x mandatory', md: 'none' },
+                // Bleed to the screen edge so the peeking card reads as "more
+                // to the right" rather than as a cut-off card.
+                mx: { xs: -3, md: 0 },
+                px: { xs: 3, md: 0 },
+                pb: { xs: 1, md: 0 },
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+              }}
+            >
               {communityItems.slice(0, 3).map((item) => (
                 <Paper
                   key={item.id}
@@ -470,6 +545,7 @@ export function HomePage() {
                   to="/community"
                   elevation={0}
                   sx={{
+                    flex: { xs: '0 0 78%', md: '1 1 auto' }, scrollSnapAlign: 'start',
                     borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden',
                     display: 'block', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s',
                     '&:hover': { borderColor: 'primary.main' },
@@ -502,7 +578,7 @@ export function HomePage() {
       </Wrap>
 
       {/* Final CTA */}
-      <Box component="section" sx={{ py: 8, textAlign: 'center' }}>
+      <Box component="section" sx={{ py: { xs: 4.5, md: 8 }, textAlign: 'center' }}>
         <Wrap>
           <Typography variant="h2" sx={{ fontSize: { xs: 24, md: 34 }, fontWeight: 600 }}>
             {cat ? t('mkt.service.finalHeading') : t('mkt.home.finalHeading')}
