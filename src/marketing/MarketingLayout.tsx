@@ -55,6 +55,10 @@ function MarketingFooter() {
             variant="body2"
             underline="hover"
             color="text.secondary"
+            // A 20px-tall link is a hard target for a thumb. Padding the row out
+            // to ~40px on touch widths costs nothing on desktop, where the
+            // footer keeps its tighter rhythm.
+            sx={{ display: 'inline-block', py: { xs: 0.75, md: 0 }, minHeight: { xs: 32, md: 'auto' } }}
           >
             {it.label}
           </Link>

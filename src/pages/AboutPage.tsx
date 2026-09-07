@@ -17,6 +17,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import IconButton from '@mui/material/IconButton'
 import { SmartImage } from '../ui/SmartImage'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { joinMeta } from '../catalog/meta'
 import { useCatalog } from '../catalog/CatalogProvider'
 import { useLocalized } from '../catalog/useLocalized'
 import { projectImagePath, projectPath } from '../catalog/images'
@@ -39,28 +40,66 @@ export function AboutPage() {
   return (
     <Box>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-        <Wrap sx={{ py: { xs: 6, md: 8 } }}>
-          <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        {/* The intro is context, not the pitch — at 30/18px it filled a phone
+            screen before the reader reached a single card. */}
+        <Wrap sx={{ py: { xs: 4, md: 8 } }}>
+          <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: { xs: 11, md: 12 }, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
             {t('mkt.about.eyebrow')}
           </Typography>
-          <Typography variant="h1" sx={{ mt: 1.5, fontSize: { xs: 30, md: 42 }, fontWeight: 600, maxWidth: '18em' }}>
+          <Typography variant="h1" sx={{ mt: { xs: 1, md: 1.5 }, fontSize: { xs: 23, md: 42 }, lineHeight: 1.3, fontWeight: 600, maxWidth: '18em' }}>
             {t('mkt.about.title')}
           </Typography>
-          <Typography sx={{ mt: 2.5, color: 'text.secondary', fontSize: 18, maxWidth: '46em' }}>
+          <Typography sx={{ mt: { xs: 1.5, md: 2.5 }, color: 'text.secondary', fontSize: { xs: 14.5, md: 18 }, lineHeight: 1.65, maxWidth: '46em' }}>
             {t('mkt.about.body')}
           </Typography>
         </Wrap>
       </Box>
 
-      <Wrap sx={{ py: 8 }}>
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
+      <Wrap sx={{ py: { xs: 5, md: 8 } }}>
+        {/* On a phone the CEO comes first and the supporting points follow him;
+            on desktop the four cards still lead, where they cost no scrolling.
+            Done with `order` rather than two copies of the markup — the DOM
+            keeps the desktop order, which is the sensible reading order either
+            way (both blocks are self-contained). */}
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Two per row on a phone, and compact: these are supporting points, so
+            on a small screen the icon sits beside the title rather than above
+            it and the card gives its height back to the CEO block below. */}
+        <Box
+          sx={{
+            order: { xs: 2, sm: 1 },
+            mt: { xs: 4, sm: 0 },
+            display: 'grid', gap: { xs: 1, sm: 2 },
+            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+          }}
+        >
           {values.map((v) => (
-            <Paper key={v.title} elevation={0} sx={{ p: 3, borderRadius: 3, border: 1, borderColor: 'divider' }}>
-              <Box sx={{ width: 44, height: 44, borderRadius: 2, display: 'grid', placeItems: 'center', mb: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
-                {v.icon}
-              </Box>
-              <Typography sx={{ fontWeight: 600, fontSize: 17, mb: 0.5 }}>{v.title}</Typography>
-              <Typography variant="body2" color="text.secondary">{v.desc}</Typography>
+            <Paper key={v.title} elevation={0} sx={{ p: { xs: 1.25, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, border: 1, borderColor: 'divider' }}>
+              <Stack
+                direction={{ xs: 'row', sm: 'column' }}
+                spacing={{ xs: 1, sm: 0 }}
+                sx={{ alignItems: { xs: 'center', sm: 'stretch' }, mb: { xs: 0.75, sm: 0 } }}
+              >
+                <Box
+                  sx={{
+                    flexShrink: 0,
+                    width: { xs: 28, sm: 44 }, height: { xs: 28, sm: 44 },
+                    borderRadius: 2, display: 'grid', placeItems: 'center', mb: { sm: 1.5 },
+                    bgcolor: 'primary.main', color: 'primary.contrastText',
+                    '& .MuiSvgIcon-root': { fontSize: { xs: 17, sm: 24 } },
+                  }}
+                >
+                  {v.icon}
+                </Box>
+                <Typography sx={{ fontWeight: 600, fontSize: { xs: 14, sm: 17 }, mb: { sm: 0.5 } }}>{v.title}</Typography>
+              </Stack>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontSize: { xs: 12.5, sm: 14 }, lineHeight: 1.55 }}
+              >
+                {v.desc}
+              </Typography>
             </Paper>
           ))}
         </Box>
@@ -68,14 +107,28 @@ export function AboutPage() {
         {/* CEO */}
         <Box
           sx={{
-            mt: 7,
+            order: { xs: 1, sm: 2 },
+            mt: { xs: 0, md: 7 },
             display: 'grid',
-            gap: { xs: 3, md: 5 },
+            gap: { xs: 0, md: 5 },
             gridTemplateColumns: { xs: '1fr', sm: '380px 1fr' },
             alignItems: 'center',
           }}
         >
-          <Box sx={{ aspectRatio: '1 / 1', borderRadius: 4, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
+          {/* On a phone the portrait leads, full width and portrait-shaped, with
+              the name set over it — a shrunk square in the middle of the column
+              read as an afterthought rather than as the face of the company. */}
+          <Box
+            sx={{
+              position: 'relative',
+              width: '100%',
+              aspectRatio: { xs: '4 / 5', sm: '1 / 1' },
+              borderRadius: 4,
+              overflow: 'hidden',
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
             {/* Shows public/team/ceo.jpg once it exists; placeholder until then. */}
             <SmartImage
               src="team/ceo.jpg"
@@ -95,22 +148,42 @@ export function AboutPage() {
                 </Box>
               }
             />
+            <Box
+              sx={{
+                display: { xs: 'flex', sm: 'none' },
+                position: 'absolute', inset: 0, p: 2.5,
+                flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',
+                background: 'linear-gradient(0deg, rgba(11,34,49,0.92), transparent 55%)',
+              }}
+            >
+              <Typography sx={{ fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.85 }}>
+                {t('mkt.about.ceoEyebrow')}
+              </Typography>
+              <Typography variant="h2" sx={{ mt: 0.5, fontSize: 26, fontWeight: 600 }}>
+                {t('mkt.about.ceoName')}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.85 }}>{t('mkt.about.ceoTitle')}</Typography>
+            </Box>
           </Box>
 
-          <Box>
-            <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-              {t('mkt.about.ceoEyebrow')}
-            </Typography>
-            <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 22, md: 28 }, fontWeight: 600 }}>
-              {t('mkt.about.ceoName')}
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              {t('mkt.about.ceoTitle')}
-            </Typography>
+          <Box sx={{ mt: { xs: 2.5, sm: 0 } }}>
+            {/* The name plate above already carries these on a phone. */}
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                {t('mkt.about.ceoEyebrow')}
+              </Typography>
+              <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 22, md: 28 }, fontWeight: 600 }}>
+                {t('mkt.about.ceoName')}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                {t('mkt.about.ceoTitle')}
+              </Typography>
+            </Box>
             <Typography sx={{ fontSize: { xs: 18, md: 20 }, fontStyle: 'italic', maxWidth: '32em', color: 'text.primary' }}>
               {t('mkt.about.ceoQuote')}
             </Typography>
           </Box>
+        </Box>
         </Box>
 
         <WorkStrip />
@@ -205,7 +278,7 @@ function WorkStrip() {
               }}
             >
               <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                {L(project.location)} · {project.year}
+                {joinMeta(L(project.location), project.year)}
               </Typography>
               <Typography sx={{ fontWeight: 600, fontSize: 15 }}>{L(project.title)}</Typography>
             </Box>
