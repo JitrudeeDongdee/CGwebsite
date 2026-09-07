@@ -147,6 +147,31 @@ Agreed direction to grow this from a tool into CG's company site.
 - **A lone update's photos (fixed 2026-09-07).** One source collapses to a single "ดูโพสต์ต้นฉบับ" button rather than a one-entry timeline, but `ProjectDetailPage`'s loose-photo filter excluded photos belonging to ANY source, including that un-rendered one — a job posted about once showed its cover and nothing else. The filter now excludes only photos of a timeline entry that actually renders.
   - **No access control yet, and development-only, by explicit decision (2026-09-07).** The browser can't fetch facebook.com (no CORS) or hold the service-role key, so the endpoints live in `vite-dev-api.mts` — a Vite plugin with `apply: 'serve'`, i.e. they exist only while `pnpm run dev` runs on the owner's machine; the key stays in the dev process and never reaches the bundle. `/api/unfurl`, `GET|POST /api/projects`, `PATCH|DELETE /api/projects/:slug`. The page says all of this in a banner. **The `/admin/portfolio` route AND the page's dynamic import are both gated behind `import.meta.env.DEV` in `App.tsx`** (fixed 2026-09-07) — statically `false` in a production build, so Rollup drops the AdminPortfolioPage chunk and its `/api/*` calls entirely and the URL falls through to the catch-all redirect on the deployed site. Verified: a prod `dist/` contains no `AdminPortfolioPage` chunk and no `/api/unfurl`/`/api/projects` string, while `/admin` (leads) still ships. **Before this ships publicly it needs staff auth**: move the handlers to `supabase/functions/import-post`, gate on the caller's role, and only then re-expose the route in prod.
 
+**✅ Mobile pass — DONE (2026-09-07).** The site was built desktop-first and every listing stacked one
+full-width card per row below 600px: `/home/house` ran **8,327px at 375px — 10.3 full screens** before the
+footer. It is now **4,356px (5.4 screens)**, with nothing above the `md` breakpoint changed (verified at
+1280px: services 4 columns, models/work 3, all still `grid`, no horizontal overflow).
+- **`RAIL_SX` / `RAIL_CARD_SX`** (`HomePage.tsx`) — a row of cards that is a `grid` on desktop and a
+  scroll-snapped, swipeable **rail** on a phone, used by the featured products, featured models, portfolio
+  and community sections. The rail bleeds to the screen edge (`mx: -3; px: 3`) so the next card peeks rather
+  than looking cut off. A two-column grid was tried first and rejected: three cards left one alone on the
+  last row, which reads as a broken layout rather than as "that is all of them".
+- **Listing pages go two-up on a phone** (`/products`, `/portfolio`, `/community`, and the About value
+  cards). `sm` and `md` are untouched — `sm` was already two columns.
+- **About** — the CEO portrait leads on a phone: full width, 4:5, with the name and title set over the
+  bottom of the photo. It had been capped at 260px to save height, which left the face of the company as a
+  small square adrift in the column. The four value cards pay for it (icon beside the title at 28px), and
+  the intro drops to 23px/14.5px.
+- **⚠️ Thai text clamping gotcha.** `-webkit-line-clamp` at exactly N line-heights leaves the **tone marks
+  and upper vowels of the next line poking through the cut**, because they sit well above their baseline.
+  Every clamp on the site therefore sets a `maxHeight` a few pixels SHORT of the line boundary
+  (e.g. `lineHeight: 1.6` with `maxHeight: '2.85em'` for two lines, not `3.2em`). Measured, not guessed —
+  44.8px bled, 40px did not.
+- **`joinMeta`** (`src/catalog/meta.ts`) — the "location · year · area" line. Building it with a literal
+  `·` left the separator behind when a field was empty: community items carry no province and rendered
+  "· 2569"; two imported jobs have no year and rendered "เพชรบูรณ์ ·".
+- Footer links were 20px tall; they get vertical padding on touch widths only (32–45px measured).
+
 **🚀 Phase 2.5 — Deploy to Cloudflare Pages (2026-09-06).** Ship the marketing site publicly *before*
 starting Phase 3, so the DB work happens against a real deployment.
 
