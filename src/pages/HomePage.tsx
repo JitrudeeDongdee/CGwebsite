@@ -43,6 +43,30 @@ function Eyebrow({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * A row of cards that is a grid on a desktop and a swipeable rail on a phone.
+ *
+ * Stacking cards one per row cost whole screens of scrolling; a two-column grid
+ * fixed that but left an odd card alone on the last row, which reads as broken
+ * rather than as "that's all of them". A rail keeps them in one line whatever
+ * the count, and bleeds to the screen edge so the next card peeks instead of
+ * looking cut off.
+ */
+const RAIL_SX = {
+  display: { xs: 'flex', md: 'grid' },
+  gap: 2,
+  overflowX: { xs: 'auto', md: 'visible' },
+  scrollSnapType: { xs: 'x mandatory', md: 'none' },
+  mx: { xs: -3, md: 0 },
+  px: { xs: 3, md: 0 },
+  pb: { xs: 1, md: 0 },
+  scrollbarWidth: 'none',
+  '&::-webkit-scrollbar': { display: 'none' },
+} as const
+
+/** Each card in a rail: a fixed slice of the phone screen, its own snap point. */
+const RAIL_CARD_SX = { flex: { xs: '0 0 78%', md: '1 1 auto' }, scrollSnapAlign: 'start' } as const
+
 const FEATURED_IDS = ['two-bed-8x6', 'three-bed-9x6', 'studio-6x4']
 /**
  * Hero height, shared by the company home and every service page so switching
@@ -351,27 +375,18 @@ export function HomePage() {
           </Box>
 
           {isHouseish ? (
-            <Box sx={{ display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
+            <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(3, 1fr)' } }}>
               {models.map((m) => (
-                <Paper key={m.id} elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
+                <Paper key={m.id} elevation={0} sx={{ ...RAIL_CARD_SX, borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
                   <Box sx={{ display: 'grid', placeItems: 'center', py: 2.5, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
                     <IsoThumbnail state={m.build()} size={120} />
                   </Box>
-                  <Box sx={{ p: { xs: 1.5, md: 2 } }}>
-                    <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, md: 17 } }}>{t(m.nameKey)}</Typography>
+                  <Box sx={{ p: 2 }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{t(m.nameKey)}</Typography>
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                       <Chip size="small" variant="outlined" label={`${m.width}×${m.depth} ${t('summary.squareMeters')}`} />
                     </Stack>
-                    {/* Two columns leave ~150px: price and button side by side wrapped
-                        the button onto three lines, so they stack on a phone. */}
-                    <Stack
-                      direction={{ xs: 'column', md: 'row' }}
-                      sx={{
-                        justifyContent: 'space-between',
-                        alignItems: { xs: 'flex-start', md: 'baseline' },
-                        mt: 1.5,
-                      }}
-                    >
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mt: 1.5 }}>
                       <Typography sx={{ color: 'secondary.main', fontWeight: 700 }}>
                         {formatCurrency(m.width * m.depth * RATE, 'THB', locale)}
                       </Typography>
@@ -380,7 +395,7 @@ export function HomePage() {
                         to="/design"
                         size="small"
                         endIcon={<ArrowForwardIcon />}
-                        sx={{ px: { xs: 0, md: 1 }, minWidth: 0, whiteSpace: 'nowrap' }}
+                        sx={{ whiteSpace: 'nowrap' }}
                       >
                         {t('mkt.home.modelCustomize')}
                       </Button>
@@ -392,7 +407,7 @@ export function HomePage() {
           ) : catProducts.length === 0 ? (
             <Typography color="text.secondary">{t('mkt.service.productsEmpty')}</Typography>
           ) : (
-            <Box sx={{ display: 'grid', gap: { xs: 1.5, md: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
+            <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(3, 1fr)' } }}>
               {catProducts.map((p) => (
                 <Paper
                   key={p.id}
@@ -400,14 +415,15 @@ export function HomePage() {
                   to={`/products/${p.slug}`}
                   elevation={0}
                   sx={{
+                    ...RAIL_CARD_SX,
                     borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden',
                     textDecoration: 'none', color: 'inherit', transition: 'border-color .15s',
                     '&:hover': { borderColor: 'primary.main' },
                   }}
                 >
                   <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
-                  <Box sx={{ p: { xs: 1.5, md: 2 } }}>
-                    <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, md: 17 } }}>{L(p.name)}</Typography>
+                  <Box sx={{ p: 2 }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
                     {/* Clamped rather than free-flowing: in two columns a long
                         description made one card twice the height of its neighbour. */}
                     <Typography
@@ -447,31 +463,13 @@ export function HomePage() {
               <Eyebrow>{t('mkt.home.workEyebrow')}</Eyebrow>
               <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>{t('mkt.home.workHeading')}</Typography>
             </Box>
-            <Box
-              sx={{
-                // Photo cards are tall: six of them stacked turned this section
-                // into three screens of scrolling on a phone. A rail shows the
-                // first one whole, the next one peeking, and costs one screen.
-                display: { xs: 'flex', md: 'grid' },
-                gap: 2,
-                gridTemplateColumns: { md: 'repeat(3, 1fr)' },
-                overflowX: { xs: 'auto', md: 'visible' },
-                scrollSnapType: { xs: 'x mandatory', md: 'none' },
-                // Bleed to the screen edge so the peeking card reads as "more
-                // to the right" rather than as a cut-off card.
-                mx: { xs: -3, md: 0 },
-                px: { xs: 3, md: 0 },
-                pb: { xs: 1, md: 0 },
-                scrollbarWidth: 'none',
-                '&::-webkit-scrollbar': { display: 'none' },
-              }}
-            >
+            <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(3, 1fr)' } }}>
               {work.map((w) => (
                 <Box
                   key={w.key}
                   {...(w.to ? { component: RouterLink, to: w.to } : {})}
                   sx={{
-                    flex: { xs: '0 0 78%', md: '1 1 auto' }, scrollSnapAlign: 'start',
+                    ...RAIL_CARD_SX,
                     position: 'relative', aspectRatio: '4 / 3', borderRadius: 3, overflow: 'hidden',
                     border: 1, borderColor: 'divider', bgcolor: 'primary.dark',
                     display: 'block', textDecoration: 'none',
@@ -519,25 +517,7 @@ export function HomePage() {
                 {t('mkt.home.communityAll')}
               </Button>
             </Stack>
-            <Box
-              sx={{
-                // Photo cards are tall: six of them stacked turned this section
-                // into three screens of scrolling on a phone. A rail shows the
-                // first one whole, the next one peeking, and costs one screen.
-                display: { xs: 'flex', md: 'grid' },
-                gap: 2,
-                gridTemplateColumns: { md: 'repeat(3, 1fr)' },
-                overflowX: { xs: 'auto', md: 'visible' },
-                scrollSnapType: { xs: 'x mandatory', md: 'none' },
-                // Bleed to the screen edge so the peeking card reads as "more
-                // to the right" rather than as a cut-off card.
-                mx: { xs: -3, md: 0 },
-                px: { xs: 3, md: 0 },
-                pb: { xs: 1, md: 0 },
-                scrollbarWidth: 'none',
-                '&::-webkit-scrollbar': { display: 'none' },
-              }}
-            >
+            <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(3, 1fr)' } }}>
               {communityItems.slice(0, 3).map((item) => (
                 <Paper
                   key={item.id}
@@ -545,7 +525,7 @@ export function HomePage() {
                   to="/community"
                   elevation={0}
                   sx={{
-                    flex: { xs: '0 0 78%', md: '1 1 auto' }, scrollSnapAlign: 'start',
+                    ...RAIL_CARD_SX,
                     borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden',
                     display: 'block', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s',
                     '&:hover': { borderColor: 'primary.main' },
