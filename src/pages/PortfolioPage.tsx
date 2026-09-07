@@ -65,7 +65,7 @@ export function PortfolioPage() {
         <Typography color="text.secondary" sx={{ mt: 4 }}>{t('mkt.catalog.noResultsWork')}</Typography>
       )}
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' }, mt: 2 }}>
+      <Box sx={{ display: 'grid', gap: { xs: 1.5, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' }, mt: 2 }}>
         {projects.map((p) => (
           <Box
             key={p.id}
@@ -76,12 +76,29 @@ export function PortfolioPage() {
             <CatalogImage src={projectImagePath(p)} category={p.category} alt={L(p.title)} />
             <Box
               sx={{
-                position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',
-                background: 'linear-gradient(0deg, rgba(11,34,49,0.88), transparent 55%)',
+                position: 'absolute', inset: 0, p: { xs: 1.25, sm: 2 }, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',
+                background: { xs: 'linear-gradient(0deg, rgba(11,34,49,0.92), transparent 70%)', sm: 'linear-gradient(0deg, rgba(11,34,49,0.88), transparent 55%)' },
               }}
             >
-              <Typography variant="caption" sx={{ opacity: 0.85 }}>{joinMeta(L(p.location), p.year)}</Typography>
-              <Typography sx={{ fontWeight: 600 }}>{L(p.title)}</Typography>
+              <Typography variant="caption" sx={{ opacity: 0.85, fontSize: { xs: 11, sm: 12 } }}>
+                {joinMeta(L(p.location), p.year)}
+              </Typography>
+              {/* Two columns are ~157px wide: a long Thai title would fill the
+                  whole card, so it is capped at three lines over the photo. */}
+              <Typography
+                sx={{
+                  fontWeight: 600, fontSize: { xs: 13, sm: 16 }, lineHeight: 1.4,
+                  display: '-webkit-box', WebkitBoxOrient: 'vertical',
+                  // A two-column card is only ~118px tall: at three lines the
+                  // caption covered the photo it is captioning.
+                  WebkitLineClamp: { xs: 2, sm: 3 }, overflow: 'hidden',
+                  // Short of the line boundary, so Thai tone marks from the
+                  // clipped line do not peek over the cut.
+                  maxHeight: { xs: '2.5em', sm: '3.9em' },
+                }}
+              >
+                {L(p.title)}
+              </Typography>
             </Box>
           </Box>
         ))}

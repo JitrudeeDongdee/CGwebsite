@@ -433,6 +433,9 @@ export function HomePage() {
                         mt: 0.5, minHeight: { md: 40 },
                         display: '-webkit-box', WebkitBoxOrient: 'vertical',
                         WebkitLineClamp: { xs: 2, md: 'none' }, overflow: 'hidden',
+                        // Clipped just short of two lines: see ProductsPage — Thai
+                        // tone marks otherwise peek over the cut.
+                        lineHeight: 1.6, maxHeight: { xs: '2.85em', md: 'none' },
                       }}
                     >
                       {L(p.shortDesc)}

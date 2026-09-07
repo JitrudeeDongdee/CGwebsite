@@ -57,7 +57,7 @@ export function CommunityPage() {
         {items.length === 0 ? (
           <Typography color="text.secondary">{t('mkt.community.empty')}</Typography>
         ) : (
-          <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
+          <Box sx={{ display: 'grid', gap: { xs: 1.5, sm: 2.5 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
             {items.map((item) => (
               <Paper
                 key={item.id}
@@ -65,16 +65,31 @@ export function CommunityPage() {
                 sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
               >
                 <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} />
-                <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                <Box sx={{ p: { xs: 1.5, sm: 2.5 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                   <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
-                    {item.year && <Chip size="small" variant="outlined" label={item.year} />}
+                    {item.year && (
+                      <Chip size="small" variant="outlined" label={item.year} sx={{ height: { xs: 22, sm: 24 }, fontSize: { xs: 11, sm: 13 } }} />
+                    )}
                     {L(item.location) && (
                       <Typography variant="caption" color="text.secondary">{L(item.location)}</Typography>
                     )}
                   </Stack>
-                  <Typography sx={{ fontWeight: 600, fontSize: 18 }}>{L(item.title)}</Typography>
+                  <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, sm: 18 } }}>{L(item.title)}</Typography>
                   {L(item.description) && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    // Facebook captions run long; clamped so one card can't be
+                    // three times the height of the one beside it.
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 1, lineHeight: 1.6,
+                        display: '-webkit-box', WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: { xs: 3, sm: 5 }, overflow: 'hidden',
+                        // Short of the line boundary — Thai tone marks from the
+                        // clipped line otherwise peek over the cut.
+                        maxHeight: { xs: '4.5em', sm: '7.7em' },
+                      }}
+                    >
                       {L(item.description)}
                     </Typography>
                   )}

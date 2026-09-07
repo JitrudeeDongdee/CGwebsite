@@ -54,14 +54,22 @@ export function AboutPage() {
       </Box>
 
       <Wrap sx={{ py: 8 }}>
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
+        {/* Two per row on a phone: stacked, these four cards ran most of a
+            screen on their own before the reader reached anything else. */}
+        <Box sx={{ display: 'grid', gap: { xs: 1.5, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
           {values.map((v) => (
-            <Paper key={v.title} elevation={0} sx={{ p: 3, borderRadius: 3, border: 1, borderColor: 'divider' }}>
-              <Box sx={{ width: 44, height: 44, borderRadius: 2, display: 'grid', placeItems: 'center', mb: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+            <Paper key={v.title} elevation={0} sx={{ p: { xs: 1.75, sm: 3 }, borderRadius: 3, border: 1, borderColor: 'divider' }}>
+              <Box
+                sx={{
+                  width: { xs: 36, sm: 44 }, height: { xs: 36, sm: 44 },
+                  borderRadius: 2, display: 'grid', placeItems: 'center', mb: { xs: 1, sm: 1.5 },
+                  bgcolor: 'primary.main', color: 'primary.contrastText',
+                }}
+              >
                 {v.icon}
               </Box>
-              <Typography sx={{ fontWeight: 600, fontSize: 17, mb: 0.5 }}>{v.title}</Typography>
-              <Typography variant="body2" color="text.secondary">{v.desc}</Typography>
+              <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, sm: 17 }, mb: 0.5 }}>{v.title}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>{v.desc}</Typography>
             </Paper>
           ))}
         </Box>
@@ -73,10 +81,12 @@ export function AboutPage() {
             display: 'grid',
             gap: { xs: 3, md: 5 },
             gridTemplateColumns: { xs: '1fr', sm: '380px 1fr' },
+            // A full-width square portrait ate half the screen on a phone.
+            justifyItems: { xs: 'center', sm: 'stretch' },
             alignItems: 'center',
           }}
         >
-          <Box sx={{ aspectRatio: '1 / 1', borderRadius: 4, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
+          <Box sx={{ width: '100%', maxWidth: { xs: 260, sm: 'none' }, aspectRatio: '1 / 1', borderRadius: 4, overflow: 'hidden', border: 1, borderColor: 'divider' }}>
             {/* Shows public/team/ceo.jpg once it exists; placeholder until then. */}
             <SmartImage
               src="team/ceo.jpg"

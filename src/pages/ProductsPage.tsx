@@ -63,7 +63,7 @@ export function ProductsPage() {
         <Typography color="text.secondary" sx={{ mt: 4 }}>{t('mkt.catalog.noResults')}</Typography>
       )}
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' }, mt: 2 }}>
+      <Box sx={{ display: 'grid', gap: { xs: 1.5, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' }, mt: 2 }}>
         {products.map((p) => (
           <Paper
             key={p.id}
@@ -73,10 +73,32 @@ export function ProductsPage() {
             sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' } }}
           >
             <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
-            <Box sx={{ p: 2 }}>
-              <Chip size="small" variant="outlined" label={t(CATEGORY_META[p.category].labelKey)} sx={{ mb: 1 }} />
-              <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, minHeight: 40 }}>{L(p.shortDesc)}</Typography>
+            <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t(CATEGORY_META[p.category].labelKey)}
+                sx={{ mb: 1, maxWidth: '100%', height: { xs: 22, sm: 24 }, fontSize: { xs: 11, sm: 13 } }}
+              />
+              <Typography sx={{ fontWeight: 600, fontSize: { xs: 15, sm: 17 } }}>{L(p.name)}</Typography>
+              {/* Clamped so one long description can't make its card twice the
+                  height of the one beside it in a two-column grid. */}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  mt: 0.5, minHeight: { sm: 40 },
+                  display: '-webkit-box', WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: { xs: 2, sm: 'none' }, overflow: 'hidden',
+                  // Thai tone marks sit well above their baseline, so clipping at
+                  // exactly N line-heights leaves the tops of the next line
+                  // showing through. Clipping ~5px short of the line boundary
+                  // hides them and still shows the last visible line in full.
+                  lineHeight: 1.6, maxHeight: { xs: '2.85em', sm: 'none' },
+                }}
+              >
+                {L(p.shortDesc)}
+              </Typography>
               <Typography sx={{ mt: 1, color: 'secondary.main', fontWeight: 700 }}>
                 {priceLabel(p.priceFrom)}
               </Typography>
