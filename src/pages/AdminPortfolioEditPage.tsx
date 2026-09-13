@@ -38,9 +38,12 @@ import {
   suggestTitle,
   suggestCommunityTitle,
   unfurlPost,
+  // Facebook needs a server; on the deployed site the fetch buttons are off.
+
   uploadImage,
   type ProjectDraft,
 } from '../admin/portfolioApi'
+import { unfurlAvailable } from '../admin/client'
 
 /**
  * Add a portfolio item, or edit one.
@@ -256,16 +259,11 @@ export function AdminPortfolioEditPage() {
     setBusy('upload')
     setMessage(null)
     try {
+      // The file goes straight to Storage now (resized in the browser first),
+      // instead of through a base64 round-trip to a dev-only endpoint.
       const added: string[] = []
       for (const file of Array.from(files)) {
-        const data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(String(reader.result))
-          reader.onerror = () => reject(reader.error)
-          reader.readAsDataURL(file)
-        })
-        const { path } = await uploadImage(folder, file.name, data)
-        added.push(path)
+        added.push(await uploadImage(folder, file))
       }
       setForm((f) => ({
         ...f,
@@ -366,7 +364,9 @@ export function AdminPortfolioEditPage() {
               : 'เพิ่มผลงานใหม่'}
         </Typography>
         <Typography sx={{ mt: 1, color: 'text.secondary' }}>
-          วางลิงก์โพสต์แล้วกด "ดึงข้อมูล" หรืออัปรูปและพิมพ์เนื้อหาเองก็ได้
+          {unfurlAvailable
+            ? 'วางลิงก์โพสต์แล้วกด "ดึงข้อมูล" หรืออัปรูปและพิมพ์เนื้อหาเองก็ได้'
+            : 'อัปรูปจากเครื่องแล้วพิมพ์เนื้อหาได้เลย — ปุ่มดึงข้อมูลจาก Facebook ใช้ได้เฉพาะบนเครื่องผู้ดูแล'}
         </Typography>
 
         {/* Shared first: what describes the job as a whole. The timeline of posts,
@@ -597,7 +597,8 @@ export function AdminPortfolioEditPage() {
             <Typography variant="subtitle2">ไทม์ไลน์อัปเดตงาน (ลิงก์โพสต์ Facebook)</Typography>
             <Button
               onClick={() => void unfurl()}
-              disabled={filledSources(form.sources).length === 0 || busy !== null}
+              disabled={!unfurlAvailable || filledSources(form.sources).length === 0 || busy !== null}
+              title={unfurlAvailable ? undefined : 'ใช้ได้เฉพาะบนเครื่องผู้ดูแลที่รัน pnpm run dev'}
               variant="contained"
               size="small"
               startIcon={busy === 'fetch' ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
@@ -683,7 +684,8 @@ export function AdminPortfolioEditPage() {
                         />
                         <Button
                           onClick={() => void fetchSource(index)}
-                          disabled={!source.url.trim() || busy !== null}
+                          disabled={!unfurlAvailable || !source.url.trim() || busy !== null}
+                          title={unfurlAvailable ? undefined : 'ใช้ได้เฉพาะบนเครื่องผู้ดูแลที่รัน pnpm run dev'}
                           variant="outlined"
                           size="small"
                           startIcon={<DownloadIcon />}

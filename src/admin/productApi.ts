@@ -1,4 +1,5 @@
 import type { Localized, ProductCategory } from '../catalog/types'
+import { db, explain, removeFromBucket, uploadToBucket } from './client'
 
 /**
  * The product half of the development-only admin API (`vite-dev-api.mts`).
@@ -98,37 +99,90 @@ export function draftFromProduct(row: ProductRow): ProductDraft {
   }
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, init)
-  const text = await response.text()
-  const data = text ? JSON.parse(text) : null
-  if (!response.ok) throw new Error(data?.error ?? `HTTP ${response.status}`)
-  return data as T
+const TABLE = 'products'
+
+export async function listAdminProducts(): Promise<ProductRow[]> {
+  const { data, error } = await db()
+    .from(TABLE)
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+  if (error) throw explain(error, 'โหลดรายการสินค้า')
+  return (data ?? []) as ProductRow[]
 }
 
-const json = (body: unknown): RequestInit => ({
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
-})
+const pair = (th: string, en: string) => ({ th: th.trim() || en.trim(), en: en.trim() || th.trim() })
 
-export const listAdminProducts = () => call<ProductRow[]>('/products')
+export async function saveProduct(draft: ProductDraft): Promise<ProductRow> {
+  const slug = draft.slug.trim()
+  if (slug && !/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
+    throw new Error('slug ใช้ได้เฉพาะ a-z 0-9 และ - เท่านั้น')
+  }
+  if (!draft.nameTh && !draft.nameEn) throw new Error('ต้องใส่ชื่อสินค้าอย่างน้อยหนึ่งภาษา')
 
-export const saveProduct = (draft: ProductDraft) => call<ProductRow>('/products', json(draft))
+  const cover = draft.images.includes(draft.cover) ? draft.cover : draft.images[0]
+  const ordered = cover ? [cover, ...draft.images.filter((path) => path !== cover)] : draft.images
 
-const patch = (id: string, body: Record<string, unknown>) =>
-  call<ProductRow>(`/products/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  const payload = {
+    slug: slug || null,
+    category: draft.category,
+    name: pair(draft.nameTh, draft.nameEn),
+    short_desc: pair(draft.shortDescTh, draft.shortDescEn),
+    // Blank is a real state — "สอบถามราคา" — not a zero.
+    price_from: draft.priceFrom.trim() === '' ? null : Number(draft.priceFrom),
+    price_unit: draft.priceUnitTh.trim() || draft.priceUnitEn.trim() ? pair(draft.priceUnitTh, draft.priceUnitEn) : null,
+    specs: draft.specs
+      .filter((spec) => spec.labelTh.trim() || spec.labelEn.trim() || spec.valueTh.trim() || spec.valueEn.trim())
+      .map((spec) => ({ label: pair(spec.labelTh, spec.labelEn), value: pair(spec.valueTh, spec.valueEn) })),
+    featured: Boolean(draft.featured),
+    best_seller: Boolean(draft.bestSeller),
+    published: Boolean(draft.published),
+    image_path: cover ?? null,
+    images: ordered,
+  }
 
-export const setProductPublished = (id: string, published: boolean) => patch(id, { published })
+  if (payload.best_seller) await clearBestSeller(draft.category, draft.id)
 
-/** One best seller per category — the API clears the previous one. */
-export const setProductBestSeller = (id: string, bestSeller: boolean) => patch(id, { best_seller: bestSeller })
+  const query = draft.id
+    ? db().from(TABLE).update(payload).eq('id', draft.id)
+    : db().from(TABLE).insert(payload)
+  const { data, error } = await query.select().single()
+  if (error) throw explain(error, 'บันทึกสินค้า')
+  return data as ProductRow
+}
 
-export const deleteProduct = (id: string) => call(`/products/${id}`, { method: 'DELETE' })
+/** One best seller per category — the previous holder loses the star first. */
+async function clearBestSeller(category: string, exceptId?: string) {
+  let query = db().from(TABLE).update({ best_seller: false }).eq('category', category).eq('best_seller', true)
+  if (exceptId) query = query.neq('id', exceptId)
+  const { error } = await query
+  if (error) throw explain(error, 'เปลี่ยนสินค้าขายดี')
+}
 
-export const uploadProductImage = (slug: string, filename: string, data: string) =>
-  call<{ path: string }>('/upload', json({ slug, filename, data, kind: 'products' }))
+export async function setProductPublished(id: string, published: boolean): Promise<ProductRow> {
+  const { data, error } = await db().from(TABLE).update({ published }).eq('id', id).select().single()
+  if (error) throw explain(error, published ? 'เผยแพร่สินค้า' : 'เอาสินค้าออกจากเว็บ')
+  return data as ProductRow
+}
+
+export async function setProductBestSeller(id: string, bestSeller: boolean): Promise<ProductRow> {
+  if (bestSeller) {
+    const { data: row } = await db().from(TABLE).select('category').eq('id', id).single()
+    if (row?.category) await clearBestSeller(row.category as string, id)
+  }
+  const { data, error } = await db().from(TABLE).update({ best_seller: bestSeller }).eq('id', id).select().single()
+  if (error) throw explain(error, 'เปลี่ยนสินค้าขายดี')
+  return data as ProductRow
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  const { data: existing } = await db().from(TABLE).select('image_path,images').eq('id', id).single()
+  const { error } = await db().from(TABLE).delete().eq('id', id)
+  if (error) throw explain(error, 'ลบสินค้า')
+  const orphans = [...new Set([...(existing?.images ?? []), existing?.image_path].filter(Boolean))]
+  for (const path of orphans as string[]) await removeFromBucket(path)
+}
+
+export const uploadProductImage = (folder: string, file: File) => uploadToBucket(folder, file, 'products')
+
+export const deleteProductImage = (path: string) => removeFromBucket(path)

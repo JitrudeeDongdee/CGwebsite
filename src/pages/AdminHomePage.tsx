@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { unfurlAvailable } from '../admin/client'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -14,9 +15,9 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 /**
  * Admin home — the modules the back-office is made of.
  *
- * The catalog modules (products / portfolio / community) talk to the dev-only
- * API in `vite-dev-api.mts`, so they are shown only under `pnpm run dev`; leads
- * read the browser's own localStorage and work anywhere. No access control yet.
+ * Every module works on the deployed site now: they read and write Supabase as
+ * the signed-in staff user. Only the Facebook import still needs a machine
+ * running `pnpm run dev`, because a browser cannot fetch facebook.com.
  */
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
@@ -28,19 +29,17 @@ interface Module {
   icon: ReactNode
   title: string
   desc: string
-  /** Needs the dev-only API — hidden in a production build. */
-  dev?: boolean
 }
 
 const MODULES: Module[] = [
-  { to: '/admin/products', icon: <Inventory2Icon />, title: 'สินค้า', desc: 'จัดการสินค้าและบริการในแคตตาล็อก', dev: true },
-  { to: '/admin/portfolio', icon: <PhotoLibraryIcon />, title: 'ผลงาน', desc: 'ผลงานที่ทำ นำเข้าจากโพสต์ Facebook ได้', dev: true },
-  { to: '/admin/community', icon: <VolunteerActivismIcon />, title: 'ผลงานสาธารณประโยชน์และการบริจาค', desc: 'กิจกรรมเพื่อสังคมและการบริจาค', dev: true },
-  { to: '/admin/leads', icon: <ContactMailIcon />, title: 'ลูกค้าที่ติดต่อ', desc: 'รายชื่อผู้ติดต่อและสถานะการดูแล' },
+  { to: '/admin/messages', icon: <ContactMailIcon />, title: 'ข้อความจากลูกค้า', desc: 'ฟอร์มติดต่อและคำขอใบเสนอราคา' },
+  { to: '/admin/products', icon: <Inventory2Icon />, title: 'สินค้า', desc: 'จัดการสินค้าและบริการในแคตตาล็อก' },
+  { to: '/admin/portfolio', icon: <PhotoLibraryIcon />, title: 'ผลงาน', desc: 'ผลงานที่ทำ นำเข้าจากโพสต์ Facebook ได้' },
+  { to: '/admin/community', icon: <VolunteerActivismIcon />, title: 'ผลงานสาธารณประโยชน์และการบริจาค', desc: 'กิจกรรมเพื่อสังคมและการบริจาค' },
 ]
 
 export function AdminHomePage() {
-  const modules = MODULES.filter((m) => !m.dev || import.meta.env.DEV)
+  const modules = MODULES
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
@@ -50,9 +49,12 @@ export function AdminHomePage() {
         </Typography>
         <Typography sx={{ mt: 0.5, color: 'text.secondary' }}>เลือกส่วนที่ต้องการจัดการ</Typography>
 
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          หน้านี้ยัง<strong>ไม่มีการตรวจสิทธิ์</strong> — โมดูลแคตตาล็อกทำงานได้เฉพาะตอนรัน <code>pnpm run dev</code> บนเครื่องคุณ
-        </Alert>
+        {!unfurlAvailable && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            แก้ไขเนื้อหาได้ครบทุกอย่างจากที่นี่ — <strong>ยกเว้นปุ่ม "ดึงข้อมูลจากโพสต์ Facebook"</strong>{' '}
+            ซึ่งใช้ได้เฉพาะบนเครื่องผู้ดูแลที่รัน <code>pnpm run dev</code> (เบราว์เซอร์อ่านหน้า Facebook เองไม่ได้)
+          </Alert>
+        )}
 
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, mt: 3 }}>
           {modules.map((m) => (

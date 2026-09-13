@@ -172,6 +172,46 @@ footer. It is now **4,356px (5.4 screens)**, with nothing above the `md` breakpo
   "· 2569"; two imported jobs have no year and rendered "เพชรบูรณ์ ·".
 - Footer links were 20px tall; they get vertical padding on touch widths only (32–45px measured).
 
+**✅ Phase 3.4 / 3.5 — DONE (2026-09-13): real auth and a production back office.**
+The admin screens ship to the deployed site and staff sign in to use them. The dev-only
+`vite-dev-api.mts` is no longer the back end.
+
+- **`src/auth/AuthProvider.tsx` is Supabase Auth**, not the localStorage mock. It exposes `user`
+  (anyone signed in — still what gates the designer's download/upload/send-to-team), `role` read from
+  `public.profiles`, `isStaff`, and a `loading` flag. **`loading` matters**: without waiting for the
+  first `getSession()` a page reload bounces a signed-in admin straight back to the login screen.
+  `onAuthStateChange` keeps tabs in step and picks up token refreshes.
+- **`src/admin/AdminGuard.tsx`** wraps every `/admin/*` route at the layout level, so a new admin
+  screen cannot be added unprotected. Three distinct states — still checking / signed out / signed in
+  with no role — because conflating them makes the area impossible to debug.
+- **The admin talks to Supabase directly** (`src/admin/client.ts`), as the signed-in user. There is no
+  admin server and that is the point: every policy already routes through `public.is_staff()`, so a
+  middle tier would add a second place to get authorisation wrong without adding a check. Uploads go
+  browser → Storage, resized to 1600px with a canvas first (downscale-only; phone photos are 3–8 MB
+  against a 10 MB bucket cap).
+- **`/admin/messages`** is new, and is why this phase mattered: `contact_messages` and `leads` are
+  staff-read-only, and with no staff account **a message that arrived was stored correctly and seen by
+  nobody**. The screen lists both, flags unanswered messages, and toggles `handled`.
+- **`/login` performs a real sign-in.** Sign-up, password reset and the Google/Facebook buttons were
+  deleted rather than left as decoration: **accounts are created by an administrator** in the Supabase
+  dashboard, who then grants a role in SQL, so self-service sign-up could only ever produce an account
+  that can do nothing. The header's Admin link is now `isStaff` rather than a hardcoded `false`.
+- **Facebook import stays on the owner's machine.** A browser cannot fetch facebook.com (CORS), so
+  `/api/unfurl` in `vite-dev-api.mts` remains the only server-side piece; `unfurlAvailable`
+  (`import.meta.env.DEV`) disables the two fetch buttons everywhere else and says why. Everything
+  else — text, photos from the device, publishing — works on the deployed site.
+
+**Verified against the live database, not just the UI**: signed out, `/admin` shows the sign-in prompt;
+as staff, the message the contact form stored on 2026-09-06 is readable and a publish toggle round-trips;
+as a signed-in user with **no** role, `select` on `contact_messages` returns `[]`, `insert` into
+`projects` is refused `42501`, and an upload to the `catalog` bucket is refused 403. `pnpm run build`
+ships the admin chunks (largest 31 kB) with no `service_role` string in the bundle.
+
+**Still open:** granting a role is a SQL edit (no user-management screen); `/admin/leads` is still the
+legacy localStorage table, superseded by `/admin/messages`; nothing notifies anyone when a message
+arrives — see the LINE Messaging API plan discussed 2026-09-13 (LINE Notify itself shut down
+2025-03-31 and is not an option).
+
 **🚀 Phase 2.5 — Deploy to Cloudflare Pages (2026-09-06).** Ship the marketing site publicly *before*
 starting Phase 3, so the DB work happens against a real deployment.
 

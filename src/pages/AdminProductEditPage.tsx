@@ -76,16 +76,11 @@ export function AdminProductEditPage() {
     setBusy('upload')
     setMessage(null)
     try {
+      // The file goes straight to Storage now (resized in the browser first),
+      // instead of through a base64 round-trip to a dev-only endpoint.
       const added: string[] = []
       for (const file of Array.from(files)) {
-        const data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(String(reader.result))
-          reader.onerror = () => reject(reader.error)
-          reader.readAsDataURL(file)
-        })
-        const { path } = await uploadProductImage(folder, file.name, data)
-        added.push(path)
+        added.push(await uploadProductImage(folder, file))
       }
       setForm((f) => ({ ...f, images: [...f.images, ...added] }))
       setMessage({ kind: 'success', text: `อัปโหลด ${added.length} รูปแล้ว` })

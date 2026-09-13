@@ -42,7 +42,7 @@ import { formatCurrency } from '../pricing/estimate'
  * Every product, at a glance: publish, mark the category's best seller (the card
  * the service home page leads with), edit, delete.
  *
- * NO ACCESS CONTROL YET, and the API behind it only runs under `pnpm run dev`.
+ * Staff only — `AdminGuard` decides who sees it, RLS decides who can write.
  */
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
@@ -126,13 +126,9 @@ export function AdminProductListPage() {
           </Stack>
         </Stack>
 
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          หน้านี้ยัง<strong>ไม่มีการตรวจสิทธิ์</strong> และทำงานได้เฉพาะตอนรัน <code>pnpm run dev</code> บนเครื่องคุณ
-        </Alert>
-
         {error && (
           <Alert severity="error" sx={{ mt: 2 }}>
-            เรียก /api ไม่ได้: {error}
+            {error}
           </Alert>
         )}
 

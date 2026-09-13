@@ -6,6 +6,7 @@ import { MarketingLayout } from './marketing/MarketingLayout'
 import { SiteHeader } from './ui/SiteHeader'
 import { RouteAnalytics } from './analytics/RouteAnalytics'
 import { RouteFallback } from './ui/RouteFallback'
+import { AdminGuard } from './admin/AdminGuard'
 
 /**
  * Everything except the landing page is code-split.
@@ -19,23 +20,15 @@ import { RouteFallback } from './ui/RouteFallback'
 const DesignerPage = lazy(() => import('./pages/DesignerPage').then((m) => ({ default: m.DesignerPage })))
 const AdminHomePage = lazy(() => import('./pages/AdminHomePage').then((m) => ({ default: m.AdminHomePage })))
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })))
-// The two admin portfolio screens. Guarding the dynamic import behind
-// `import.meta.env.DEV` (statically `false` in a prod build) puts the `import()`
-// in a dead branch, so Rollup drops both chunks from the deployed bundle — the
-// routes below are gated the same way. They need `/api/*` from
-// `vite-dev-api.mts`, which only runs under `pnpm run dev`.
-const AdminPortfolioListPage = import.meta.env.DEV
-  ? lazy(() => import('./pages/AdminPortfolioListPage').then((m) => ({ default: m.AdminPortfolioListPage })))
-  : undefined
-const AdminPortfolioEditPage = import.meta.env.DEV
-  ? lazy(() => import('./pages/AdminPortfolioEditPage').then((m) => ({ default: m.AdminPortfolioEditPage })))
-  : undefined
-const AdminProductListPage = import.meta.env.DEV
-  ? lazy(() => import('./pages/AdminProductListPage').then((m) => ({ default: m.AdminProductListPage })))
-  : undefined
-const AdminProductEditPage = import.meta.env.DEV
-  ? lazy(() => import('./pages/AdminProductEditPage').then((m) => ({ default: m.AdminProductEditPage })))
-  : undefined
+// The admin screens ship in production now: they talk to Supabase directly as
+// the signed-in staff user, so there is no dev-only server behind them any more.
+// `AdminGuard` decides what a visitor sees; RLS decides what they can change.
+// They stay lazy so the marketing bundle does not carry them.
+const AdminPortfolioListPage = lazy(() => import('./pages/AdminPortfolioListPage').then((m) => ({ default: m.AdminPortfolioListPage })))
+const AdminPortfolioEditPage = lazy(() => import('./pages/AdminPortfolioEditPage').then((m) => ({ default: m.AdminPortfolioEditPage })))
+const AdminProductListPage = lazy(() => import('./pages/AdminProductListPage').then((m) => ({ default: m.AdminProductListPage })))
+const AdminProductEditPage = lazy(() => import('./pages/AdminProductEditPage').then((m) => ({ default: m.AdminProductEditPage })))
+const AdminMessagesPage = lazy(() => import('./pages/AdminMessagesPage').then((m) => ({ default: m.AdminMessagesPage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })))
@@ -96,31 +89,31 @@ function App() {
       <Route element={<AppShell />}>
         <Route path="/design" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
-        {/* Admin home lists the modules; the legacy leads table moves to /admin/leads. */}
+      </Route>
+
+      {/* Every /admin screen behind one guard, so a new one cannot be added
+          unprotected by forgetting to wrap it. The list screens are for scanning
+          and publishing; each editor is its own screen. */}
+      <Route
+        element={
+          <AdminGuard>
+            <AppShell />
+          </AdminGuard>
+        }
+      >
         <Route path="/admin" element={<AdminHomePage />} />
         <Route path="/admin/leads" element={<AdminPage />} />
-        {/* Dev-only: the admin API these screens call lives in the dev server
-            (vite-dev-api.mts), so in a production build the routes are tree-shaken
-            out and the URLs fall through to the catch-all redirect. The list is
-            for scanning and publishing; the editor is its own screen. */}
-        {AdminProductListPage && AdminProductEditPage && (
-          <>
-            <Route path="/admin/products" element={<AdminProductListPage />} />
-            <Route path="/admin/products/edit" element={<AdminProductEditPage />} />
-            <Route path="/admin/products/edit/:id" element={<AdminProductEditPage />} />
-          </>
-        )}
-        {AdminPortfolioListPage && AdminPortfolioEditPage && (
-          <>
-            <Route path="/admin/portfolio" element={<AdminPortfolioListPage />} />
-            <Route path="/admin/portfolio/edit" element={<AdminPortfolioEditPage />} />
-            <Route path="/admin/portfolio/edit/:id" element={<AdminPortfolioEditPage />} />
-            {/* Same two screens, in "community" mode (chosen by the path). */}
-            <Route path="/admin/community" element={<AdminPortfolioListPage />} />
-            <Route path="/admin/community/edit" element={<AdminPortfolioEditPage />} />
-            <Route path="/admin/community/edit/:id" element={<AdminPortfolioEditPage />} />
-          </>
-        )}
+        <Route path="/admin/messages" element={<AdminMessagesPage />} />
+        <Route path="/admin/products" element={<AdminProductListPage />} />
+        <Route path="/admin/products/edit" element={<AdminProductEditPage />} />
+        <Route path="/admin/products/edit/:id" element={<AdminProductEditPage />} />
+        <Route path="/admin/portfolio" element={<AdminPortfolioListPage />} />
+        <Route path="/admin/portfolio/edit" element={<AdminPortfolioEditPage />} />
+        <Route path="/admin/portfolio/edit/:id" element={<AdminPortfolioEditPage />} />
+        {/* Same two screens, in "community" mode (chosen by the path). */}
+        <Route path="/admin/community" element={<AdminPortfolioListPage />} />
+        <Route path="/admin/community/edit" element={<AdminPortfolioEditPage />} />
+        <Route path="/admin/community/edit/:id" element={<AdminPortfolioEditPage />} />
       </Route>
 
       {/* Old service URLs, before they moved under /home. */}

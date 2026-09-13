@@ -25,14 +25,6 @@ import { ensureMarketingI18n } from '../marketing/i18n'
 
 ensureMarketingI18n()
 
-/**
- * Show the Admin entry in the header? Off until sign-in carries real roles —
- * the mock auth in `AuthProvider` has no permissions, so a visible link would
- * just advertise a page nobody should reach. Flip this to a role check
- * (e.g. `user?.role === 'admin'`) once auth is real.
- */
-const SHOW_ADMIN_LINK = false
-
 /** One header for the whole site — the marketing pages and the designer/admin
  *  app both mount this, so the top bar is identical everywhere. Dense (48px) to
  *  match the designer's `calc(100vh - 48px)` editor layout. */
@@ -71,7 +63,7 @@ export function Brand() {
 export function SiteHeader() {
   const { t } = useTranslation()
   const { pathname } = useLocation()
-  const { user, logout } = useAuth()
+  const { user, logout, isStaff } = useAuth()
   const [drawer, setDrawer] = useState(false)
 
   const designActive = pathname === '/design'
@@ -116,8 +108,9 @@ export function SiteHeader() {
             {t('mkt.nav.designCta')}
           </Button>
 
-          {/* Hidden until auth carries roles — see SHOW_ADMIN_LINK at the top of the file. */}
-          {SHOW_ADMIN_LINK && (
+          {/* Staff only. Not a security boundary — RLS is — but a visitor has no
+              reason to be shown a door they cannot open. */}
+          {isStaff && (
             <Button
               component={RouterLink}
               to="/admin"
@@ -172,7 +165,7 @@ export function SiteHeader() {
                 <ListItemText primary={t(item.key)} />
               </ListItemButton>
             ))}
-            {SHOW_ADMIN_LINK && (
+            {isStaff && (
               <ListItemButton component={RouterLink} to="/admin" onClick={() => setDrawer(false)}>
                 <ListItemText primary={t('app.navAdmin')} />
               </ListItemButton>
