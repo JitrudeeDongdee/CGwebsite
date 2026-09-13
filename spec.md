@@ -207,10 +207,24 @@ as a signed-in user with **no** role, `select` on `contact_messages` returns `[]
 `projects` is refused `42501`, and an upload to the `catalog` bucket is refused 403. `pnpm run build`
 ships the admin chunks (largest 31 kB) with no `service_role` string in the bundle.
 
-**Still open:** granting a role is a SQL edit (no user-management screen); `/admin/leads` is still the
-legacy localStorage table, superseded by `/admin/messages`; nothing notifies anyone when a message
-arrives — see the LINE Messaging API plan discussed 2026-09-13 (LINE Notify itself shut down
-2025-03-31 and is not an option).
+**Role management — `/admin/users`, migration `20260913140000_admin_manages_roles.sql`.** Adding or
+removing a staff member is a screen, not a SQL edit. Two things are deliberately NOT in the migration:
+who works here (an employee's e-mail in a migration is committed to git forever and replayed into every
+environment, and a new hire would mean a code change and a redeploy), and the first admin — only an
+admin can appoint one, so that single grant stays manual:
+
+    update public.profiles set role = 'admin' where email = 'you@example.com';
+
+⚠️ **`profiles` had a SELECT policy and nothing else**, so an UPDATE matched zero rows and PostgREST
+answered **200 with an empty body** — a silent no-op that looks exactly like success. `setRole` therefore
+treats an empty result as a failure and names the migration in the message; without that check the
+screen would have reported success for a change that never happened. `profiles_admin_update` also
+refuses `id = auth.uid()`: a sole admin demoting themselves would lock every human out of role
+management permanently, recoverable only with the service key.
+
+**Still open:** `/admin/leads` is the legacy localStorage table, superseded by `/admin/messages`;
+nothing notifies anyone when a message arrives — see the LINE Messaging API plan discussed 2026-09-13
+(LINE Notify itself shut down 2025-03-31 and is not an option).
 
 **🚀 Phase 2.5 — Deploy to Cloudflare Pages (2026-09-06).** Ship the marketing site publicly *before*
 starting Phase 3, so the DB work happens against a real deployment.

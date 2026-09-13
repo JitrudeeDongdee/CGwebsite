@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import GroupIcon from '@mui/icons-material/GroupOutlined'
 import { unfurlAvailable } from '../admin/client'
+import { useAuth } from '../auth/AuthProvider'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -29,6 +31,8 @@ interface Module {
   icon: ReactNode
   title: string
   desc: string
+  /** Role management is the one screen staff have no business opening. */
+  adminOnly?: boolean
 }
 
 const MODULES: Module[] = [
@@ -36,10 +40,12 @@ const MODULES: Module[] = [
   { to: '/admin/products', icon: <Inventory2Icon />, title: 'สินค้า', desc: 'จัดการสินค้าและบริการในแคตตาล็อก' },
   { to: '/admin/portfolio', icon: <PhotoLibraryIcon />, title: 'ผลงาน', desc: 'ผลงานที่ทำ นำเข้าจากโพสต์ Facebook ได้' },
   { to: '/admin/community', icon: <VolunteerActivismIcon />, title: 'ผลงานสาธารณประโยชน์และการบริจาค', desc: 'กิจกรรมเพื่อสังคมและการบริจาค' },
+  { to: '/admin/users', icon: <GroupIcon />, title: 'ผู้ใช้และสิทธิ์', desc: 'ให้สิทธิ์พนักงานเข้าหลังบ้าน', adminOnly: true },
 ]
 
 export function AdminHomePage() {
-  const modules = MODULES
+  const { role } = useAuth()
+  const modules = MODULES.filter((m) => !m.adminOnly || role === 'admin')
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
