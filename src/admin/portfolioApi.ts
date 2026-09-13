@@ -1,4 +1,5 @@
 import type { ProductCategory, ProjectKind, ProjectSource } from '../catalog/types'
+import { db, explain, removeFromBucket, unfurlAvailable, uploadToBucket } from './client'
 
 /** One timeline entry while it is being edited (bilingual caption split in two). */
 export interface SourceDraft {
@@ -164,47 +165,122 @@ export function draftFromRow(row: ProjectRow): ProjectDraft {
   }
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, init)
-  const text = await response.text()
-  const data = text ? JSON.parse(text) : null
-  if (!response.ok) throw new Error(data?.error ?? `HTTP ${response.status}`)
-  return data as T
+const TABLE = 'projects'
+
+/** Every row, newest first — the list shows drafts alongside published work. */
+export async function listProjects(): Promise<ProjectRow[]> {
+  const { data, error } = await db().from(TABLE).select('*').order('created_at', { ascending: false })
+  if (error) throw explain(error, 'โหลดรายการผลงาน')
+  return (data ?? []) as ProjectRow[]
 }
 
-const json = (body: unknown): RequestInit => ({
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
-})
-
-export const listProjects = () => call<ProjectRow[]>('/projects')
-
-export const saveProject = (draft: ProjectDraft) =>
-  call<ProjectRow>(
-    '/projects',
-    json({ ...draft, sources: draft.sources.filter((source) => source.url.trim()) }),
-  )
+const pair = (th: string, en: string) => ({ th: th.trim() || en.trim(), en: en.trim() || th.trim() })
 
 /**
- * Marks this project as its category's featured one. The API clears whatever was
- * featured in that category, so the rule holds without the browser policing it.
+ * Writes the whole form back as one row.
+ *
+ * Mirrors what the dev API did, because the shape it produced is what the site
+ * reads: updates keep their own photos and words, the row's `images` is the
+ * union with the cover first, and `image_path` mirrors `images[0]` so older
+ * readers keep working.
  */
-export const setFeatured = (id: string, featured: boolean) =>
-  call<ProjectRow>(`/projects/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ featured }),
-  })
+export async function saveProject(draft: ProjectDraft): Promise<ProjectRow> {
+  const slug = draft.slug.trim()
+  if (slug && !/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
+    throw new Error('slug ใช้ได้เฉพาะ a-z 0-9 และ - เท่านั้น')
+  }
+  if (!draft.titleTh && !draft.titleEn) throw new Error('ต้องใส่ชื่อผลงานอย่างน้อยหนึ่งภาษา')
 
-export const setPublished = (id: string, published: boolean) =>
-  call<ProjectRow>(`/projects/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ published }),
-  })
+  // An update survives its link being cleared: it stays as long as it still has
+  // a photo or something written on it.
+  const sources = draft.sources
+    .map((source) => {
+      const url = source.url.trim()
+      const hasText = Boolean(source.captionTh.trim() || source.captionEn.trim() || source.label.trim())
+      if (!url && source.images.length === 0 && !hasText) return null
+      return {
+        ...(url ? { url } : {}),
+        ...(source.label.trim() ? { label: source.label.trim() } : {}),
+        ...(source.captionTh.trim() || source.captionEn.trim()
+          ? { caption: pair(source.captionTh, source.captionEn) }
+          : {}),
+        images: source.images,
+      }
+    })
+    .filter((source): source is NonNullable<typeof source> => source !== null)
 
-export const deleteProject = (id: string) => call(`/projects/${id}`, { method: 'DELETE' })
+  // The gallery is the union: each update's photos in order, then loose ones.
+  const all = [...sources.flatMap((source) => source.images), ...draft.images].filter(
+    (path, index, list) => list.indexOf(path) === index,
+  )
+  const cover = all.includes(draft.cover) ? draft.cover : all[0]
+  const ordered = cover ? [cover, ...all.filter((path) => path !== cover)] : all
+
+  const payload = {
+    slug: slug || null,
+    kind: draft.kind === 'community' ? 'community' : 'project',
+    title: pair(draft.titleTh, draft.titleEn),
+    location: pair(draft.locationTh, draft.locationEn),
+    year: draft.year ?? '',
+    category: draft.category,
+    area: draft.area || null,
+    description: pair(draft.descriptionTh, draft.descriptionEn),
+    published: Boolean(draft.published),
+    image_path: cover ?? null,
+    images: ordered,
+    source_url: sources[0]?.url ?? null,
+    sources,
+    product_id: draft.productId || null,
+  }
+
+  // An existing row is addressed by its id, so renaming the slug updates that
+  // row instead of creating a second one.
+  const query = draft.id
+    ? db().from(TABLE).update(payload).eq('id', draft.id)
+    : db().from(TABLE).insert(payload)
+  const { data, error } = await query.select().single()
+  if (error) throw explain(error, 'บันทึกผลงาน')
+  return data as ProjectRow
+}
+
+/**
+ * Marks this project as its category's featured one.
+ *
+ * Clearing the previous holder first keeps "one per category" true even when
+ * two tabs star different rows — the browser is not policing a rule it could
+ * lose track of, it is doing both halves of one change.
+ */
+export async function setFeatured(id: string, featured: boolean): Promise<ProjectRow> {
+  if (featured) {
+    const { data: row } = await db().from(TABLE).select('category').eq('id', id).single()
+    if (row?.category) {
+      const { error } = await db()
+        .from(TABLE)
+        .update({ featured: false })
+        .eq('category', row.category)
+        .eq('featured', true)
+      if (error) throw explain(error, 'เปลี่ยนผลงานเด่น')
+    }
+  }
+  const { data, error } = await db().from(TABLE).update({ featured }).eq('id', id).select().single()
+  if (error) throw explain(error, 'เปลี่ยนผลงานเด่น')
+  return data as ProjectRow
+}
+
+export async function setPublished(id: string, published: boolean): Promise<ProjectRow> {
+  const { data, error } = await db().from(TABLE).update({ published }).eq('id', id).select().single()
+  if (error) throw explain(error, published ? 'เผยแพร่ผลงาน' : 'เอาผลงานออกจากเว็บ')
+  return data as ProjectRow
+}
+
+/** Deletes the row, then its photos — an orphaned object costs storage forever. */
+export async function deleteProject(id: string): Promise<void> {
+  const { data: existing } = await db().from(TABLE).select('image_path,images').eq('id', id).single()
+  const { error } = await db().from(TABLE).delete().eq('id', id)
+  if (error) throw explain(error, 'ลบผลงาน')
+  const orphans = [...new Set([...(existing?.images ?? []), existing?.image_path].filter(Boolean))]
+  for (const path of orphans as string[]) await removeFromBucket(path)
+}
 
 export interface PostPreview {
   title?: string
@@ -214,12 +290,30 @@ export interface PostPreview {
   publishedTime?: string
 }
 
-export const unfurlPost = (url: string) => call<PostPreview>('/unfurl', json({ url }))
+/**
+ * Reads a Facebook post's link-preview metadata.
+ *
+ * Only works under `pnpm run dev`: a browser cannot fetch facebook.com (CORS),
+ * so this goes through the dev server. On the deployed site `unfurlAvailable`
+ * is false and the editor hides the button rather than offering something that
+ * would fail.
+ */
+export async function unfurlPost(url: string): Promise<PostPreview> {
+  if (!unfurlAvailable) throw new Error('ดึงข้อมูลจาก Facebook ได้เฉพาะตอนรันบนเครื่องผู้ดูแล (pnpm run dev)')
+  const response = await fetch('/api/unfurl', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  const text = await response.text()
+  const data = text ? JSON.parse(text) : null
+  if (!response.ok) throw new Error(data?.error ?? `HTTP ${response.status}`)
+  return data as PostPreview
+}
 
-export const uploadImage = (slug: string, filename: string, data: string) =>
-  call<{ path: string }>('/upload', json({ slug, filename, data }))
+export const uploadImage = (folder: string, file: File) => uploadToBucket(folder, file, 'portfolio')
 
-export const deleteImage = (path: string) => call('/upload/delete', json({ path }))
+export const deleteImage = (path: string) => removeFromBucket(path)
 
 /**
  * A starting name for a new item: the service plus a running number, e.g.

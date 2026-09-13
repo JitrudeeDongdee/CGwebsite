@@ -39,8 +39,8 @@ import { CATEGORY_META } from '../catalog/categories'
  * Adding and editing live on `/admin/portfolio/edit` — a list you can scan is a
  * different job from a form you fill in, and mixing them made both worse.
  *
- * NO ACCESS CONTROL YET, and the API behind it is development-only. See
- * `vite-dev-api.mts`.
+ * Staff only — `AdminGuard` decides who sees it, and RLS decides who can
+ * actually change anything.
  */
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
@@ -137,14 +137,9 @@ export function AdminPortfolioListPage() {
           </Button>
         </Stack>
 
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          หน้านี้ยัง<strong>ไม่มีการตรวจสิทธิ์</strong> และทำงานได้เฉพาะตอนรัน <code>pnpm run dev</code> บนเครื่องคุณ
-          — อย่าเพิ่ง deploy ขึ้น production
-        </Alert>
-
         {error && (
           <Alert severity="error" sx={{ mt: 2 }}>
-            เรียก /api ไม่ได้: {error} — ต้องรันผ่าน <code>pnpm run dev</code> และตั้ง SUPABASE_SERVICE_ROLE_KEY ใน .env.local
+            {error}
           </Alert>
         )}
 

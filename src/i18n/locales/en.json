@@ -206,11 +206,11 @@
     "submit": "Sign in",
     "cancel": "Cancel",
     "required": "Please fill this in",
-    "demoNote": "Demo sign-in — any name and password works. Downloading, uploading and sending to the team need you signed in.",
+    "demoNote": "Sign in with the account the company created for you. Download, upload and send-to-team need a sign-in.",
     "signInTitle": "Sign in",
     "signUpTitle": "Create an account",
     "pageSubtitle": "Save your designs and send them to our team.",
-    "demoPageNotice": "Preview only — sign in / sign up isn't wired up yet. The buttons show the layout but don't do anything.",
+    "demoPageNotice": "Accounts are created by an administrator; there is no self sign-up. Ask an administrator if you need back-office access.",
     "signInTab": "Sign in",
     "signUpTab": "Sign up",
     "email": "Email",
@@ -222,6 +222,9 @@
     "noAccount": "Don't have an account?",
     "haveAccount": "Already have an account?",
     "backToApp": "Back to the app",
-    "demoActionNotice": "Preview mode — this isn't enabled yet."
+    "demoActionNotice": "Preview mode — this isn't enabled yet.",
+    "noAccessTitle": "This account has no back-office access",
+    "noAccessBody": "You are signed in, but this account has not been granted a staff role. Ask an administrator to grant it.",
+    "signedInAs": "Signed in as"
   }
 }
