@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -25,8 +24,10 @@ import { supabaseEnabled } from '../supabase/client'
  * area confusing to debug:
  *   - still checking the session → spinner (NOT a redirect; a reload would
  *     otherwise bounce a signed-in admin straight back out)
- *   - signed out → sign in
- *   - signed in, no role → ask an administrator
+ *   - signed out → straight to /login, carrying `?next=` so sign-in returns
+ *     here rather than dumping the person on a generic landing page
+ *   - signed in, no role → ask an administrator (a different problem from
+ *     being signed out, so it must not look like one)
  */
 function Centered({ children }: { children: ReactNode }) {
   return (
@@ -43,7 +44,8 @@ function Centered({ children }: { children: ReactNode }) {
 
 export function AdminGuard({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
-  const { user, isStaff, loading, promptLogin } = useAuth()
+  const { user, isStaff, loading } = useAuth()
+  const location = useLocation()
 
   if (!supabaseEnabled) {
     return (
@@ -68,25 +70,12 @@ export function AdminGuard({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return (
-      <Centered>
-        <LockIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
-        <Typography variant="h2" sx={{ mt: 1.5, fontSize: 20, fontWeight: 600 }}>
-          {t('auth.loginTitle')}
-        </Typography>
-        <Typography sx={{ mt: 1, color: 'text.secondary' }}>
-          หน้านี้สำหรับพนักงานที่มีบัญชีเท่านั้น
-        </Typography>
-        <Stack direction="row" spacing={1.5} sx={{ mt: 3, justifyContent: 'center' }}>
-          <Button variant="contained" onClick={promptLogin}>
-            {t('auth.login')}
-          </Button>
-          <Button component={RouterLink} to="/home/house" variant="outlined">
-            กลับหน้าแรก
-          </Button>
-        </Stack>
-      </Centered>
-    )
+    // `replace`, so Back from the login page leaves the admin area instead of
+    // bouncing between the two. `next` carries the whole path including any
+    // query, which is what makes a deep link like /admin/products/edit/<id>
+    // survive a sign-in.
+    const next = `${location.pathname}${location.search}`
+    return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
 
   if (!isStaff) {

@@ -183,7 +183,11 @@ The admin screens ship to the deployed site and staff sign in to use them. The d
   `onAuthStateChange` keeps tabs in step and picks up token refreshes.
 - **`src/admin/AdminGuard.tsx`** wraps every `/admin/*` route at the layout level, so a new admin
   screen cannot be added unprotected. Three distinct states — still checking / signed out / signed in
-  with no role — because conflating them makes the area impossible to debug.
+  with no role — because conflating them makes the area impossible to debug. Signed out **redirects
+  straight to `/login?next=<path>`** (`replace`, so Back leaves the admin area rather than bouncing);
+  `next` carries path + query, so a deep link like `/admin/products/edit/<id>` survives the sign-in and
+  lands back on that record. Signed in with no role still gets a card, not a redirect — being unknown
+  to the system and being unapproved are different problems and must not look alike.
 - **The admin talks to Supabase directly** (`src/admin/client.ts`), as the signed-in user. There is no
   admin server and that is the point: every policy already routes through `public.is_staff()`, so a
   middle tier would add a second place to get authorisation wrong without adding a check. Uploads go
