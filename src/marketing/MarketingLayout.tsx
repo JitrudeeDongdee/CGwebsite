@@ -8,7 +8,7 @@ import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import { SiteHeader, Brand } from '../ui/SiteHeader'
 import { RouteFallback } from '../ui/RouteFallback'
-import { contactHref, contactLabelKey, contactValue, footerChannels } from '../content/contact'
+import { contactHref, contactLabel, contactValue, footerChannels } from '../content/contact'
 import { ensureMarketingI18n } from './i18n'
 
 ensureMarketingI18n()
@@ -87,7 +87,7 @@ function MarketingFooter() {
   const contact: FooterLink[] = footerChannels(lang).map((c) => {
     const value = contactValue(c, lang)
     return {
-      label: c.kind === 'email' ? value : `${t(contactLabelKey(c))} ${value}`,
+      label: c.kind === 'email' ? value : `${contactLabel(c, lang, t)} ${value}`,
       href: contactHref(c, lang),
     }
   })

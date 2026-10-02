@@ -19,6 +19,12 @@ export type ContactKind = 'phone' | 'line' | 'email' | 'facebook' | 'address'
 
 export interface ContactChannel {
   kind: ContactKind
+  /**
+   * Overrides the `kind`'s default label. Needed as soon as a kind appears
+   * twice — two rows both reading "โทร" tell the visitor nothing about which
+   * number to try first.
+   */
+  label?: Localized
   /** What the visitor sees — one string, or `{ th, en }` when it needs translating. */
   value: string | Localized
   /** Optional explicit link, for channels we can't derive one for. */
@@ -35,6 +41,18 @@ export function contactValue(channel: ContactChannel, lang: 'th' | 'en'): string
 /** i18n key for the channel's label, e.g. `mkt.contact.phoneLabel`. */
 export function contactLabelKey(channel: ContactChannel): string {
   return `mkt.contact.${channel.kind}Label`
+}
+
+/**
+ * The label to print: the channel's own override when it has one, else the
+ * translated default for its kind. Takes `t` so this stays free of React.
+ */
+export function contactLabel(
+  channel: ContactChannel,
+  lang: 'th' | 'en',
+  t: (key: string) => string,
+): string {
+  return channel.label ? channel.label[lang] : t(contactLabelKey(channel))
 }
 
 /** Values that mean "not filled in yet" — never rendered as a link, and hidden in the footer. */
