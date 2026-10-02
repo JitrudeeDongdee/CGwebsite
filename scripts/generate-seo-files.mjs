@@ -69,7 +69,17 @@ function slugs(file) {
   return found
 }
 
-const SERVICES = ['house', 'electronics', 'furniture', 'rental']
+/** The service lines, read from PRODUCT_CATEGORIES so a new category (e.g.
+ *  `contracting`) lands in the sitemap without touching this file. */
+function serviceCategories() {
+  const src = readFileSync(join(root, 'src/catalog/categories.tsx'), 'utf8')
+  const list = /PRODUCT_CATEGORIES[^=]*=\s*\[([^\]]*)\]/.exec(src)?.[1]
+  const cats = list ? [...list.matchAll(/'([^']+)'/g)].map((m) => m[1]) : []
+  if (cats.length === 0) throw new Error('no PRODUCT_CATEGORIES parsed from categories.tsx — did the format change?')
+  return cats
+}
+
+const SERVICES = serviceCategories()
 
 // changefreq/priority are hints only; keep them honest rather than all-1.0.
 const routes = [
@@ -85,6 +95,8 @@ const routes = [
     priority: '0.6',
     changefreq: 'yearly',
   })),
+  // Public-benefit works & donations — one page, new activities added over time.
+  { path: '/community', priority: '0.6', changefreq: 'monthly' },
   { path: '/about', priority: '0.5', changefreq: 'yearly' },
   { path: '/contact', priority: '0.5', changefreq: 'yearly' },
   { path: '/design', priority: '0.7', changefreq: 'monthly' },
