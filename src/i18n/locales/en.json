@@ -220,7 +220,7 @@
     "continueGoogle": "Continue with Google",
     "continueFacebook": "Continue with Facebook",
     "noAccount": "Don't have an account?",
-    "haveAccount": "Already have an account?",
+    "haveAccount": "Already have an account? Sign in",
     "backToApp": "Back to the app",
     "demoActionNotice": "Preview mode — this isn't enabled yet.",
     "noAccessTitle": "This account has no back-office access",
@@ -231,6 +231,14 @@
     "adminNoSignup": "No sign-up here — staff accounts are created by an administrator.",
     "backToSite": "Back to the site",
     "customerLogin": "Customer sign in",
-    "staffLogin": "Staff: back office"
+    "staffLogin": "Staff: back office",
+    "signUpCta": "No account yet? Sign up",
+    "signUpSubmit": "Create account",
+    "confirmSentTitle": "Confirmation e-mail sent",
+    "confirmSentBody": "Open {{email}} and follow the link, then come back and sign in. Check the spam folder if it has not arrived.",
+    "confirmedNotice": "E-mail confirmed — you can sign in now.",
+    "passwordMin": "Password must be at least 8 characters",
+    "customerSignInTitle": "Sign in",
+    "staffHint": "TDD staff sign in to the back office here"
   }
 }

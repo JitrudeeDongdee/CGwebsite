@@ -203,6 +203,26 @@ The admin screens ship to the deployed site and staff sign in to use them. The d
   both authenticate against the same Supabase Auth pool, and what keeps a customer out of the back office
   is their profile having no role (`is_staff()` in RLS). Signing in at `/admin/login` with a customer
   account says so on the page rather than failing opaquely.
+- **Customer sign-up — `/login` (2026-10-03).** Sign-in and sign-up in one form; a customer account
+  unlocks only the designer's save / download / send-to-team actions and carries no role, so it can
+  never reach `/admin`. Three details that are easy to get wrong:
+  - With confirmation on, `signUp` returns a user but **no session** — the form must say "check your
+    inbox", not behave as if the person is signed in. The whole form is replaced by that panel, so a
+    second submit cannot fire a second e-mail.
+  - **Supabase will not reveal that an address is already registered**: it answers with a user whose
+    `identities` array is empty, which looks identical to a fresh sign-up. That privacy property is kept
+    — the message is the same either way — so the form cannot be used to enumerate accounts.
+  - The confirmation link returns to `/login?confirmed=1`, which must also be on Supabase's redirect
+    allow-list or it bounces to the project's Site URL.
+
+  ⚠️ **SMTP is the blocker, and it is live.** `mailer_autoconfirm = false` and the project still uses
+  Supabase's built-in sender: a real sign-up attempt on 2026-10-03 returned **`email rate limit
+  exceeded`**. Until a real SMTP provider is configured, sign-up is unusable in production. **Resend
+  needs a verified sending domain and this site has none** (it runs on `thai-dd.pages.dev`), so the
+  option that works today is **SendGrid Single Sender Verification**, which verifies one plain address
+  with no domain — `smtp.sendgrid.net:587`, username literally `apikey`, password = the API key.
+  Deliverability from an unauthenticated sender is poor (expect spam folders); a custom domain remains
+  the real fix.
 - **`/login` performs a real sign-in.** Sign-up, password reset and the Google/Facebook buttons were
   deleted rather than left as decoration: **accounts are created by an administrator** in the Supabase
   dashboard, who then grants a role in SQL, so self-service sign-up could only ever produce an account

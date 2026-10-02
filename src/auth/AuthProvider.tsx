@@ -60,6 +60,9 @@ interface AuthContextValue {
   /** Open the sign-in dialog with no follow-up action. */
   promptLogin: () => void
   signIn: (email: string, password: string) => Promise<void>
+  /** Resolves to `confirmationSent` when the account still has to be verified
+   *  by e-mail, `signedIn` when Supabase handed back a session immediately. */
+  signUp: (email: string, password: string) => Promise<'confirmationSent' | 'signedIn'>
   logout: () => void
 }
 
@@ -150,6 +153,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (failure) throw failure
   }, [])
 
+  /**
+   * Creates a customer account.
+   *
+   * With e-mail confirmation on (`mailer_autoconfirm = false`) Supabase returns
+   * a user but NO session, so the caller must say "check your inbox" rather
+   * than behave as if the person is signed in.
+   *
+   * ⚠️ Supabase deliberately does NOT reveal that an address is already
+   * registered — it answers with a user whose `identities` array is EMPTY,
+   * which otherwise looks exactly like a fresh sign-up. We keep that privacy
+   * property (no account enumeration from the form) and still return
+   * `confirmationSent`, so the message is the same either way: whoever owns
+   * that inbox gets an e-mail, and nobody else learns anything.
+   */
+  const signUp = useCallback(async (address: string, secret: string) => {
+    if (!supabase) throw new Error('ยังไม่ได้ตั้งค่า Supabase')
+    const { data, error: failure } = await supabase.auth.signUp({
+      email: address.trim(),
+      password: secret,
+      // Where the link in the e-mail lands. Must also be on Supabase's
+      // redirect allow-list, or the link bounces to the project's Site URL.
+      options: { emailRedirectTo: `${window.location.origin}/login?confirmed=1` },
+    })
+    if (failure) throw failure
+    return data.session ? 'signedIn' : 'confirmationSent'
+  }, [])
+
   const submit = async () => {
     setBusy(true)
     setError(null)
@@ -180,9 +210,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requireAuth,
       promptLogin: () => openDialog(),
       signIn,
+      signUp,
       logout,
     }),
-    [user, role, loading, requireAuth, openDialog, signIn, logout],
+    [user, role, loading, requireAuth, openDialog, signIn, signUp, logout],
   )
 
   return (
