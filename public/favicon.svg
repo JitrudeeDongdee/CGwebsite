@@ -1,7 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 112" width="96" height="112">
+  <defs>
+    <clipPath id="tdd-shield">
+      <path d="M16 6 H80 A10 10 0 0 1 90 16 V60 C90 86 72 100 48 108 C24 100 6 86 6 60 V16 A10 10 0 0 1 16 6 Z"/>
+    </clipPath>
+  </defs>
   <path d="M16 6 H80 A10 10 0 0 1 90 16 V60 C90 86 72 100 48 108 C24 100 6 86 6 60 V16 A10 10 0 0 1 16 6 Z" fill="#C8102E"/>
   <text x="48" y="56" text-anchor="middle" fill="#FFFFFF" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="34" letter-spacing="-2">TDD</text>
-  <g fill="#FFFFFF">
+  <!-- Clipped to the shield so the diagonal strokes can't poke past the red edge. -->
+  <g fill="#FFFFFF" clip-path="url(#tdd-shield)">
     <rect x="9" y="74" width="49" height="7" rx="3.5" transform="rotate(-20 33 77)"/>
     <rect x="15" y="87" width="41" height="7" rx="3.5" transform="rotate(-20 35 90)"/>
   </g>
