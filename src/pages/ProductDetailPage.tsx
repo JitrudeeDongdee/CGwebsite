@@ -17,6 +17,7 @@ import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
@@ -32,6 +33,12 @@ export function ProductDetailPage() {
   const product = useProduct(slug)
   // Jobs delivered with this service — proof that the listing is real work.
   const relatedProjects = useProjectsForProduct(product?.id)
+
+  // Per-page SEO derived from the product itself, so new products are covered too.
+  useSeo({
+    title: product ? L(product.name) : undefined,
+    description: product ? L(product.shortDesc) : undefined,
+  })
 
   if (!product) {
     return (

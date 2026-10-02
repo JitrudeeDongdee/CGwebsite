@@ -238,6 +238,19 @@ as a signed-in user with **no** role, `select` on `contact_messages` returns `[]
 `projects` is refused `42501`, and an upload to the `catalog` bucket is refused 403. `pnpm run build`
 ships the admin chunks (largest 31 kB) with no `service_role` string in the bundle.
 
+**Dashboard — `/admin` (2026-10-03), phase 1 of 2.** Replaces the module-card home page (deleted; the
+sidebar now does that navigation). Counts come from `src/admin/statsApi.ts` as `head: true` COUNT queries
+— ten totals transfer no rows, where fetching and counting in JS would grow with the catalogue and push
+the work onto a phone. The "ต้องจัดการ" box leads, before the raw totals: a dashboard that opens with
+counts makes you hunt for the one number that is actually a task. A project is `kind <> 'community'`
+rather than `kind = 'project'`, because rows created before that column existed have it NULL.
+
+⚠️ **GA4 is a deliberate placeholder, blocked by two separate things** that the card itself names:
+`VITE_GA_ID` is still unset on Cloudflare Pages, so the live site collects nothing and there would be no
+data to show; and reading the GA4 Data API needs a Google **service-account key**, which cannot live in a
+browser bundle — it needs an Edge Function (phase 2, and the Supabase CLI + Docker must be installed
+locally to deploy one).
+
 **Back-office sidebar — `src/admin/AdminLayout.tsx` (2026-10-03).** Every `/admin` screen sits beside a
 collapsible left nav. Two components by width, deliberately: a **permanent** drawer on `md`+ that shrinks
 to a 64px icon rail (names move into tooltips, since an icon alone says nothing), and a normal overlay

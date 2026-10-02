@@ -19,7 +19,7 @@ import { AdminLayout } from './admin/AdminLayout'
  * it would just add a round trip before the first paint.
  */
 const DesignerPage = lazy(() => import('./pages/DesignerPage').then((m) => ({ default: m.DesignerPage })))
-const AdminHomePage = lazy(() => import('./pages/AdminHomePage').then((m) => ({ default: m.AdminHomePage })))
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })))
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })))
 // The admin screens ship in production now: they talk to Supabase directly as
 // the signed-in staff user, so there is no dev-only server behind them any more.
@@ -117,7 +117,7 @@ function App() {
           </AdminGuard>
         }
       >
-        <Route path="/admin" element={<AdminHomePage />} />
+        <Route path="/admin" element={<AdminDashboardPage />} />
         <Route path="/admin/leads" element={<AdminPage />} />
         <Route path="/admin/messages" element={<AdminMessagesPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
