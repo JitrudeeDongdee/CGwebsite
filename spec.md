@@ -238,6 +238,15 @@ as a signed-in user with **no** role, `select` on `contact_messages` returns `[]
 `projects` is refused `42501`, and an upload to the `catalog` bucket is refused 403. `pnpm run build`
 ships the admin chunks (largest 31 kB) with no `service_role` string in the bundle.
 
+**Back-office sidebar — `src/admin/AdminLayout.tsx` (2026-10-03).** Every `/admin` screen sits beside a
+collapsible left nav. Two components by width, deliberately: a **permanent** drawer on `md`+ that shrinks
+to a 64px icon rail (names move into tooltips, since an icon alone says nothing), and a normal overlay
+below that, opened from a floating button — a rail would eat a fifth of a 375px screen and still not be
+readable. Collapsed state persists in `cg:admin-nav-collapsed`, inside try/catch because blocked storage
+throws. `src/admin/modules.tsx` holds the one list both the sidebar and the admin home page read, so a
+new screen appears in both or neither. `activeModule()` matches **longest-prefix**: every admin path
+starts with `/admin`, so a plain `startsWith` would light up the dashboard on every screen.
+
 **Role management — `/admin/users`, migration `20260913140000_admin_manages_roles.sql`.** Adding or
 removing a staff member is a screen, not a SQL edit. Two things are deliberately NOT in the migration:
 who works here (an employee's e-mail in a migration is committed to git forever and replayed into every

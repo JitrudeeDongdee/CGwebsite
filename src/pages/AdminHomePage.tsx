@@ -1,17 +1,13 @@
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import GroupIcon from '@mui/icons-material/GroupOutlined'
 import { unfurlAvailable } from '../admin/client'
+import { modulesFor } from '../admin/modules'
 import { useAuth } from '../auth/AuthProvider'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import Alert from '@mui/material/Alert'
-import Inventory2Icon from '@mui/icons-material/Inventory2Outlined'
-import PhotoLibraryIcon from '@mui/icons-material/PhotoLibraryOutlined'
-import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
-import ContactMailIcon from '@mui/icons-material/ContactMailOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 
 /**
@@ -26,26 +22,10 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>
 }
 
-interface Module {
-  to: string
-  icon: ReactNode
-  title: string
-  desc: string
-  /** Role management is the one screen staff have no business opening. */
-  adminOnly?: boolean
-}
-
-const MODULES: Module[] = [
-  { to: '/admin/messages', icon: <ContactMailIcon />, title: 'ข้อความจากลูกค้า', desc: 'ฟอร์มติดต่อและคำขอใบเสนอราคา' },
-  { to: '/admin/products', icon: <Inventory2Icon />, title: 'สินค้า', desc: 'จัดการสินค้าและบริการในแคตตาล็อก' },
-  { to: '/admin/portfolio', icon: <PhotoLibraryIcon />, title: 'ผลงาน', desc: 'ผลงานที่ทำ นำเข้าจากโพสต์ Facebook ได้' },
-  { to: '/admin/community', icon: <VolunteerActivismIcon />, title: 'ผลงานสาธารณประโยชน์และการบริจาค', desc: 'กิจกรรมเพื่อสังคมและการบริจาค' },
-  { to: '/admin/users', icon: <GroupIcon />, title: 'ผู้ใช้และสิทธิ์', desc: 'ให้สิทธิ์พนักงานเข้าหลังบ้าน', adminOnly: true },
-]
-
 export function AdminHomePage() {
   const { role } = useAuth()
-  const modules = MODULES.filter((m) => !m.adminOnly || role === 'admin')
+  // Cards for the screens you work in; the dashboard itself is sidebar-only.
+  const modules = modulesFor(role).filter((m) => !m.sidebarOnly)
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>

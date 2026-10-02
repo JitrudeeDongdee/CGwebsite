@@ -7,6 +7,7 @@ import { SiteHeader } from './ui/SiteHeader'
 import { RouteAnalytics } from './analytics/RouteAnalytics'
 import { RouteFallback } from './ui/RouteFallback'
 import { AdminGuard } from './admin/AdminGuard'
+import { AdminLayout } from './admin/AdminLayout'
 
 /**
  * Everything except the landing page is code-split.
@@ -46,6 +47,16 @@ const CommunityPage = lazy(() => import('./pages/CommunityPage').then((m) => ({ 
  * routes use `MarketingLayout`, which mounts the SAME header — so the top bar is
  * one unified component everywhere.
  */
+/** Admin chrome: the shared header, with the collapsible sidebar under it. */
+function AdminShell() {
+  return (
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <SiteHeader />
+      <AdminLayout />
+    </Box>
+  )
+}
+
 function AppShell() {
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -102,7 +113,7 @@ function App() {
       <Route
         element={
           <AdminGuard>
-            <AppShell />
+            <AdminShell />
           </AdminGuard>
         }
       >
