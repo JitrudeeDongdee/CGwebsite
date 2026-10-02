@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 /**
  * TDD (Thai Dongdee Engineering) logo mark — renders `public/favicon.svg`, the
@@ -8,6 +8,9 @@ import { useState } from 'react'
  */
 export function LogoMark({ size = 30 }: { size?: number }) {
   const [failed, setFailed] = useState(false)
+  // Unique per instance — the fallback can render more than once on a page
+  // (header + footer), and duplicate clipPath ids would cross-reference.
+  const clipId = useId()
   const src = `${import.meta.env.BASE_URL}favicon.svg`
 
   if (!failed) {
@@ -32,6 +35,11 @@ export function LogoMark({ size = 30 }: { size?: number }) {
       aria-label="TDD"
       style={{ display: 'block', flexShrink: 0 }}
     >
+      <defs>
+        <clipPath id={clipId}>
+          <path d="M16 6 H80 A10 10 0 0 1 90 16 V60 C90 86 72 100 48 108 C24 100 6 86 6 60 V16 A10 10 0 0 1 16 6 Z" />
+        </clipPath>
+      </defs>
       <path
         d="M16 6 H80 A10 10 0 0 1 90 16 V60 C90 86 72 100 48 108 C24 100 6 86 6 60 V16 A10 10 0 0 1 16 6 Z"
         fill="#C8102E"
@@ -48,7 +56,8 @@ export function LogoMark({ size = 30 }: { size?: number }) {
       >
         TDD
       </text>
-      <g fill="#FFFFFF">
+      {/* Clipped to the shield so the strokes can't poke past the red edge. */}
+      <g fill="#FFFFFF" clipPath={`url(#${clipId})`}>
         <rect x="9" y="72" width="49" height="6.5" rx="3.25" transform="rotate(-20 33 75)" />
         <rect x="15" y="85" width="41" height="6.5" rx="3.25" transform="rotate(-20 35 88)" />
       </g>
