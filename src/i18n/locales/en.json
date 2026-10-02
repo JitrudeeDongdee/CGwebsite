@@ -239,6 +239,7 @@
     "confirmedNotice": "E-mail confirmed — you can sign in now.",
     "passwordMin": "Password must be at least 8 characters",
     "customerSignInTitle": "Sign in",
-    "staffHint": "TDD staff sign in to the back office here"
+    "staffHint": "TDD staff sign in to the back office here",
+    "switchAccount": "Wrong account? Sign out and sign in with your staff account."
   }
 }

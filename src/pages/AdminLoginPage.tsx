@@ -29,7 +29,7 @@ import { useAuth } from '../auth/AuthProvider'
  */
 export function AdminLoginPage() {
   const { t } = useTranslation()
-  const { signIn, user, isStaff, loading } = useAuth()
+  const { signIn, user, isStaff, loading, logout } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [email, setEmail] = useState('')
@@ -78,10 +78,23 @@ export function AdminLoginPage() {
         </Typography>
 
         {wrongAccount && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
+          // Signing in again as someone else works, but only if you realise the
+          // form below is still live — the warning alone reads like a dead end.
+          // An explicit sign-out is the obvious move and it was missing.
+          <Alert
+            severity="warning"
+            sx={{ mb: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={logout}>
+                {t('auth.logout')}
+              </Button>
+            }
+          >
             {t('auth.noAccessBody')}
             <br />
             {t('auth.signedInAs')} {user?.email}
+            <br />
+            {t('auth.switchAccount')}
           </Alert>
         )}
 
