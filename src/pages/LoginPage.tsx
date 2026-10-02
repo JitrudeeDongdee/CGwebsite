@@ -30,7 +30,7 @@ import { useAuth } from '../auth/AuthProvider'
 
 export function LoginPage() {
   const { t } = useTranslation()
-  const { signIn, signUp, user, isStaff } = useAuth()
+  const { signIn, signUp, user } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [email, setEmail] = useState('')
@@ -41,12 +41,19 @@ export function LoginPage() {
   /** Set once the sign-up succeeded: the person must now go to their inbox. */
   const [sentTo, setSentTo] = useState<string | null>(null)
 
-  // Where to land after signing in: back where the guard sent them, else the
-  // back office for staff and the designer for everyone else.
+  /**
+   * Where to land after signing in: back where they came from, else the house
+   * home page.
+   *
+   * No staff special-case any more. It read `isStaff` in the same tick the user
+   * appeared, and the role arrives one request LATER — so it was false for
+   * everyone at that moment and sent staff to the wrong place regardless. Staff
+   * have `/admin/login`, which waits for the role precisely because it needs to.
+   */
   const next = params.get('next')
   useEffect(() => {
-    if (user) navigate(next ?? (isStaff ? '/admin' : '/design'), { replace: true })
-  }, [user, isStaff, next, navigate])
+    if (user) navigate(next ?? '/home/house', { replace: true })
+  }, [user, next, navigate])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
