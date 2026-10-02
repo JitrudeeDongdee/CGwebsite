@@ -7,6 +7,7 @@ import { SiteHeader } from './ui/SiteHeader'
 import { RouteAnalytics } from './analytics/RouteAnalytics'
 import { RouteFallback } from './ui/RouteFallback'
 import { AdminGuard } from './admin/AdminGuard'
+import { AdminLayout } from './admin/AdminLayout'
 
 /**
  * Everything except the landing page is code-split.
@@ -18,7 +19,7 @@ import { AdminGuard } from './admin/AdminGuard'
  * it would just add a round trip before the first paint.
  */
 const DesignerPage = lazy(() => import('./pages/DesignerPage').then((m) => ({ default: m.DesignerPage })))
-const AdminHomePage = lazy(() => import('./pages/AdminHomePage').then((m) => ({ default: m.AdminHomePage })))
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })))
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })))
 // The admin screens ship in production now: they talk to Supabase directly as
 // the signed-in staff user, so there is no dev-only server behind them any more.
@@ -28,6 +29,7 @@ const AdminPortfolioListPage = lazy(() => import('./pages/AdminPortfolioListPage
 const AdminPortfolioEditPage = lazy(() => import('./pages/AdminPortfolioEditPage').then((m) => ({ default: m.AdminPortfolioEditPage })))
 const AdminProductListPage = lazy(() => import('./pages/AdminProductListPage').then((m) => ({ default: m.AdminProductListPage })))
 const AdminProductEditPage = lazy(() => import('./pages/AdminProductEditPage').then((m) => ({ default: m.AdminProductEditPage })))
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
 const AdminMessagesPage = lazy(() => import('./pages/AdminMessagesPage').then((m) => ({ default: m.AdminMessagesPage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
@@ -45,6 +47,16 @@ const CommunityPage = lazy(() => import('./pages/CommunityPage').then((m) => ({ 
  * routes use `MarketingLayout`, which mounts the SAME header — so the top bar is
  * one unified component everywhere.
  */
+/** Admin chrome: the shared header, with the collapsible sidebar under it. */
+function AdminShell() {
+  return (
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <SiteHeader />
+      <AdminLayout />
+    </Box>
+  )
+}
+
 function AppShell() {
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -90,6 +102,9 @@ function App() {
       <Route element={<AppShell />}>
         <Route path="/design" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
+        {/* Staff sign-in sits OUTSIDE AdminGuard on purpose: inside it, the
+            guard would redirect to a page it is itself guarding. */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
       </Route>
 
       {/* Every /admin screen behind one guard, so a new one cannot be added
@@ -98,11 +113,11 @@ function App() {
       <Route
         element={
           <AdminGuard>
-            <AppShell />
+            <AdminShell />
           </AdminGuard>
         }
       >
-        <Route path="/admin" element={<AdminHomePage />} />
+        <Route path="/admin" element={<AdminDashboardPage />} />
         <Route path="/admin/leads" element={<AdminPage />} />
         <Route path="/admin/messages" element={<AdminMessagesPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />

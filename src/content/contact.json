@@ -1,9 +1,39 @@
 {
   "channels": [
-    { "kind": "phone", "value": "081-887-5231" },
-    { "kind": "line", "value": "-", "url": "-" },
-    { "kind": "email", "value": "cg97239723@gmail.com" },
-    { "kind": "facebook", "value": "-", "url": "-" },
+    {
+      "kind": "phone",
+      "value": "081-887-5231"
+    },
+    {
+      "kind": "phone",
+      "value": "097-269-4643",
+      "label": {
+        "th": "โทร (สำรอง)",
+        "en": "Phone (alt)"
+      }
+    },
+    {
+      "kind": "line",
+      "value": "-",
+      "url": "-"
+    },
+    {
+      "kind": "email",
+      "value": "cg97239723@gmail.com"
+    },
+    {
+      "kind": "email",
+      "value": "jitrudee9723@gmail.com",
+      "label": {
+        "th": "อีเมล (สำรอง)",
+        "en": "Email (alt)"
+      }
+    },
+    {
+      "kind": "facebook",
+      "value": "-",
+      "url": "-"
+    },
     {
       "kind": "address",
       "value": {

@@ -75,7 +75,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     // query, which is what makes a deep link like /admin/products/edit/<id>
     // survive a sign-in.
     const next = `${location.pathname}${location.search}`
-    return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
+    return <Navigate to={`/admin/login?next=${encodeURIComponent(next)}`} replace />
   }
 
   if (!isStaff) {

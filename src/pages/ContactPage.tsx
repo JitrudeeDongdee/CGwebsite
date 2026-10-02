@@ -13,7 +13,7 @@ import ChatIcon from '@mui/icons-material/Chat'
 import MailIcon from '@mui/icons-material/Mail'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import PlaceIcon from '@mui/icons-material/Place'
-import { CONTACT_CHANNELS, contactHref, contactLabelKey, contactValue, type ContactKind } from '../content/contact'
+import { CONTACT_CHANNELS, contactHref, contactLabel, contactValue, type ContactKind } from '../content/contact'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { messagesReachTheTeam, sendContactMessage } from '../content/messages'
 
@@ -60,9 +60,12 @@ export function ContactPage() {
     facebook: <FacebookIcon fontSize="small" />,
     address: <PlaceIcon fontSize="small" />,
   }
-  const info = CONTACT_CHANNELS.map((c) => ({
+  const info = CONTACT_CHANNELS.map((c, index) => ({
+    // `kind` repeats now (two phones, two e-mails), so the key cannot be the
+    // label or the kind — React would reuse the first row's DOM for the second.
+    key: `${c.kind}-${index}`,
     icon: icons[c.kind],
-    label: t(contactLabelKey(c)),
+    label: contactLabel(c, lang, t),
     value: contactValue(c, lang),
     href: contactHref(c, lang),
   }))
@@ -119,7 +122,7 @@ export function ContactPage() {
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
           <Stack spacing={2.5}>
             {info.map((i) => (
-              <Stack key={i.label} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <Stack key={i.key} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                 <Box sx={{ width: 38, height: 38, borderRadius: 2, display: 'grid', placeItems: 'center', bgcolor: 'primary.main', color: 'primary.contrastText', flexShrink: 0 }}>
                   {i.icon}
                 </Box>

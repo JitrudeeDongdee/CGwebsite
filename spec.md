@@ -95,7 +95,7 @@ Own perspective `<Canvas shadows>` (fov 45), free orbit (`maxPolarAngle ≈ π/2
 - Four pointer-race/coordinate bugs from the spike are fixed and documented in `MEMORY.md` (template CSS offset, R3F `e.target`, OrbitControls-vs-React-prop race, `useInteraction` stale-state race).
 
 ### `src/content/` — editable site content (not code)
-- **`contact.json` — the ONE place to edit contact channels.** An array of `{ kind: 'phone'|'line'|'email'|'facebook'|'address', value, url? }` where `value` is one string (phone/email/LINE id) or a `{ th, en }` pair for text that must be translated (the address); `contact.ts` types it and derives the link (`tel:` for a phone with ≥6 digits, `mailto:` for an email, and line/address only when the entry carries an explicit `url` — we never invent a LINE or map URL) plus the i18n label key `mkt.contact.<kind>Label`. Values of `-` / `—` / empty count as "not filled in yet": never linked, and hidden from the footer. Read by the marketing **footer** and the **contact page** (icons + clickable values). Changing a number/email here updates both.
+- **`contact.json` — the ONE place to edit contact channels.** An array of `{ kind: 'phone'|'line'|'email'|'facebook'|'address', value, url? }` where `value` is one string (phone/email/LINE id) or a `{ th, en }` pair for text that must be translated (the address); `contact.ts` types it and derives the link (`tel:` for a phone with ≥6 digits, `mailto:` for an email, and line/address only when the entry carries an explicit `url` — we never invent a LINE or map URL) plus the i18n label key `mkt.contact.<kind>Label`. Values of `-` / `—` / empty count as "not filled in yet": never linked, and hidden from the footer. A channel may also carry an optional `label: {th,en}` that overrides the kind's default — needed as soon as a kind repeats, because two rows both reading "โทร" tell a visitor nothing about which number to try first (the backup phone and backup e-mail added 2026-10-03 use it). ⚠️ Both renderers used the **label as the React key**, which silently collides once a kind appears twice; the contact page now keys on `${kind}-${index}`. Read by the marketing **footer** and the **contact page** (icons + clickable values). Changing a number/email here updates both.
 
 ### SEO files
 - **`scripts/generate-seo-files.mjs`** (runs as npm `prebuild`, also `pnpm run seo`) writes `public/robots.txt` + `public/sitemap.xml`. Routes come from the app + the catalog slugs, so the sitemap can't drift: the four `/home/:service` pages (canonical — `/` and `/home` only redirect, so they're deliberately not listed), `/products` + every product, `/portfolio` + every project, `/about`, `/contact`, `/design`. robots disallows `/admin` and `/login`.
@@ -196,6 +196,33 @@ The admin screens ship to the deployed site and staff sign in to use them. The d
 - **`/admin/messages`** is new, and is why this phase mattered: `contact_messages` and `leads` are
   staff-read-only, and with no staff account **a message that arrived was stored correctly and seen by
   nobody**. The screen lists both, flags unanswered messages, and toggles `handled`.
+- **Two sign-in pages, deliberately apart (2026-10-03).** `/login` is the customer one (the designer's
+  save / download / send-to-team gate); **`/admin/login`** is staff-only, with no sign-up and no social
+  buttons, and `AdminGuard` sends signed-out visitors there. Its route sits OUTSIDE the guard — inside,
+  the guard would redirect to a page it is itself guarding. ⚠️ **Separate pages, NOT separate accounts**:
+  both authenticate against the same Supabase Auth pool, and what keeps a customer out of the back office
+  is their profile having no role (`is_staff()` in RLS). Signing in at `/admin/login` with a customer
+  account says so on the page rather than failing opaquely.
+- **Customer sign-up — `/login` (2026-10-03).** Sign-in and sign-up in one form; a customer account
+  unlocks only the designer's save / download / send-to-team actions and carries no role, so it can
+  never reach `/admin`. Three details that are easy to get wrong:
+  - With confirmation on, `signUp` returns a user but **no session** — the form must say "check your
+    inbox", not behave as if the person is signed in. The whole form is replaced by that panel, so a
+    second submit cannot fire a second e-mail.
+  - **Supabase will not reveal that an address is already registered**: it answers with a user whose
+    `identities` array is empty, which looks identical to a fresh sign-up. That privacy property is kept
+    — the message is the same either way — so the form cannot be used to enumerate accounts.
+  - The confirmation link returns to `/login?confirmed=1`, which must also be on Supabase's redirect
+    allow-list or it bounces to the project's Site URL.
+
+  ⚠️ **SMTP is the blocker, and it is live.** `mailer_autoconfirm = false` and the project still uses
+  Supabase's built-in sender: a real sign-up attempt on 2026-10-03 returned **`email rate limit
+  exceeded`**. Until a real SMTP provider is configured, sign-up is unusable in production. **Resend
+  needs a verified sending domain and this site has none** (it runs on `thai-dd.pages.dev`), so the
+  option that works today is **SendGrid Single Sender Verification**, which verifies one plain address
+  with no domain — `smtp.sendgrid.net:587`, username literally `apikey`, password = the API key.
+  Deliverability from an unauthenticated sender is poor (expect spam folders); a custom domain remains
+  the real fix.
 - **`/login` performs a real sign-in.** Sign-up, password reset and the Google/Facebook buttons were
   deleted rather than left as decoration: **accounts are created by an administrator** in the Supabase
   dashboard, who then grants a role in SQL, so self-service sign-up could only ever produce an account
@@ -210,6 +237,28 @@ as staff, the message the contact form stored on 2026-09-06 is readable and a pu
 as a signed-in user with **no** role, `select` on `contact_messages` returns `[]`, `insert` into
 `projects` is refused `42501`, and an upload to the `catalog` bucket is refused 403. `pnpm run build`
 ships the admin chunks (largest 31 kB) with no `service_role` string in the bundle.
+
+**Dashboard — `/admin` (2026-10-03), phase 1 of 2.** Replaces the module-card home page (deleted; the
+sidebar now does that navigation). Counts come from `src/admin/statsApi.ts` as `head: true` COUNT queries
+— ten totals transfer no rows, where fetching and counting in JS would grow with the catalogue and push
+the work onto a phone. The "ต้องจัดการ" box leads, before the raw totals: a dashboard that opens with
+counts makes you hunt for the one number that is actually a task. A project is `kind <> 'community'`
+rather than `kind = 'project'`, because rows created before that column existed have it NULL.
+
+⚠️ **GA4 is a deliberate placeholder, blocked by two separate things** that the card itself names:
+`VITE_GA_ID` is still unset on Cloudflare Pages, so the live site collects nothing and there would be no
+data to show; and reading the GA4 Data API needs a Google **service-account key**, which cannot live in a
+browser bundle — it needs an Edge Function (phase 2, and the Supabase CLI + Docker must be installed
+locally to deploy one).
+
+**Back-office sidebar — `src/admin/AdminLayout.tsx` (2026-10-03).** Every `/admin` screen sits beside a
+collapsible left nav. Two components by width, deliberately: a **permanent** drawer on `md`+ that shrinks
+to a 64px icon rail (names move into tooltips, since an icon alone says nothing), and a normal overlay
+below that, opened from a floating button — a rail would eat a fifth of a 375px screen and still not be
+readable. Collapsed state persists in `cg:admin-nav-collapsed`, inside try/catch because blocked storage
+throws. `src/admin/modules.tsx` holds the one list both the sidebar and the admin home page read, so a
+new screen appears in both or neither. `activeModule()` matches **longest-prefix**: every admin path
+starts with `/admin`, so a plain `startsWith` would light up the dashboard on every screen.
 
 **Role management — `/admin/users`, migration `20260913140000_admin_manages_roles.sql`.** Adding or
 removing a staff member is a screen, not a SQL edit. Two things are deliberately NOT in the migration:
