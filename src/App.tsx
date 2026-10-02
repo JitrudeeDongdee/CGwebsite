@@ -28,6 +28,7 @@ const AdminPortfolioListPage = lazy(() => import('./pages/AdminPortfolioListPage
 const AdminPortfolioEditPage = lazy(() => import('./pages/AdminPortfolioEditPage').then((m) => ({ default: m.AdminPortfolioEditPage })))
 const AdminProductListPage = lazy(() => import('./pages/AdminProductListPage').then((m) => ({ default: m.AdminProductListPage })))
 const AdminProductEditPage = lazy(() => import('./pages/AdminProductEditPage').then((m) => ({ default: m.AdminProductEditPage })))
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
 const AdminMessagesPage = lazy(() => import('./pages/AdminMessagesPage').then((m) => ({ default: m.AdminMessagesPage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
@@ -90,6 +91,9 @@ function App() {
       <Route element={<AppShell />}>
         <Route path="/design" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
+        {/* Staff sign-in sits OUTSIDE AdminGuard on purpose: inside it, the
+            guard would redirect to a page it is itself guarding. */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
       </Route>
 
       {/* Every /admin screen behind one guard, so a new one cannot be added

@@ -196,6 +196,13 @@ The admin screens ship to the deployed site and staff sign in to use them. The d
 - **`/admin/messages`** is new, and is why this phase mattered: `contact_messages` and `leads` are
   staff-read-only, and with no staff account **a message that arrived was stored correctly and seen by
   nobody**. The screen lists both, flags unanswered messages, and toggles `handled`.
+- **Two sign-in pages, deliberately apart (2026-10-03).** `/login` is the customer one (the designer's
+  save / download / send-to-team gate); **`/admin/login`** is staff-only, with no sign-up and no social
+  buttons, and `AdminGuard` sends signed-out visitors there. Its route sits OUTSIDE the guard — inside,
+  the guard would redirect to a page it is itself guarding. ⚠️ **Separate pages, NOT separate accounts**:
+  both authenticate against the same Supabase Auth pool, and what keeps a customer out of the back office
+  is their profile having no role (`is_staff()` in RLS). Signing in at `/admin/login` with a customer
+  account says so on the page rather than failing opaquely.
 - **`/login` performs a real sign-in.** Sign-up, password reset and the Google/Facebook buttons were
   deleted rather than left as decoration: **accounts are created by an administrator** in the Supabase
   dashboard, who then grants a role in SQL, so self-service sign-up could only ever produce an account
