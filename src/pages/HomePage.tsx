@@ -9,7 +9,7 @@ import EngineeringIcon from '@mui/icons-material/Engineering'
 import { PLAN_TEMPLATES } from '../drawing/templates'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
-import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
+import { PRODUCT_CATEGORIES } from '../catalog/categories'
 import { useCatalog, useCommunity, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
 import { productImagePath, projectImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
@@ -22,6 +22,7 @@ import { FeaturedSection } from './home/FeaturedSection'
 import { PortfolioSection } from './home/PortfolioSection'
 import { FloatingServiceBar } from './home/FloatingServiceBar'
 import { CommunitySection } from './home/CommunitySection'
+import { ServiceAreaSection } from './home/ServiceAreaSection'
 import { StatsSection } from './home/StatsSection'
 // import { FinalCtaSection } from './home/FinalCtaSection' // disabled with its render below
 
@@ -43,6 +44,10 @@ function isCategory(value: string | undefined): value is ProductCategory {
  * All the data lives here (the hooks must run in a stable order); each section
  * below is a presentational component in `./home/` that just takes props.
  */
+/** Fixes which `svcSeoN` key belongs to which category — the numbering comes
+ *  from the i18n keys, so it must not be re-derived anywhere else. */
+const SERVICE_ORDER: ProductCategory[] = ['house', 'electronics', 'furniture', 'rental', 'contracting']
+
 export function HomePage() {
   const { service } = useParams()
   const { t, i18n } = useTranslation()
@@ -63,7 +68,7 @@ export function HomePage() {
   // early return so the hook order stays stable).
   useSeo(
     cat
-      ? { title: t(CATEGORY_META[cat].labelKey), description: t(`mkt.service.${cat}.lead`) }
+      ? { title: t(`mkt.home.svcSeo${SERVICE_ORDER.indexOf(cat) + 1}`), description: t(`mkt.service.${cat}.lead`) }
       : { title: t('mkt.home.title'), description: t('mkt.home.lead') },
   )
 
@@ -85,11 +90,14 @@ export function HomePage() {
     { cat: 'contracting', icon: <EngineeringIcon />, title: t('mkt.home.svc5'), desc: t('mkt.home.svc5d') },
   ]
   const activeService = cat ? services.find((s) => s.cat === cat)! : null
+  /** The service page's headline. Deliberately NOT `svcN`: that label is also a
+   *  filter chip and a card title, where a search phrase would not fit. */
+  const seoHeadline = cat ? t(`mkt.home.svcSeo${SERVICE_ORDER.indexOf(cat) + 1}`) : t('mkt.home.title')
 
   const hero: Hero = activeService
     ? {
         eyebrow: t('mkt.service.eyebrow'),
-        title: activeService.title,
+        title: seoHeadline,
         lead: t(`mkt.service.${cat}.lead`),
         ctaPrimary: isHouseish ? t('mkt.service.ctaDesign') : t('mkt.service.ctaContact'),
         trust: [1, 2, 3].map((n) => ({ head: t(`mkt.service.${cat}.h${n}`), sub: t(`mkt.service.${cat}.h${n}d`) })),
@@ -171,6 +179,8 @@ export function HomePage() {
       />
       {work.length > 0 && <PortfolioSection work={work} allWorkTo={allWorkTo} />}
       {isHouseish && communityItems.length > 0 && <CommunitySection items={communityItems} />}
+      {/* Names the province and its districts in body text — the site had none. */}
+      <ServiceAreaSection />
       <StatsSection stats={stats} />
       {/* <FinalCtaSection cat={cat} ctaTo={ctaTo} ctaPrimary={hero.ctaPrimary} /> */}
       {/* Floating quick-switch: hides on scroll-down, reappears on scroll-up. */}

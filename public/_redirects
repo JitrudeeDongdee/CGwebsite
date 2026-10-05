@@ -6,6 +6,12 @@
 # gives it the required path.
 /version    /version.json   200
 
+# The landing page is /home/house; `/` only bounced there in JavaScript, which
+# means the CDN answered 200 with the SPA shell first. A crawler sees that as a
+# page in its own right — a duplicate of /home/house — so make it a real 301
+# before the SPA ever loads.
+/           /home/house     301
+
 # React Router uses BrowserRouter (real paths, no #). Without this, opening
 # /products directly — or just pressing F5 anywhere — is a 404 from the CDN,
 # because no such file exists on disk. 200 = rewrite (URL stays), NOT a redirect.

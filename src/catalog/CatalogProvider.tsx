@@ -32,15 +32,32 @@ interface CatalogValue {
 
 const CatalogContext = createContext<CatalogValue | null>(null)
 
-export function CatalogProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [community, setCommunity] = useState<Project[]>([])
-  const [loading, setLoading] = useState(supabaseEnabled)
+/** The catalogue, already fetched. Used by the prerenderer, which runs in Node
+ *  where `useEffect` never fires — without this every prerendered page would be
+ *  an empty shop. */
+export interface InitialCatalog {
+  products: Product[]
+  projects: Project[]
+  community: Project[]
+}
+
+export function CatalogProvider({
+  children,
+  initial,
+}: {
+  children: ReactNode
+  initial?: InitialCatalog
+}) {
+  const [products, setProducts] = useState<Product[]>(initial?.products ?? [])
+  const [projects, setProjects] = useState<Project[]>(initial?.projects ?? [])
+  const [community, setCommunity] = useState<Project[]>(initial?.community ?? [])
+  const [loading, setLoading] = useState(supabaseEnabled && !initial)
   const [error, setError] = useState<Error | null>(null)
   const [source, setSource] = useState<'seed' | 'supabase'>('seed')
 
   useEffect(() => {
+    // Given the data up front (prerender), there is nothing to load.
+    if (initial) return
     let cancelled = false
 
     // Seed first — synchronous data, no await, so there is never a blank frame.
@@ -88,7 +105,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [initial])
 
   const value = useMemo<CatalogValue>(
     () => ({ products, projects, community, loading, error, source }),
