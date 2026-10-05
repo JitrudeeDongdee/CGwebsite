@@ -11,6 +11,10 @@ import Chip from '@mui/material/Chip'
 import Switch from '@mui/material/Switch'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import TextField from '@mui/material/TextField'
+import MenuItem from '@mui/material/MenuItem'
+import InputAdornment from '@mui/material/InputAdornment'
+import SearchIcon from '@mui/icons-material/Search'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -35,8 +39,9 @@ import {
   type ProductRow,
 } from '../admin/productApi'
 import { imageUrl } from '../supabase/storage'
-import { CATEGORY_META } from '../catalog/categories'
+import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
 import { formatCurrency } from '../pricing/estimate'
+import type { ProductCategory } from '../catalog/types'
 
 /**
  * Every product, at a glance: publish, mark the category's best seller (the card
@@ -55,6 +60,10 @@ export function AdminProductListPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [pendingStar, setPendingStar] = useState<{ next: ProductRow; current: ProductRow } | null>(null)
+  // Search + filters (client-side over the already-loaded rows).
+  const [query, setQuery] = useState('')
+  const [cat, setCat] = useState<ProductCategory | 'all'>('all')
+  const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all')
 
   const load = async () => {
     try {
@@ -72,6 +81,16 @@ export function AdminProductListPage() {
   }, [])
 
   const nameOf = (row: ProductRow) => row.name?.th || row.slug || row.id.slice(0, 8)
+
+  const q = query.trim().toLowerCase()
+  const filtered = rows.filter((row) => {
+    if (cat !== 'all' && row.category !== cat) return false
+    if (status === 'published' && !row.published) return false
+    if (status === 'draft' && row.published) return false
+    if (!q) return true
+    return [row.name?.th, row.name?.en, row.slug].some((v) => v?.toLowerCase().includes(q))
+  })
+  const filtering = q !== '' || cat !== 'all' || status !== 'all'
 
   const star = async (row: ProductRow) => {
     if (row.best_seller) {
@@ -113,7 +132,11 @@ export function AdminProductListPage() {
               สินค้าทั้งหมด
             </Typography>
             <Typography sx={{ mt: 0.5, color: 'text.secondary' }}>
-              {loading ? 'กำลังโหลด…' : `${rows.length} รายการ · เผยแพร่แล้ว ${rows.filter((r) => r.published).length}`}
+              {loading
+                ? 'กำลังโหลด…'
+                : filtering
+                  ? `พบ ${filtered.length} จาก ${rows.length} รายการ`
+                  : `${rows.length} รายการ · เผยแพร่แล้ว ${rows.filter((r) => r.published).length}`}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1}>
@@ -132,7 +155,52 @@ export function AdminProductListPage() {
           </Alert>
         )}
 
-        <Paper elevation={0} sx={{ mt: 3, borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
+        {/* Search + filters (client-side). */}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 3 }}>
+          <TextField
+            size="small"
+            placeholder="ค้นหาชื่อ หรือ slug"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            sx={{ flexGrow: 1, minWidth: 200 }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            label="หมวด"
+            value={cat}
+            onChange={(e) => setCat(e.target.value as ProductCategory | 'all')}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="all">ทุกหมวด</MenuItem>
+            {PRODUCT_CATEGORIES.map((c) => (
+              <MenuItem key={c} value={c}>{t(CATEGORY_META[c].labelKey)}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="สถานะ"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as 'all' | 'published' | 'draft')}
+            sx={{ minWidth: 150 }}
+          >
+            <MenuItem value="all">ทั้งหมด</MenuItem>
+            <MenuItem value="published">เผยแพร่แล้ว</MenuItem>
+            <MenuItem value="draft">ฉบับร่าง</MenuItem>
+          </TextField>
+        </Stack>
+
+        <Paper elevation={0} sx={{ mt: 2, borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -146,16 +214,16 @@ export function AdminProductListPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {!loading && rows.length === 0 && (
+              {!loading && filtered.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7}>
                     <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                      ยังไม่มีสินค้าในฐานข้อมูล
+                      {rows.length === 0 ? 'ยังไม่มีสินค้าในฐานข้อมูล' : 'ไม่พบรายการที่ตรงกับการค้นหา'}
                     </Typography>
                   </TableCell>
                 </TableRow>
               )}
-              {rows.map((row) => (
+              {filtered.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
                     {row.image_path ? (
