@@ -157,3 +157,27 @@ window.
 phase) — scroll doesn't bubble, but capture sees it from any scroller, and `e.target.scrollTop`
 is the element that scrolled. Filter out horizontal rails/carousels by ignoring targets whose
 `scrollHeight - clientHeight` is tiny. (`src/pages/home/FloatingServiceBar.tsx`.)
+
+## Prerendered pages as `<route>/index.html` make Cloudflare 308-redirect every URL
+
+**What happened**: prerendering shipped and looked correct locally, but on the deployed site every
+page answered **308 → trailing slash**: `/about` → `/about/`, `/products/air-conditioner` →
+`/products/air-conditioner/`. The canonical in the HTML said `/about` while the URL actually serving
+it was `/about/`, so the pages contradicted themselves — the exact duplicate-content problem the
+prerendering was meant to remove — and every internal link and sitemap entry cost a redirect hop.
+
+**Root cause**: the prerenderer wrote `dist/<route>/index.html`. Cloudflare Pages treats a directory
+containing `index.html` as a directory and enforces the trailing slash with a 308. Writing
+`dist/<route>.html` instead is served at `/<route>` with a plain 200. A file and a directory may
+share a base name, so `products.html` and `products/air-conditioner.html` coexist happily.
+
+It was invisible locally for two reasons, both worth remembering: `vite preview` applies its own SPA
+fallback *before* looking for a matching file, so every route returns `index.html` and prerendering
+appears not to work at all; and the throwaway static server written to work around that modelled
+"try `<path>/index.html`" without modelling the redirect Pages puts in front of it.
+
+**Correct behavior**: prerender to `<route>.html`, never `<route>/index.html`. Check a prerendered
+build with `pnpm run serve:dist` (`scripts/serve-dist.mjs`), which models Pages' asset-first rule
+**including** the trailing-slash 308 — never with `pnpm run preview`. After deploying, confirm with
+`curl -s -o /dev/null -w '%{http_code}' <url>` that real pages return 200 and not 308.
+
