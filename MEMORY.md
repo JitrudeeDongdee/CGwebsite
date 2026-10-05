@@ -116,3 +116,44 @@ before choosing test coordinates — `getBoundingClientRect()` on the canvas *an
 scale. And when a handler seems not to run, log inside it first: "the handler never fired"
 and "the handler fired but did the wrong thing" look identical from a screenshot and lead to
 completely different fixes.
+
+## A fill-image inflated an auto grid track (hero card wouldn't match the left column)
+
+**What happened**: making the hero's right-hand card stretch to the full section height on
+desktop blew the whole hero up to ~912px — BOTH columns, measured. Setting
+`alignItems:stretch` on the grid + a flex-column card wasn't enough.
+
+**Root cause**: the card's media was `height:100%` inside a `flex:1` wrapper with no definite
+height, so for the auto grid row's sizing the browser fell back to the image's INTRINSIC
+height. That intrinsic height became the row height, and `alignItems:stretch` then stretched
+the (shorter) left column up to match it — the opposite of the intent. An auto grid track
+sized from its contents + a child that wants to size from the track = the image wins.
+
+**Correct behavior**: a fill-media must not contribute its intrinsic size to the track that is
+supposed to size it. Absolutely-position the media inside a `position:relative; flex:1;
+min-height:0` wrapper (`position:{md:'absolute'}, inset:{md:0}`), so it contributes 0 to the
+card's natural height; the row is then sized by the OTHER column, and the card stretches to it
+and the media fills. Verified: grid / left / card all 450px. (`src/pages/home/HeroSection.tsx`.)
+
+## Reordering siblings across a wrapper on mobile only — `display:contents`
+
+**What happened**: the mobile hero needed heading → image → buttons, but the heading and
+buttons live inside one left-column `<Box>` while the image card is its sibling — so plain
+`order` couldn't interleave the card between them.
+
+**Correct behavior**: give the wrapper `display:{xs:'contents', md:'block'}`. On mobile
+`contents` makes the wrapper generate no box, so its children join the parent grid and each can
+take its own `order` (card included); on desktop it's a normal block and the order values are
+ignored, leaving the original stacking untouched. Pair with `rowGap:0` + explicit margins so
+the exposed children don't pick up the grid's gap twice.
+
+## Watching the page's scroll when the window itself doesn't scroll
+
+**What happened**: a floating bottom bar needed to react to page scroll, but `window`/`document`
+scroll never fired — MarketingLayout scrolls inside its own `overflowY:auto` container, not the
+window.
+
+**Correct behavior**: listen with `document.addEventListener('scroll', fn, true)` (CAPTURE
+phase) — scroll doesn't bubble, but capture sees it from any scroller, and `e.target.scrollTop`
+is the element that scrolled. Filter out horizontal rails/carousels by ignoring targets whose
+`scrollHeight - clientHeight` is tiny. (`src/pages/home/FloatingServiceBar.tsx`.)

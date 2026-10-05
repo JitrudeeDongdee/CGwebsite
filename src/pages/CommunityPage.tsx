@@ -10,6 +10,7 @@ import { useCommunity } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { projectImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
@@ -28,6 +29,7 @@ export function CommunityPage() {
   const { t } = useTranslation()
   const L = useLocalized()
   const items = useCommunity()
+  useSeo({ title: t('mkt.community.title'), description: t('mkt.community.sub') })
 
   return (
     <Box>

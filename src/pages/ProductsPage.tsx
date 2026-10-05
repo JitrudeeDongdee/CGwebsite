@@ -16,6 +16,7 @@ import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQu
 import { CatalogToolbar } from '../ui/CatalogToolbar'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
@@ -28,6 +29,7 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
 
 export function ProductsPage() {
   const { t, i18n } = useTranslation()
+  useSeo({ title: t('mkt.products.title'), description: t('mkt.products.sub') })
   const L = useLocalized()
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
   const { cat, query, requestedPage, update } = useCatalogQuery()

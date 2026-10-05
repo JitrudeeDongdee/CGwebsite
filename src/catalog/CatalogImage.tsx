@@ -21,7 +21,8 @@ export function CatalogImage({
   src?: string
   category: ProductCategory
   alt?: string
-  ratio?: string
+  /** Aspect ratio of the slot; may be responsive (e.g. a flatter image on a phone). */
+  ratio?: string | Record<string, string>
   /** Fixed height instead of a ratio — for slots that must line up with other content. */
   height?: number | string
   /** A second image path tried when `src` is missing (404), before the coloured

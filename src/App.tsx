@@ -40,6 +40,7 @@ const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m
 const PortfolioPage = lazy(() => import('./pages/PortfolioPage').then((m) => ({ default: m.PortfolioPage })))
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage })))
 const CommunityPage = lazy(() => import('./pages/CommunityPage').then((m) => ({ default: m.CommunityPage })))
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 
 /**
  * Chrome for the app routes (designer / admin / login): the shared `SiteHeader`
@@ -97,6 +98,8 @@ function App() {
         <Route path="/community" element={<CommunityPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        {/* The signed-in user's own profile settings (redirects to /login if not). */}
+        <Route path="/account" element={<ProfilePage />} />
       </Route>
 
       <Route element={<AppShell />}>

@@ -240,6 +240,29 @@
     "passwordMin": "Password must be at least 8 characters",
     "customerSignInTitle": "Sign in",
     "staffHint": "TDD staff sign in to the back office here",
-    "switchAccount": "Wrong account? Sign out and sign in with your staff account."
+    "switchAccount": "Wrong account? Sign out and sign in with your staff account.",
+    "orContinueWith": "Or continue with",
+    "continueWith": "Continue with",
+    "socialSoon": "Coming soon",
+    "forgotPassword": "Forgot password?",
+    "resetSent": "We've sent a password-reset link to your email. Check spam if it hasn't arrived.",
+    "resetNeedEmail": "Enter your email first, then tap forgot password again."
+  },
+  "account": {
+    "settings": "Profile settings",
+    "admin": "Open admin",
+    "profileSubtitle": "Edit your contact details and linked accounts (some aren't editable yet).",
+    "phone": "Phone number",
+    "phonePlaceholder": "Not available yet",
+    "social": "Linked accounts",
+    "connect": "Connect",
+    "close": "Close",
+    "editSoon": "Profile editing is coming soon.",
+    "displayName": "Display name",
+    "address": "Address",
+    "changePhoto": "Change photo",
+    "save": "Save",
+    "saved": "Saved",
+    "localNote": "Profile data is stored on this device for now (it will move to the server later)."
   }
 }

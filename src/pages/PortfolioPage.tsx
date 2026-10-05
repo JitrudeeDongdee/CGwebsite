@@ -13,11 +13,12 @@ import { useLocalized } from '../catalog/useLocalized'
 import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQuery'
 import { CatalogToolbar } from '../ui/CatalogToolbar'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
-/** Projects per page in the portfolio grid. */
-const PAGE_SIZE = 6
+/** Projects per page in the portfolio grid (3×3). */
+const PAGE_SIZE = 9
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>
@@ -25,6 +26,7 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
 
 export function PortfolioPage() {
   const { t } = useTranslation()
+  useSeo({ title: t('mkt.portfolio.title'), description: t('mkt.portfolio.sub') })
   const L = useLocalized()
 
   const { cat, query, requestedPage, update } = useCatalogQuery()

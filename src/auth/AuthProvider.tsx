@@ -18,7 +18,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
-import { supabase } from '../supabase/client'
+import { supabase, siteUrl } from '../supabase/client'
 
 /**
  * Real authentication, backed by Supabase Auth.
@@ -63,6 +63,9 @@ interface AuthContextValue {
   /** Resolves to `confirmationSent` when the account still has to be verified
    *  by e-mail, `signedIn` when Supabase handed back a session immediately. */
   signUp: (email: string, password: string) => Promise<'confirmationSent' | 'signedIn'>
+  /** Sends a password-reset e-mail to the address (delivery depends on SMTP
+   *  being configured in Supabase). */
+  resetPassword: (email: string) => Promise<void>
   logout: () => void
 }
 
@@ -172,12 +175,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error: failure } = await supabase.auth.signUp({
       email: address.trim(),
       password: secret,
-      // Where the link in the e-mail lands. Must also be on Supabase's
-      // redirect allow-list, or the link bounces to the project's Site URL.
-      options: { emailRedirectTo: `${window.location.origin}/login?confirmed=1` },
+      // Where the link in the e-mail lands. Uses the real site origin (not a
+      // local dev host) and must be on Supabase's redirect allow-list, or the
+      // link bounces to the project's Site URL.
+      options: { emailRedirectTo: `${siteUrl()}/login?confirmed=1` },
     })
     if (failure) throw failure
     return data.session ? 'signedIn' : 'confirmationSent'
+  }, [])
+
+  const resetPassword = useCallback(async (address: string) => {
+    if (!supabase) throw new Error('ยังไม่ได้ตั้งค่า Supabase')
+    const { error: failure } = await supabase.auth.resetPasswordForEmail(address.trim(), {
+      // Where the reset link lands (real site origin). Must be on Supabase's
+      // redirect allow-list.
+      redirectTo: `${siteUrl()}/login`,
+    })
+    if (failure) throw failure
   }, [])
 
   const submit = async () => {
@@ -211,9 +225,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       promptLogin: () => openDialog(),
       signIn,
       signUp,
+      resetPassword,
       logout,
     }),
-    [user, role, loading, requireAuth, openDialog, signIn, signUp, logout],
+    [user, role, loading, requireAuth, openDialog, signIn, signUp, resetPassword, logout],
   )
 
   return (

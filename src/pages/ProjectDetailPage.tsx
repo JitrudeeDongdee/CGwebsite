@@ -19,6 +19,7 @@ import { formatCurrency } from '../pricing/estimate'
 import { ImageGallery } from '../ui/ImageGallery'
 import { useLocalized } from '../catalog/useLocalized'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
@@ -35,6 +36,14 @@ export function ProjectDetailPage() {
   // Every hook runs before the early returns below — a hook after them would be
   // skipped on the "not found" render and break the hook order.
   const relatedProduct = useProductById(project?.productId)
+
+  // Per-page SEO derived from the project itself, so new work is covered too.
+  // Above the early returns with the other hooks — one skipped on the
+  // "not found" render would break the hook order.
+  useSeo({
+    title: project ? L(project.title) : undefined,
+    description: project ? L(project.description) : undefined,
+  })
 
   if (!project) {
     return (

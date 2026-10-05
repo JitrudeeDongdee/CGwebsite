@@ -13,12 +13,11 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
-import Tooltip from '@mui/material/Tooltip'
 import MenuIcon from '@mui/icons-material/Menu'
 import CloseIcon from '@mui/icons-material/Close'
-import LogoutIcon from '@mui/icons-material/Logout'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { SettingsMenu } from './SettingsMenu'
+import { AccountMenu } from './AccountMenu'
 import { useAuth } from '../auth/AuthProvider'
 import { LogoMark } from './Logo'
 import { ensureMarketingI18n } from '../marketing/i18n'
@@ -108,30 +107,7 @@ export function SiteHeader() {
             {t('mkt.nav.designCta')}
           </Button>
 
-          {/* Staff only. Not a security boundary — RLS is — but a visitor has no
-              reason to be shown a door they cannot open. */}
-          {isStaff && (
-            <Button
-              component={RouterLink}
-              to="/admin"
-              size="small"
-              color={pathname === '/admin' ? 'primary' : 'inherit'}
-              sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-            >
-              {t('app.navAdmin')}
-            </Button>
-          )}
-
-          {user ? (
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', display: { xs: 'none', sm: 'flex' } }}>
-              <Typography variant="body2" color="text.secondary">{user.name}</Typography>
-              <Tooltip title={t('auth.logout')}>
-                <IconButton size="small" onClick={logout} aria-label={t('auth.logout')}>
-                  <LogoutIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-          ) : (
+          {!user && (
             <Button
               size="small"
               variant="text"
@@ -144,7 +120,15 @@ export function SiteHeader() {
           )}
 
           <Box sx={{ display: { xs: 'none', sm: 'block' } }}><LanguageSwitcher /></Box>
-          <Box sx={{ display: { xs: 'none', sm: 'block' } }}><SettingsMenu /></Box>
+          {/* Theme lives in the account menu when signed in, so the standalone
+              gear only shows for signed-out visitors. */}
+          {!user && <Box sx={{ display: { xs: 'none', sm: 'block' } }}><SettingsMenu /></Box>}
+
+          {user && (
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
+              <AccountMenu email={user.name} userId={user.id} isStaff={isStaff} onLogout={logout} />
+            </Box>
+          )}
 
           <IconButton onClick={() => setDrawer(true)} sx={{ display: { lg: 'none' } }} aria-label="menu">
             <MenuIcon />
@@ -165,11 +149,6 @@ export function SiteHeader() {
                 <ListItemText primary={t(item.key)} />
               </ListItemButton>
             ))}
-            {isStaff && (
-              <ListItemButton component={RouterLink} to="/admin" onClick={() => setDrawer(false)}>
-                <ListItemText primary={t('app.navAdmin')} />
-              </ListItemButton>
-            )}
             {user ? (
               <ListItemButton onClick={() => { logout(); setDrawer(false) }}>
                 <ListItemText primary={t('auth.logout')} secondary={user.name} />
