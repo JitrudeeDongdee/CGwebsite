@@ -15,6 +15,7 @@ import FacebookIcon from '@mui/icons-material/Facebook'
 import PlaceIcon from '@mui/icons-material/Place'
 import { CONTACT_CHANNELS, contactHref, contactLabel, contactValue, type ContactKind } from '../content/contact'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { useSeo } from '../seo/useSeo'
 import { messagesReachTheTeam, sendContactMessage } from '../content/messages'
 
 ensureMarketingI18n()
@@ -25,6 +26,7 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
 
 export function ContactPage() {
   const { t, i18n } = useTranslation()
+  useSeo({ title: t('mkt.contact.title'), description: t('mkt.contact.sub') })
   const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' })
   const [sent, setSent] = useState(false)

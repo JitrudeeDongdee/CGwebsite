@@ -13,6 +13,7 @@ import { useLocalized } from '../catalog/useLocalized'
 import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQuery'
 import { CatalogToolbar } from '../ui/CatalogToolbar'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
@@ -25,6 +26,7 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
 
 export function PortfolioPage() {
   const { t } = useTranslation()
+  useSeo({ title: t('mkt.portfolio.title'), description: t('mkt.portfolio.sub') })
   const L = useLocalized()
 
   const { cat, query, requestedPage, update } = useCatalogQuery()

@@ -22,6 +22,7 @@ import { useCatalog } from '../catalog/CatalogProvider'
 import { useLocalized } from '../catalog/useLocalized'
 import { projectImagePath, projectPath } from '../catalog/images'
 import { ensureMarketingI18n } from '../marketing/i18n'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
@@ -31,6 +32,7 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
 
 export function AboutPage() {
   const { t } = useTranslation()
+  useSeo({ title: t('mkt.about.title'), description: t('mkt.about.body') })
   const values = [
     { icon: <VerifiedIcon />, title: t('mkt.about.val1'), desc: t('mkt.about.val1d') },
     { icon: <HandshakeIcon />, title: t('mkt.about.val2'), desc: t('mkt.about.val2d') },
