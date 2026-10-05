@@ -20,3 +20,17 @@ export const supabase: SupabaseClient | null =
   url && anonKey ? createClient(url, anonKey) : null
 
 export const supabaseEnabled = supabase !== null
+
+/**
+ * The canonical public origin for links that leave the app and must come back —
+ * the sign-up confirmation and password-reset e-mails. On the deployed site the
+ * running origin already IS the real site, but a sign-up started from a local dev
+ * server would otherwise bake `http://localhost:…` into the e-mail, so a
+ * `VITE_SITE_URL` override takes precedence when set. (It must also be on
+ * Supabase's redirect allow-list, or the link falls back to the project's Site URL.)
+ */
+export function siteUrl(): string {
+  const configured = import.meta.env.VITE_SITE_URL as string | undefined
+  const base = configured && configured.trim() ? configured : window.location.origin
+  return base.replace(/\/$/, '')
+}

@@ -9,7 +9,11 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
+import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
+import GoogleIcon from '@mui/icons-material/Google'
+import FacebookIcon from '@mui/icons-material/Facebook'
+import ChatIcon from '@mui/icons-material/Chat'
 import { useAuth } from '../auth/AuthProvider'
 
 /**
@@ -22,15 +26,16 @@ import { useAuth } from '../auth/AuthProvider'
  * A customer account unlocks the designer's save / download / send-to-team
  * actions and nothing else; it carries no role, so it cannot reach `/admin`.
  *
- * The Google/Facebook buttons stayed deleted: they are not configured, and a
- * button that cannot work is worse than no button.
+ * The Google/Facebook buttons are shown but DISABLED — placeholders until the
+ * OAuth providers are configured in Supabase. They make the intended sign-in
+ * options visible without pretending to work yet.
  */
 
 
 
 export function LoginPage() {
   const { t } = useTranslation()
-  const { signIn, signUp, user } = useAuth()
+  const { signIn, signUp, resetPassword, user } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [email, setEmail] = useState('')
@@ -40,6 +45,25 @@ export function LoginPage() {
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn')
   /** Set once the sign-up succeeded: the person must now go to their inbox. */
   const [sentTo, setSentTo] = useState<string | null>(null)
+  /** Set once a password-reset e-mail has been requested. */
+  const [resetSent, setResetSent] = useState(false)
+
+  const forgotPassword = async () => {
+    if (!email.trim()) {
+      setError(t('auth.resetNeedEmail'))
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await resetPassword(email)
+      setResetSent(true)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   /**
    * Where to land after signing in: back where they came from, else the house
@@ -127,6 +151,7 @@ export function LoginPage() {
         ) : (
         <Stack component="form" spacing={2} onSubmit={(e) => void submit(e)}>
           {error && <Alert severity="error">{error}</Alert>}
+          {resetSent && <Alert severity="success" onClose={() => setResetSent(false)}>{t('auth.resetSent')}</Alert>}
           <TextField
             label={t('auth.email')}
             type="email"
@@ -146,6 +171,17 @@ export function LoginPage() {
             size="small"
             autoComplete="current-password"
           />
+          {mode === 'signIn' && (
+            <Button
+              variant="text"
+              size="small"
+              onClick={() => void forgotPassword()}
+              disabled={busy}
+              sx={{ alignSelf: 'flex-end', mt: -1 }}
+            >
+              {t('auth.forgotPassword')}
+            </Button>
+          )}
           <Button
             type="submit"
             variant="contained"
@@ -158,6 +194,24 @@ export function LoginPage() {
           <Button variant="text" size="small" onClick={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')}>
             {mode === 'signIn' ? t('auth.signUpCta') : t('auth.haveAccount')}
           </Button>
+
+          {/* Social sign-in: shown but disabled until the OAuth providers are
+              wired up in Supabase. */}
+          <Divider sx={{ my: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">{t('auth.orContinueWith')}</Typography>
+          </Divider>
+          <Button fullWidth variant="outlined" color="inherit" disabled startIcon={<GoogleIcon />}>
+            {t('auth.continueWith')} Google
+          </Button>
+          <Button fullWidth variant="outlined" color="inherit" disabled startIcon={<FacebookIcon />}>
+            {t('auth.continueWith')} Facebook
+          </Button>
+          <Button fullWidth variant="outlined" color="inherit" disabled startIcon={<ChatIcon />}>
+            {t('auth.continueWith')} LINE
+          </Button>
+          <Typography variant="caption" color="text.disabled" sx={{ textAlign: 'center' }}>
+            {t('auth.socialSoon')}
+          </Typography>
         </Stack>
         )}
 
@@ -167,11 +221,6 @@ export function LoginPage() {
           <Typography variant="caption" color="text.secondary">
             <Link component={RouterLink} to="/design" color="inherit">
               ← {t('auth.backToApp')}
-            </Link>
-          </Typography>
-          <Typography variant="caption" color="text.disabled">
-            <Link component={RouterLink} to="/admin/login" color="inherit">
-              {t('auth.staffHint')}
             </Link>
           </Typography>
         </Stack>
