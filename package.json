@@ -10,13 +10,15 @@
     "og": "python3 scripts/make-og-card.py",
     "images:upload": "node scripts/upload-catalog-images.mjs",
     "prebuild": "node scripts/generate-seo-files.mjs",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && pnpm run build:ssr && pnpm run prerender",
     "lint": "oxlint",
     "preview": "vite preview",
     "db:new": "supabase migration new",
     "db:push": "supabase db push",
     "db:diff": "supabase db diff -f",
-    "db:status": "supabase migration list"
+    "db:status": "supabase migration list",
+    "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist-ssr",
+    "prerender": "node scripts/prerender.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -36,6 +38,8 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
+    "@emotion/cache": "^11.14.0",
+    "@emotion/server": "^11.11.0",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

@@ -26,7 +26,13 @@ const ThemeModeContext = createContext<ThemeModeContextValue | null>(null)
 
 const STORAGE_KEY = 'cg:theme-preference'
 
+/** True in the browser; false while the build prerenders pages in Node. */
+const hasStorage = typeof localStorage !== 'undefined'
+
 function readStoredPreference(): ThemePreference {
+  // Prerendering runs in Node, where there is no localStorage and nobody has a
+  // preference anyway — the documented default is what the HTML should carry.
+  if (!hasStorage) return DEFAULT_PREFERENCE
   const stored = localStorage.getItem(STORAGE_KEY)
   return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : DEFAULT_PREFERENCE
 }
@@ -38,7 +44,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   // Every choice is stored now, 'system' included — with a light default, an
   // empty key has to mean "hasn't chosen", not "follow the OS".
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, preference)
+    if (hasStorage) localStorage.setItem(STORAGE_KEY, preference)
   }, [preference])
 
   const resolvedMode: ThemeMode =

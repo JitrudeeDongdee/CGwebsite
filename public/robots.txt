@@ -5,3 +5,5 @@ Allow: /
 
 Disallow: /admin
 Disallow: /login
+
+Sitemap: https://thai-dd.pages.dev/sitemap.xml
