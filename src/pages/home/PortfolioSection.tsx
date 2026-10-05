@@ -13,8 +13,8 @@ import { CatalogImage } from '../../catalog/CatalogImage'
 import { joinMeta } from '../../catalog/meta'
 import { Wrap, Eyebrow, type WorkCard } from './shared'
 
-/** Portfolio shown nine at a time (3×3 on desktop), paged with centre controls. */
-const PAGE = 9
+/** Portfolio shown eight at a time (4×2 on desktop), paged with centre controls. */
+const PAGE = 8
 
 export function PortfolioSection({ work, allWorkTo }: { work: WorkCard[]; allWorkTo: string }) {
   const { t } = useTranslation()
@@ -40,7 +40,7 @@ export function PortfolioSection({ work, allWorkTo }: { work: WorkCard[]; allWor
           </Button>
         </Stack>
 
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
           {visible.map((w) => (
             <Box
               key={w.key}

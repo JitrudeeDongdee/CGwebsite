@@ -17,8 +17,8 @@ import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
-/** Projects per page in the portfolio grid. */
-const PAGE_SIZE = 6
+/** Projects per page in the portfolio grid (3×3). */
+const PAGE_SIZE = 9
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>

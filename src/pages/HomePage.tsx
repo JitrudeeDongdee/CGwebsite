@@ -20,6 +20,7 @@ import { HeroSection, type Hero } from './home/HeroSection'
 import { ServicesSection, type Service } from './home/ServicesSection'
 import { FeaturedSection } from './home/FeaturedSection'
 import { PortfolioSection } from './home/PortfolioSection'
+import { FloatingServiceBar } from './home/FloatingServiceBar'
 import { CommunitySection } from './home/CommunitySection'
 import { StatsSection } from './home/StatsSection'
 // import { FinalCtaSection } from './home/FinalCtaSection' // disabled with its render below
@@ -27,7 +28,7 @@ import { StatsSection } from './home/StatsSection'
 ensureMarketingI18n()
 
 /** House plans featured on the home + house line. */
-const FEATURED_IDS = ['two-bed-8x6', 'three-bed-9x6', 'studio-6x4']
+const FEATURED_IDS = ['two-bed-8x6', 'three-bed-9x6', 'studio-6x4', 'one-bed-6x6']
 
 function isCategory(value: string | undefined): value is ProductCategory {
   return PRODUCT_CATEGORIES.includes(value as ProductCategory)
@@ -54,7 +55,7 @@ export function HomePage() {
   // skipped on some renders breaks the hook order for the whole component.
   const { projects: allProjects } = useCatalog()
   const communityItems = useCommunity()
-  const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 3)
+  const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 4)
   // The hero card leads with the line's best seller.
   const heroProduct = useHeroProduct(cat ?? 'house')
 
@@ -172,6 +173,8 @@ export function HomePage() {
       {isHouseish && communityItems.length > 0 && <CommunitySection items={communityItems} />}
       <StatsSection stats={stats} />
       {/* <FinalCtaSection cat={cat} ctaTo={ctaTo} ctaPrimary={hero.ctaPrimary} /> */}
+      {/* Floating quick-switch: hides on scroll-down, reappears on scroll-up. */}
+      <FloatingServiceBar services={services} cat={cat} />
     </Box>
   )
 }

@@ -61,10 +61,10 @@ export function FeaturedSection({
         </Stack>
 
         {isHouseish ? (
-          <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(3, 1fr)' } }}>
+          <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(4, 1fr)' } }}>
             {models.map((m) => (
               <Paper key={m.id} elevation={0} sx={{ ...RAIL_CARD_SX, borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
-                <Box sx={{ display: 'grid', placeItems: 'center', py: 2.5, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
+                <Box sx={{ display: 'grid', placeItems: 'center', py: { xs: 1.5, md: 2.5 }, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
                   <IsoThumbnail state={m.build()} size={120} />
                 </Box>
                 <Box sx={{ p: 2 }}>
@@ -93,7 +93,7 @@ export function FeaturedSection({
         ) : catProducts.length === 0 ? (
           <Typography color="text.secondary">{t('mkt.service.productsEmpty')}</Typography>
         ) : (
-          <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(3, 1fr)' } }}>
+          <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(4, 1fr)' } }}>
             {catProducts.map((p) => (
               <Paper
                 key={p.id}
@@ -107,7 +107,7 @@ export function FeaturedSection({
                   '&:hover': { borderColor: 'primary.main' },
                 }}
               >
-                <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
+                <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} ratio={{ xs: '16 / 9', md: '4 / 3' }} />
                 <Box sx={{ p: 2 }}>
                   <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
                   {/* Clamped rather than free-flowing: in two columns a long
