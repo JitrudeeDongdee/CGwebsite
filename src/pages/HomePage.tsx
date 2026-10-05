@@ -26,6 +26,7 @@ import { CatalogImage } from '../catalog/CatalogImage'
 import { productImagePath, projectImagePath, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
+import { useSeo } from '../seo/useSeo'
 
 ensureMarketingI18n()
 
@@ -123,6 +124,14 @@ export function HomePage() {
   const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 3)
   // The hero card leads with the line's best seller.
   const heroProduct = useHeroProduct(cat ?? 'house')
+
+  // Per-page SEO: each service line gets its own title + lead (called before the
+  // early return so the hook order stays stable).
+  useSeo(
+    cat
+      ? { title: t(CATEGORY_META[cat].labelKey), description: t(`mkt.service.${cat}.lead`) }
+      : { title: t('mkt.home.title'), description: t('mkt.home.lead') },
+  )
 
   // `/home/<something unknown>` is not a service — fall back to the main home.
   if (service !== undefined && !isCategory(service)) return <Navigate to="/home" replace />
