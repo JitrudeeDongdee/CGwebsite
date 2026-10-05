@@ -163,8 +163,12 @@ Storage) and fully rendered body.
   next.
 - **Not prerendered:** `/design` (a three.js canvas), `/admin/*` and `/login` — private, and robots
   already disallows them. They keep the SPA fallback.
-- Cloudflare Pages serves a matching static asset **before** the `/* → /index.html` rule, so
-  `dist/about/index.html` answers `/about`. ⚠️ `vite preview` does NOT — it applies its own SPA fallback
+- ⚠️ **Pages are written as `dist/<route>.html`, never `<route>/index.html`.** A directory index makes
+  Cloudflare Pages enforce a trailing slash with a **308** — measured on the deployed site, every page
+  did it — which puts a redirect in front of every internal link and leaves the canonical (`/about`)
+  disagreeing with the URL serving it (`/about/`). See MEMORY.md.
+- Check a build with **`pnpm run serve:dist`** (`scripts/serve-dist.mjs`), which models Pages' asset-first
+  rule including that 308. ⚠️ `vite preview` does NOT — it applies its own SPA fallback
   first and serves `index.html` for every route, which makes prerendering look broken locally. Verify
   with a server that mimics the asset-first rule.
 - A route that fails to render **fails the build** (exit 1): a skipped route silently keeps the old

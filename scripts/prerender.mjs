@@ -234,9 +234,22 @@ for (const route of routes) {
       `${head}\n    ${styles}\n  </head>` +
       bodyPart.replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
-    const dir = join(dist, route.path)
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, 'index.html'), page)
+    // `<route>.html`, NOT `<route>/index.html`.
+    //
+    // Cloudflare Pages treats a directory containing index.html as a directory
+    // and **308-redirects the slashless URL to the trailing-slash one**:
+    // /about → /about/. Measured on the deployed site — every prerendered page
+    // did it. That breaks three things at once: every internal link and sitemap
+    // entry costs a redirect hop, and the canonical (which says /about) then
+    // disagrees with the URL actually serving the page (/about/), which is the
+    // duplicate-content problem this prerendering was meant to remove.
+    //
+    // A flat `about.html` is served at /about with 200 and no redirect. A file
+    // and a directory can share a base name, so `products.html` happily
+    // coexists with `products/air-conditioner.html`.
+    const file = join(dist, `${route.path}.html`)
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, page)
     written += 1
   } catch (error) {
     failures.push(`${route.path}: ${error instanceof Error ? error.message : String(error)}`)
