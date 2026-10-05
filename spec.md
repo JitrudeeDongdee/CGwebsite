@@ -108,6 +108,37 @@ Own perspective `<Canvas shadows>` (fov 45), free orbit (`maxPolarAngle ≈ π/2
 - **Open Graph / Twitter cards** — the `tdd-site-meta` plugin in `vite.config.ts` injects them into `index.html` at build: `og:type/site_name/locale(+alternate)/title/description`, `twitter:card=summary_large_image` + title/description always; `og:url`, `og:image` (+`width/height/alt`) and `twitter:image` only when `SITE_URL` is set. Title/description are **read back out of `index.html`** so the card and the search result can't drift apart. The share image is `public/brand/og-card.png` (1200×630, blueprint-grid card with the shield + Thai tagline) — regenerate with `pnpm run og` (`scripts/make-og-card.py`, Pillow; not part of the build, output committed).
 - ~~Because this is a client-rendered SPA, these tags are site-wide~~ — **superseded 2026-10-06 by prerendering** (below). `index.html` is still the fallback for routes that are not prerendered.
 
+### Local SEO / structured data (2026-10-06)
+- **JSON-LD** (`index.html`, `GeneralContractor`) carries the real `geo`
+  (16.345432, 101.099445 — checked against Phetchabun's bounding box before writing it, since a
+  transposed pair puts the pin in the ocean and nobody notices until a customer does) and
+  `openingHoursSpecification` (Mon–Sat 08:00–17:00; Sunday as `opens == closes == "00:00"`, which is
+  how schema.org says "closed"). `url` points at `/home/house` (`/` now 301s) and `logo` at
+  `brand/favicon-256.png` — it pointed at `brand/logo-shield.png`, which the site stopped using when the
+  logo became `favicon.svg`. Because the prerenderer uses `dist/index.html` as its template, all 54 pages
+  inherit it.
+- **The address links to the map** (`contact.json` gained a `url` on the address channel, the same pin as
+  `geo`), so the footer and contact page stop showing it as dead text.
+- **Local keywords.** `<h1>` was "บ้านน็อคดาวน์" and the word **เพชรบูรณ์ appeared in no page's body at
+  all**. Service pages now headline e.g. "บ้านน็อคดาวน์ บ้านสำเร็จรูป เพชรบูรณ์" via a SEPARATE
+  `mkt.home.svcSeoN` key — ⚠️ do NOT put the search phrase in `svcN`: that label is also the category
+  filter chip, the card title and an admin table cell, and a long string breaks all three (tried, caught).
+  `ServiceAreaSection` names the districts individually, because someone in หล่มสัก searches for หล่มสัก.
+- **Canonical + soft 404.** Nothing carried a canonical, and `/` plus every mistyped URL answered 200 with
+  the SPA shell before moving in JavaScript — each one a duplicate of the landing page to a crawler.
+  `_redirects` sends `/ → /home/house` as a **301**; `useSeo` writes a canonical for the current URL and a
+  `robots` meta; an unknown path renders `NotFoundPage` with `noindex, follow` instead of redirecting
+  home. It cannot return a 404 *status* (static host, the CDN already said 200) — `noindex` is the part
+  that counts.
+- **Descriptions clamp at 155** (`clampDescription`), not 300: Google renders ~155 and drops the rest, so
+  the old limit was two-thirds invisible and ended mid-sentence. The prerenderer repeats the rule so the
+  static head and the one the SPA sets after boot agree. Thai has no spaces, so the word-boundary cut
+  falls back to a hard cut.
+- **Images carry `width`/`height` attributes** (1600×1200 for a 4:3 slot — catalog photos are stored at a
+  1600px long edge). The wrapper's `aspectRatio` reserved the box in CSS, but the `<img>` had no intrinsic
+  size, so the HTML a crawler reads — and a browser before CSS applies — saw a zero-height image. The hero
+  also gets `fetchPriority="high"`.
+
 ### Prerender / SSG — `scripts/prerender.mjs` + `src/entry-server.tsx` (2026-10-06)
 Every URL used to serve the same `index.html` with an empty `<div id="root">` and one site-wide title/OG
 card. Google renders JS and coped; **Facebook and LINE do not**, so every shared link previewed as the
