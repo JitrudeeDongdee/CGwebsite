@@ -146,7 +146,21 @@ function buildHead(template, { title, description, path, image }) {
 const BRAND = 'ไทยดวงดี เอ็นจิเนียริ่ง'
 const withBrand = (t) => `${t} | ${BRAND}`
 const text = (value) => (typeof value === 'string' ? value : (value?.th ?? ''))
-const trim = (v, n = 300) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
+/**
+ * Google renders ~155 characters of a description and drops the rest, so a
+ * 300-char one was two-thirds invisible and ended mid-sentence. Same rule as
+ * `clampDescription` in `src/seo/useSeo.ts`, so a page's prerendered head and
+ * the one the SPA sets after boot agree.
+ */
+const DESCRIPTION_MAX = 155
+function trim(value) {
+  const clean = String(value ?? '').replace(/\s+/g, ' ').trim()
+  if (clean.length <= DESCRIPTION_MAX) return clean
+  const cut = clean.slice(0, DESCRIPTION_MAX)
+  // Thai is written without spaces, so there may be no word boundary to cut on.
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${(lastSpace > DESCRIPTION_MAX * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`
+}
 
 /** The image a shared link should preview with. */
 function imageFor(row) {
@@ -157,8 +171,26 @@ function imageFor(row) {
   return supabaseUrl ? `${supabaseUrl}/storage/v1/object/public/catalog/${path}` : ''
 }
 
+/** The service home pages — `/home/:service`. These are the highest-value pages
+ *  on the site and the first version of this script skipped them entirely. The
+ *  copy is duplicated from `src/marketing/i18n.ts` rather than imported: this is
+ *  a plain Node script and pulling the TS i18n module in would drag React with
+ *  it. If a headline changes there, change it here. */
+const SERVICE_PAGES = [
+  { slug: 'house', title: 'บ้านน็อคดาวน์ บ้านสำเร็จรูป เพชรบูรณ์', description: 'บ้านน็อคดาวน์สำเร็จรูปที่ออกแบบแปลนเองได้ตั้งแต่ต้น เห็นภาพ 3 มิติและราคาประเมินทันที แล้วเราผลิต ขนส่ง และติดตั้งให้ถึงหน้างาน ทั่วจังหวัดเพชรบูรณ์' },
+  { slug: 'electronics', title: 'สินค้าอิเล็กทรอนิกส์ เครื่องใช้ไฟฟ้า เพชรบูรณ์', description: 'เครื่องใช้ไฟฟ้า ตู้ควบคุมไฟฟ้า ระบบโซลาร์เซลล์ และงานติดตั้งระบบไฟฟ้า พร้อมทีมช่างของเราเอง จ.เพชรบูรณ์' },
+  { slug: 'furniture', title: 'เฟอร์นิเจอร์บิลต์อิน เพชรบูรณ์', description: 'เฟอร์นิเจอร์บิลต์อินและลอยตัว ชุดครัว ตู้เสื้อผ้า เตียง จัดชุดให้เข้ากับแบบบ้านของคุณ จ.เพชรบูรณ์' },
+  { slug: 'rental', title: 'รถก่อสร้างและเครื่องจักรให้เช่า เพชรบูรณ์', description: 'รถแบคโฮ รถเครน และเครื่องจักรก่อสร้างให้เช่า พร้อมคนขับและทีมสนับสนุนหน้างาน จ.เพชรบูรณ์' },
+  { slug: 'contracting', title: 'รับเหมาก่อสร้าง งานระบบไฟฟ้า เพชรบูรณ์', description: 'รับเหมาก่อสร้าง งานรื้อถอน เดินสายไฟเบอร์ออปติก งานระบบไฟฟ้าและสาธารณูปโภค ครบในทีมเดียว จ.เพชรบูรณ์' },
+]
+
 function routesFor(catalog) {
   const list = [
+    ...SERVICE_PAGES.map((s) => ({
+      path: `/home/${s.slug}`,
+      title: s.title,
+      description: trim(s.description),
+    })),
     { path: '/about', title: 'เกี่ยวกับเรา', description: 'TDD (หจก. ไทย ดวงดี เอ็นจิเนียริ่ง) — งานก่อสร้าง งานระบบ และเฟอร์นิเจอร์ จบได้ในทีมเดียว' },
     { path: '/contact', title: 'ติดต่อเรา', description: 'ปรึกษาหรือขอใบเสนอราคา — โทร อีเมล หรือเข้ามาที่ร้านได้เลย' },
     { path: '/products', title: 'สินค้าและบริการ', description: 'บ้านน็อคดาวน์ อิเล็กทรอนิกส์ เฟอร์นิเจอร์ และรถก่อสร้างให้เช่า' },

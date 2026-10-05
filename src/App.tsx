@@ -29,6 +29,7 @@ const AdminPortfolioListPage = lazy(() => import('./pages/AdminPortfolioListPage
 const AdminPortfolioEditPage = lazy(() => import('./pages/AdminPortfolioEditPage').then((m) => ({ default: m.AdminPortfolioEditPage })))
 const AdminProductListPage = lazy(() => import('./pages/AdminProductListPage').then((m) => ({ default: m.AdminProductListPage })))
 const AdminProductEditPage = lazy(() => import('./pages/AdminProductEditPage').then((m) => ({ default: m.AdminProductEditPage })))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
 const AdminMessagesPage = lazy(() => import('./pages/AdminMessagesPage').then((m) => ({ default: m.AdminMessagesPage })))
@@ -100,6 +101,10 @@ function App() {
         <Route path="/contact" element={<ContactPage />} />
         {/* The signed-in user's own profile settings (redirects to /login if not). */}
         <Route path="/account" element={<ProfilePage />} />
+        {/* An unknown path is NOT the home page. Redirecting it there made every
+            typo a 200 that duplicated the landing page in the index. Inside the
+            marketing layout so the visitor still has the nav to recover with. */}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
 
       <Route element={<AppShell />}>
@@ -141,7 +146,6 @@ function App() {
 
       {/* Landing on / goes to the marketing home; the designer tool lives at /design. */}
       <Route path="/" element={<Navigate to="/home/house" replace />} />
-      <Route path="*" element={<Navigate to="/home/house" replace />} />
     </Routes>
     </>
   )

@@ -13,6 +13,8 @@ export function SmartImage({
   fallback,
   sx,
   eager = false,
+  intrinsicWidth,
+  intrinsicHeight,
 }: {
   src?: string
   alt?: string
@@ -21,6 +23,11 @@ export function SmartImage({
   /** Load immediately instead of lazily — for above-the-fold slots (the hero),
    *  and so a 404 fires its error promptly to trigger a fallback chain. */
   eager?: boolean
+  /** Intrinsic size, written to the `width`/`height` ATTRIBUTES (not CSS) so the
+   *  browser reserves the right box before the file arrives. CSS still drives
+   *  the rendered size — these only give the aspect ratio. */
+  intrinsicWidth?: number
+  intrinsicHeight?: number
 }) {
   const [failed, setFailed] = useState(false)
   // An absolute URL (Supabase Storage) is used as-is; a bare path is relative
@@ -36,6 +43,15 @@ export function SmartImage({
       src={full}
       alt={alt}
       loading={eager ? 'eager' : 'lazy'}
+      // Attributes, not CSS: with both present the browser computes the aspect
+      // ratio and reserves the space before the bytes arrive, so the text below
+      // does not jump when the photo lands. `width:100%` in sx still decides how
+      // big it actually renders.
+      width={intrinsicWidth}
+      height={intrinsicHeight}
+      // The hero image is what a visitor waits for; everything else can queue.
+      fetchPriority={eager ? 'high' : undefined}
+      decoding="async"
       onError={() => setFailed(true)}
       sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...sx }}
     />

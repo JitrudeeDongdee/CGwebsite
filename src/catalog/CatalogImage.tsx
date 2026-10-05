@@ -34,6 +34,12 @@ export function CatalogImage({
   eager?: boolean
 }) {
   const meta = CATEGORY_META[category]
+  // Catalog photos are uploaded downscaled to a 1600px long edge, so a 4:3 slot
+  // is 1600×1200. The wrapper's `aspectRatio` already reserves the box, but the
+  // <img> inside it has no intrinsic size until the file loads — in a browser
+  // that has not applied the CSS yet (and for a crawler reading the HTML) these
+  // attributes are what stop the row from jumping.
+  const [boxW, boxH] = height === undefined ? [1600, 1200] : [1600, 1600]
   const placeholder = (
     <Box
       sx={{
@@ -50,6 +56,8 @@ export function CatalogImage({
         src={imageUrl(src)}
         alt={alt}
         eager={eager}
+        intrinsicWidth={boxW}
+        intrinsicHeight={boxH}
         fallback={
           fallbackSrc ? (
             <SmartImage src={imageUrl(fallbackSrc)} alt={alt} eager={eager} fallback={placeholder} />
