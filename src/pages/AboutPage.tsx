@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import Button from '@mui/material/Button'
 import VerifiedIcon from '@mui/icons-material/Verified'
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import HandshakeIcon from '@mui/icons-material/Handshake'
 import BoltIcon from '@mui/icons-material/Bolt'
 import PersonIcon from '@mui/icons-material/Person'
@@ -23,6 +24,8 @@ import { useLocalized } from '../catalog/useLocalized'
 import { projectImagePath, projectPath } from '../catalog/images'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
+import { COMPANY } from '../content/company'
+import { CONTACT_CHANNELS, contactValue } from '../content/contact'
 
 ensureMarketingI18n()
 
@@ -188,6 +191,8 @@ export function AboutPage() {
         </Box>
         </Box>
 
+        <LegalInfo />
+
         <WorkStrip />
 
         <Stack direction="row" spacing={1.5} sx={{ mt: 5, flexWrap: 'wrap', gap: 1.5 }}>
@@ -199,6 +204,94 @@ export function AboutPage() {
           </Button>
         </Stack>
       </Wrap>
+    </Box>
+  )
+}
+
+/**
+ * Legal-entity facts (from the DBD registration) — a trust block for a business
+ * where customers commit real money. Values live in `content/company.ts`; empty
+ * ones are dropped so nothing shows blank. The address is read from contact.json
+ * (one source), and `legalStatus` renders as a green chip.
+ */
+function LegalInfo() {
+  const { t, i18n } = useTranslation()
+  const L = useLocalized()
+  const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
+  const address = CONTACT_CHANNELS.find((c) => c.kind === 'address')
+  const addressText = address ? contactValue(address, lang) : ''
+
+  const rows: Array<{ label: string; value: string; mono?: boolean }> = [
+    { label: t('mkt.about.legalName'), value: L(COMPANY.legalName) },
+    { label: t('mkt.about.legalReg'), value: COMPANY.registrationNo, mono: true },
+    { label: t('mkt.about.legalDate'), value: L(COMPANY.registeredDate) },
+    { label: t('mkt.about.legalCapital'), value: L(COMPANY.capital) },
+    { label: t('mkt.about.legalBiz'), value: L(COMPANY.businessType) },
+    { label: t('mkt.about.legalActivities'), value: L(COMPANY.activities) },
+    { label: t('mkt.about.legalAddress'), value: addressText },
+  ].filter((r) => r.value && r.value !== '—' && r.value !== '-')
+
+  return (
+    <Box sx={{ mt: { xs: 6, md: 9 } }}>
+      <Paper
+        elevation={0}
+        sx={{ borderRadius: 4, border: 1, borderColor: 'divider', bgcolor: 'background.paper', p: { xs: 2.5, md: 4 } }}
+      >
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          <Box
+            sx={{
+              flexShrink: 0, width: 44, height: 44, borderRadius: 2, display: 'grid', placeItems: 'center',
+              bgcolor: 'primary.main', color: 'primary.contrastText',
+            }}
+          >
+            <VerifiedUserIcon />
+          </Box>
+          <Box>
+            <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              {t('mkt.about.legalEyebrow')}
+            </Typography>
+            <Typography variant="h2" sx={{ fontSize: { xs: 20, md: 26 }, fontWeight: 600, lineHeight: 1.3 }}>
+              {t('mkt.about.legalHeading')}
+            </Typography>
+          </Box>
+        </Stack>
+        <Typography variant="body2" sx={{ mt: 1.5, color: 'text.secondary' }}>
+          {t('mkt.about.legalSub')}
+          {L(COMPANY.status) && (
+            <Box
+              component="span"
+              sx={{
+                ml: 1, px: 1, py: 0.25, borderRadius: 1, fontSize: 12, fontWeight: 600,
+                color: 'success.dark', bgcolor: 'success.light', whiteSpace: 'nowrap',
+              }}
+            >
+              {L(COMPANY.status)}
+            </Box>
+          )}
+        </Typography>
+
+        <Box
+          component="dl"
+          sx={{
+            mt: 3, mb: 0, display: 'grid', gap: { xs: 1.75, md: 2 },
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          }}
+        >
+          {rows.map((r) => (
+            <Box key={r.label}>
+              <Typography component="dt" variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                {r.label}
+              </Typography>
+              <Typography
+                component="dd"
+                sx={{ m: 0, mt: 0.25, fontWeight: 500, fontFamily: r.mono ? 'ui-monospace, monospace' : undefined, letterSpacing: r.mono ? '0.03em' : undefined }}
+              >
+                {r.value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Paper>
     </Box>
   )
 }
