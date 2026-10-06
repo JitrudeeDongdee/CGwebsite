@@ -138,7 +138,7 @@ async function buildRoutes() {
   const community = allProjects.filter((r) => r.kind === 'community')
 
   return [
-    // `/` and `/home` only bounce to `/home/house`, so the service pages are the
+    // `/` and `/home` only bounce to `/home/contracting`, so the service pages are the
     // canonical URLs — listing the redirects too would just look like duplicates.
     ...SERVICES.map((s) => ({
       path: `/home/${s}`,

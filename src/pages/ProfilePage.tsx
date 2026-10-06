@@ -174,7 +174,7 @@ export function ProfilePage() {
       </Paper>
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2.5 }}>
-        <Link component={RouterLink} to="/home/house" color="inherit">
+        <Link component={RouterLink} to="/home/contracting" color="inherit">
           ← {t('auth.backToApp')}
         </Link>
       </Typography>

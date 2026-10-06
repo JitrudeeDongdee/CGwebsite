@@ -83,7 +83,7 @@ export function LoginPage() {
   useEffect(() => {
     // In recovery mode a temporary session exists, but we must stay on the page
     // to let the person set a new password rather than bounce them home.
-    if (user && !recovery) navigate(next ?? '/home/house', { replace: true })
+    if (user && !recovery) navigate(next ?? '/home/contracting', { replace: true })
   }, [user, recovery, next, navigate])
 
   const submitNewPassword = async (event: FormEvent) => {
