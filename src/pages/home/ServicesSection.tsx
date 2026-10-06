@@ -27,7 +27,7 @@ export function ServicesSection({ services, cat }: { services: Service[]; cat: P
   return (
     <Box id="services" component="section" sx={{ py: { xs: 2.5, md: 3.5 }, borderBottom: 1, borderColor: 'divider' }}>
       <Wrap>
-        {/* On a phone the strip is icons only — no label, no names. */}
+        {/* The eyebrow label is desktop-only; the service names show on every width. */}
         <Box sx={{ display: { xs: 'none', md: 'block' } }}>
           <Eyebrow>{t('mkt.home.svcEyebrow')}</Eyebrow>
         </Box>
@@ -64,7 +64,17 @@ export function ServicesSection({ services, cat }: { services: Service[]; cat: P
                 >
                   {s.icon}
                 </Box>
-                <Typography sx={{ display: { xs: 'none', md: 'block' }, fontWeight: 600, fontSize: { xs: 11, md: 14 }, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{s.title}</Typography>
+                {/* Small label under the icon on every width — matches the FloatingServiceBar;
+                    Thai has no word spaces so force a wrap and cap at two lines. */}
+                <Typography
+                  sx={{
+                    fontWeight: 600, fontSize: { xs: 10, md: 14 }, lineHeight: 1.2,
+                    textAlign: 'center', width: '100%', overflowWrap: 'anywhere',
+                    display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden',
+                  }}
+                >
+                  {s.title}
+                </Typography>
               </Paper>
             )
           })}

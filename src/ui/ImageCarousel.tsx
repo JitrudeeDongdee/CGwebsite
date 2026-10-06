@@ -26,6 +26,7 @@ export function ImageCarousel({
   alt,
   height,
   interval = 4000,
+  rounded = true,
 }: {
   images: string[]
   category: ProductCategory
@@ -33,11 +34,20 @@ export function ImageCarousel({
   height: number | string
   /** Auto-advance period in ms. */
   interval?: number
+  /** Round the carousel's own corners. Off when it sits flush at the top of a
+   *  card that already clips its corners. */
+  rounded?: boolean
 }) {
   const [index, setIndex] = useState(0)
   const trackRef = useRef<HTMLDivElement | null>(null)
   const paused = useRef(false)
   const n = images.length
+
+  // A clone of the first image is appended so the auto-advance can always move
+  // FORWARD (rightward): reaching the clone looks like the first image, and we
+  // then jump the scroll position back to the real first slide with no
+  // animation, so the loop never scrolls backwards across the whole strip.
+  const slides = n > 1 ? [...images, images[0]] : images
 
   // The slide the track is currently resting on, from its scroll position.
   const currentSlide = () => {
@@ -46,32 +56,46 @@ export function ImageCarousel({
     return Math.round(el.scrollLeft / el.clientWidth)
   }
 
-  const scrollTo = (to: number) => {
+  const jump = (to: number, smooth = true) => {
     const el = trackRef.current
     if (!el) return
-    const target = ((to % n) + n) % n
-    el.scrollTo({ left: target * el.clientWidth, behavior: 'smooth' })
+    el.scrollTo({ left: to * el.clientWidth, behavior: smooth ? 'smooth' : 'auto' })
+  }
+
+  // Once the scroll settles on the clone, snap instantly back to the real first
+  // slide (invisible — same image) so the next forward step continues the loop.
+  const resetIfOnClone = () => {
+    if (currentSlide() >= n) jump(0, false)
   }
 
   useEffect(() => {
     if (n <= 1) return
     const id = setInterval(() => {
       if (paused.current) return
-      scrollTo(currentSlide() + 1)
+      // Always forward; the clone absorbs the last→first wrap.
+      jump(currentSlide() + 1)
+      // Fallback for browsers without 'scrollend' — snap back once the smooth
+      // scroll has had time to land on the clone.
+      window.setTimeout(resetIfOnClone, 700)
     }, interval)
     return () => clearInterval(id)
-    // scrollTo/currentSlide read refs only; re-bind just when the set changes.
+    // jump/currentSlide read refs only; re-bind just when the set changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [n, interval])
 
-  // Keep the index valid if the image list shrinks.
+  // Reset after a manual drag/scroll that lands on the clone, too.
   useEffect(() => {
-    if (index > n - 1) setIndex(0)
-  }, [n, index])
+    const el = trackRef.current
+    if (!el || n <= 1) return
+    const onScrollEnd = () => resetIfOnClone()
+    el.addEventListener('scrollend', onScrollEnd)
+    return () => el.removeEventListener('scrollend', onScrollEnd)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n])
 
   if (n <= 1) {
     return (
-      <Box sx={{ height, borderRadius: 2, overflow: 'hidden' }}>
+      <Box sx={{ height, borderRadius: rounded ? 2 : 0, overflow: 'hidden' }}>
         <CatalogImage src={images[0]} category={category} alt={alt} height="100%" eager />
       </Box>
     )
@@ -85,7 +109,7 @@ export function ImageCarousel({
 
   return (
     <Box
-      sx={{ position: 'relative', height, borderRadius: 2, overflow: 'hidden', '&:hover .carousel-arrow': { opacity: 1 } }}
+      sx={{ position: 'relative', height, borderRadius: rounded ? 2 : 0, overflow: 'hidden', '&:hover .carousel-arrow': { opacity: 1 } }}
       onMouseEnter={() => { paused.current = true }}
       onMouseLeave={() => { paused.current = false }}
       onTouchStart={() => { paused.current = true }}
@@ -104,7 +128,7 @@ export function ImageCarousel({
           '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
-        {images.map((src, i) => (
+        {slides.map((src, i) => (
           <Box key={`${src}-${i}`} sx={{ flex: '0 0 100%', width: '100%', height: '100%', scrollSnapAlign: 'start' }}>
             <CatalogImage src={src} category={category} alt={alt} height="100%" eager={i === 0} />
           </Box>
@@ -114,7 +138,7 @@ export function ImageCarousel({
       <IconButton
         className="carousel-arrow"
         aria-label="previous"
-        onClick={(e) => { stop(e); scrollTo(currentSlide() - 1) }}
+        onClick={(e) => { stop(e); jump(Math.max(0, currentSlide() - 1)) }}
         size="small"
         sx={{
           position: 'absolute', top: '50%', left: 6, transform: 'translateY(-50%)',
@@ -127,7 +151,7 @@ export function ImageCarousel({
       <IconButton
         className="carousel-arrow"
         aria-label="next"
-        onClick={(e) => { stop(e); scrollTo(currentSlide() + 1) }}
+        onClick={(e) => { stop(e); jump(currentSlide() + 1) }}
         size="small"
         sx={{
           position: 'absolute', top: '50%', right: 6, transform: 'translateY(-50%)',
@@ -144,10 +168,10 @@ export function ImageCarousel({
             key={i}
             role="button"
             aria-label={`image ${i + 1}`}
-            onClick={(e) => { stop(e); scrollTo(i) }}
+            onClick={(e) => { stop(e); jump(i) }}
             sx={{
               width: 8, height: 8, borderRadius: '50%', cursor: 'pointer',
-              bgcolor: i === index ? '#fff' : 'rgba(255,255,255,0.55)',
+              bgcolor: i === index % n ? '#fff' : 'rgba(255,255,255,0.55)',
               boxShadow: '0 0 2px rgba(0,0,0,0.5)',
               transition: 'background-color .15s',
             }}

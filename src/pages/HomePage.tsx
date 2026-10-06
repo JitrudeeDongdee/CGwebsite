@@ -11,7 +11,7 @@ import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { PRODUCT_CATEGORIES } from '../catalog/categories'
 import { useCatalog, useCommunity, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
-import { productImagePath, projectImagePath, projectPath } from '../catalog/images'
+import { productImagePath, projectImagePath, projectImagePaths, projectPath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
 import { useSeo } from '../seo/useSeo'
@@ -27,9 +27,6 @@ import { StatsSection } from './home/StatsSection'
 // import { FinalCtaSection } from './home/FinalCtaSection' // disabled with its render below
 
 ensureMarketingI18n()
-
-/** House plans featured on the home + house line. */
-const FEATURED_IDS = ['two-bed-8x6', 'three-bed-9x6', 'studio-6x4', 'one-bed-6x6']
 
 function isCategory(value: string | undefined): value is ProductCategory {
   return PRODUCT_CATEGORIES.includes(value as ProductCategory)
@@ -58,7 +55,7 @@ export function HomePage() {
 
   // Catalog hooks must run before the early return below — a hook that is
   // skipped on some renders breaks the hook order for the whole component.
-  const { projects: allProjects } = useCatalog()
+  const { projects: allProjects, loading } = useCatalog()
   const communityItems = useCommunity()
   const catProducts = useProductsByCategory(cat ?? 'all').slice(0, 4)
   // The hero card leads with the line's best seller.
@@ -110,12 +107,8 @@ export function HomePage() {
         trust: [1, 2, 3].map((n) => ({ head: t(`mkt.home.trust${n}`), sub: t(`mkt.home.trust${n}sub`) })),
       }
 
-  // Featured block: house plans for the home + house line, catalog products otherwise.
-  const models = FEATURED_IDS.map((id) => PLAN_TEMPLATES.find((m) => m.id === id)).filter(
-    (m): m is (typeof PLAN_TEMPLATES)[number] => Boolean(m),
-  )
-  // House models are drawn as an isometric thumbnail of their plan; the other
-  // lines use their catalog photo.
+  // The hero still draws an iso thumbnail when the best seller is a house plan;
+  // the featured grid below shows catalog products for every line.
   const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id === heroProduct.slug) : undefined
 
   // Hero carousel: the product's own photo first, then the cover of each real job
@@ -140,7 +133,7 @@ export function HomePage() {
         year: p.year,
         title: L(p.title),
         to: projectPath(p),
-        img: projectImagePath(p),
+        images: projectImagePaths(p),
         category: p.category,
       }))
     : defaultWork
@@ -152,8 +145,10 @@ export function HomePage() {
     { n: '2', l: t('mkt.home.stat4') },
   ]
 
+  // Home hero + featured grid show the bare price (no "เริ่มต้น" prefix);
+  // "สอบถามราคา" still stands in when there is no price.
   const priceLabel: PriceLabel = (from) =>
-    from == null ? t('mkt.catalog.quote') : `${t('mkt.catalog.from')} ${formatCurrency(from, 'THB', locale)}`
+    from == null ? t('mkt.catalog.quote') : formatCurrency(from, 'THB', locale)
 
   return (
     <Box>
@@ -170,15 +165,17 @@ export function HomePage() {
         priceLabel={priceLabel}
       />
       <FeaturedSection
-        isHouseish={isHouseish}
-        models={models}
         catProducts={catProducts}
         allProductsTo={allProductsTo}
         priceLabel={priceLabel}
-        locale={locale}
+        loading={loading}
       />
-      {work.length > 0 && <PortfolioSection work={work} allWorkTo={allWorkTo} />}
-      {isHouseish && communityItems.length > 0 && <CommunitySection items={communityItems} />}
+      {/* The home alias (cat === null) uses bundled `defaultWork`, which is instant —
+          only the catalog-backed service pages show a loading skeleton. */}
+      {((loading && cat !== null) || work.length > 0) && (
+        <PortfolioSection work={work} allWorkTo={allWorkTo} loading={loading && cat !== null} />
+      )}
+      {(loading || communityItems.length > 0) && <CommunitySection items={communityItems} loading={loading} />}
       {/* Names the province and its districts in body text — the site had none. */}
       <ServiceAreaSection />
       <StatsSection stats={stats} />

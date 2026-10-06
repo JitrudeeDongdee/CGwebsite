@@ -1,61 +1,65 @@
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
-import PlaceIcon from '@mui/icons-material/PlaceOutlined'
-import { Wrap } from './shared'
-import { CONTACT_CHANNELS, contactValue } from '../../content/contact'
+import Button from '@mui/material/Button'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 
 /**
- * Where the company actually works, in words.
+ * Where the company works — shown as a map, and only a map (the heading and the
+ * district paragraph were dropped at the owner's request to emphasise it).
  *
- * Not decoration: the site sold knock-down houses without the word
- * "เพชรบูรณ์" appearing in any page's body text, so it could not rank for the
- * searches people in the province actually type ("บ้านน็อคดาวน์ เพชรบูรณ์").
- * The districts are named individually because that is how local search works —
- * someone in หล่มสัก searches for หล่มสัก, not for the province.
+ * ⚠️ That paragraph was the only body text naming "เพชรบูรณ์" and its districts,
+ * which is what the local-SEO work in spec.md relied on. With it gone the page
+ * no longer carries those keywords; the map's `title` is the only text left for
+ * a crawler here. If local ranking matters, bring the district list back (even
+ * visually hidden).
  *
- * The address is read from `contact.json`, the one place it is edited, so this
- * block cannot drift from the footer and the contact page.
+ * The map is non-interactive (`pointer-events: none`) so there are no controls
+ * to fiddle with; the overlaid button opens the real Google Maps app instead.
  */
+
+/** Company location — same pin as the JSON-LD `geo` in index.html (checked
+ *  against Phetchabun's bounding box). */
+const GEO = { lat: 16.345432, lng: 101.099445 }
+
+/** Opens the Google Maps app on mobile / maps.google.com on desktop. */
+const MAP_LINK = `https://www.google.com/maps/search/?api=1&query=${GEO.lat},${GEO.lng}`
+
 export function ServiceAreaSection() {
   const { t, i18n } = useTranslation()
   const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
-  const address = CONTACT_CHANNELS.find((c) => c.kind === 'address')
 
   return (
-    <Box component="section" sx={{ py: { xs: 4.5, md: 8 }, bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
-      <Wrap>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', maxWidth: '52em' }}>
-          <Box
-            sx={{
-              flexShrink: 0,
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-            }}
-          >
-            <PlaceIcon />
-          </Box>
-          <Box>
-            <Typography variant="h2" sx={{ fontSize: { xs: 18, md: 22 }, fontWeight: 600 }}>
-              {t('mkt.serviceArea.head')}
-            </Typography>
-            <Typography sx={{ mt: 1, color: 'text.secondary', lineHeight: 1.75 }}>
-              {t('mkt.serviceArea.body')}
-            </Typography>
-            {address && (
-              <Typography variant="body2" sx={{ mt: 1.5, color: 'text.secondary' }}>
-                {contactValue(address, lang)}
-              </Typography>
-            )}
-          </Box>
-        </Stack>
-      </Wrap>
+    <Box component="section" sx={{ position: 'relative', bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
+      <Box
+        component="iframe"
+        title={t('mkt.serviceArea.head')}
+        src={`https://maps.google.com/maps?q=${GEO.lat},${GEO.lng}&z=12&hl=${lang}&output=embed`}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        sx={{
+          display: 'block',
+          width: '100%',
+          height: { xs: 380, md: 520 },
+          border: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <Button
+        component="a"
+        href={MAP_LINK}
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="contained"
+        startIcon={<OpenInNewIcon />}
+        sx={{
+          position: 'absolute',
+          right: { xs: 12, md: 24 },
+          bottom: { xs: 12, md: 24 },
+          boxShadow: 3,
+        }}
+      >
+        {t('mkt.serviceArea.openMap')}
+      </Button>
     </Box>
   )
 }

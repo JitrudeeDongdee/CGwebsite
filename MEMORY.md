@@ -181,3 +181,18 @@ build with `pnpm run serve:dist` (`scripts/serve-dist.mjs`), which models Pages'
 **including** the trailing-slash 308 — never with `pnpm run preview`. After deploying, confirm with
 `curl -s -o /dev/null -w '%{http_code}' <url>` that real pages return 200 and not 308.
 
+
+## A MUI `<Skeleton>` with only `aspectRatio` collapses to a thin strip
+
+**What happened**: the loading-skeleton cards reserved space for the title lines but the
+image area showed as a thin white sliver, so the card didn't "เผื่อรูป" (reserve the photo's
+height) and jumped when the real image arrived.
+
+**Root cause**: `<Skeleton variant="rectangular" sx={{ aspectRatio: '4/3', width: '100%' }} />`
+has no resolved height — MUI's Skeleton needs an explicit height (or a parent that gives it
+one), and `aspectRatio` alone on the Skeleton element does not produce one, so it collapses.
+
+**Correct behavior**: reserve the box on a wrapper and let the skeleton fill it — a
+`<Box sx={{ aspectRatio }}>` (same shape as `CatalogImage`) containing
+`<Skeleton sx={{ width:'100%', height:'100%' }} />`. Same lesson as the hero-card fill-image
+entry above: the aspect-ratio box owns the size, the media fills it.

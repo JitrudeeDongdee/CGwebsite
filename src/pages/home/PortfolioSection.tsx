@@ -4,19 +4,29 @@ import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import Paper from '@mui/material/Paper'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import { CatalogImage } from '../../catalog/CatalogImage'
+import { ImageCarousel } from '../../ui/ImageCarousel'
 import { joinMeta } from '../../catalog/meta'
-import { Wrap, Eyebrow, type WorkCard } from './shared'
+import { Wrap, Eyebrow, CardSkeletonGrid, type WorkCard } from './shared'
 
 /** Portfolio shown eight at a time (4×2 on desktop), paged with centre controls. */
 const PAGE = 8
 
-export function PortfolioSection({ work, allWorkTo }: { work: WorkCard[]; allWorkTo: string }) {
+export function PortfolioSection({
+  work,
+  allWorkTo,
+  loading = false,
+}: {
+  work: WorkCard[]
+  allWorkTo: string
+  /** Catalogue still loading — show skeleton cards until the projects arrive. */
+  loading?: boolean
+}) {
   const { t } = useTranslation()
   const [page, setPage] = useState(0)
   // Back to the first page whenever the service (and so the work set) changes.
@@ -30,7 +40,7 @@ export function PortfolioSection({ work, allWorkTo }: { work: WorkCard[]; allWor
     <Box id="work" component="section" sx={{ py: { xs: 4.5, md: 8 } }}>
       <Wrap>
         {/* Heading and the "see all" link share one row. */}
-        <Stack direction="row" sx={{ mb: { xs: 2.5, md: 4.5 }, alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} sx={{ mb: { xs: 2.5, md: 4.5 }, alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
             <Eyebrow>{t('mkt.home.workEyebrow')}</Eyebrow>
             <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>{t('mkt.home.workHeading')}</Typography>
@@ -40,39 +50,47 @@ export function PortfolioSection({ work, allWorkTo }: { work: WorkCard[]; allWor
           </Button>
         </Stack>
 
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
+        {loading ? (
+          <CardSkeletonGrid count={PAGE} />
+        ) : (
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
           {visible.map((w) => (
-            <Box
+            // Image on top (a swipeable carousel of the job's photos, like the
+            // hero), text in a white box below. The carousel falls back to the
+            // category-coloured panel when a project has no photo.
+            <Paper
               key={w.key}
               {...(w.to ? { component: RouterLink, to: w.to } : {})}
+              elevation={0}
               sx={{
-                position: 'relative', aspectRatio: '4 / 3', borderRadius: 3, overflow: 'hidden',
-                border: 1, borderColor: 'divider', bgcolor: 'primary.dark',
-                display: 'block', textDecoration: 'none',
+                borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden',
+                display: 'block', textDecoration: 'none', color: 'inherit',
+                transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' },
               }}
             >
-              {/* Cover photo behind the caption; falls back to the category-coloured
-                  panel (CatalogImage's own fallback) when a project has no image. */}
-              {w.img && (
-                <Box sx={{ position: 'absolute', inset: 0 }}>
-                  <CatalogImage src={w.img} category={w.category} alt={w.title} height="100%" />
-                </Box>
-              )}
-              <Box
-                sx={{
-                  position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',
-                  background: 'linear-gradient(0deg, rgba(11,34,49,0.85), transparent 60%)',
-                }}
-              >
-                <Typography variant="caption" sx={{ opacity: 0.85 }}>{joinMeta(w.place, w.year)}</Typography>
-                <Typography sx={{ fontWeight: 600 }}>{w.title}</Typography>
+              <Box sx={{ aspectRatio: { xs: '16 / 9', md: '4 / 3' } }}>
+                <ImageCarousel images={w.images ?? []} category={w.category} alt={w.title} height="100%" rounded={false} />
               </Box>
-            </Box>
+              <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+                <Typography variant="caption" color="text.secondary">{joinMeta(w.place, w.year)}</Typography>
+                <Typography
+                  sx={{
+                    fontWeight: 600, fontSize: { xs: 13, sm: 16 }, lineHeight: 1.4, mt: 0.25,
+                    display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden',
+                    // Short of the 2-line boundary so Thai tone marks don't peek over the cut.
+                    maxHeight: '2.85em',
+                  }}
+                >
+                  {w.title}
+                </Typography>
+              </Box>
+            </Paper>
           ))}
         </Box>
+        )}
 
-        {/* Centre pagination — only when there is more than one page. */}
-        {pages > 1 && (
+        {/* Centre pagination — only when there is more than one page (and not while the skeleton shows). */}
+        {!loading && pages > 1 && (
           <Stack direction="row" spacing={1.5} sx={{ mt: 3, alignItems: 'center', justifyContent: 'center' }}>
             <IconButton
               aria-label="previous page"
