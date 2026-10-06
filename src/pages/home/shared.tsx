@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import type { ProductCategory } from '../../catalog/types'
 
@@ -30,7 +32,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
  */
 export const RAIL_SX = {
   display: { xs: 'flex', md: 'grid' },
-  gap: 2,
+  gap: 1.5,
   overflowX: { xs: 'auto', md: 'visible' },
   scrollSnapType: { xs: 'x mandatory', md: 'none' },
   mx: { xs: -3, md: 0 },
@@ -50,10 +52,54 @@ export type WorkCard = {
   year: string
   title: string
   to: string | null
-  /** Cover-image path (resolved by CatalogImage); undefined for the seed house samples. */
-  img?: string
+  /** Every photo of the job (cover first), shown as a per-card carousel; empty
+   *  for the seed house samples, which fall back to the category panel. */
+  images?: string[]
   category: ProductCategory
 }
 
 /** `(from) → "สอบถามราคา" | "เริ่มต้น ฿x"` — the home page's price line. */
 export type PriceLabel = (from: number | null) => string
+
+/**
+ * One placeholder card, same frame (border + image slot on top, text below) as
+ * the Featured/Portfolio/Community cards, so the grid keeps its full shape and
+ * height while the catalogue is still loading instead of collapsing to nothing
+ * and then jumping when the real rows arrive.
+ */
+export function CardSkeleton({ ratio = { xs: '16 / 9', md: '4 / 3' } }: { ratio?: string | object } = {}) {
+  return (
+    <Paper elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
+      {/* Image slot — an aspect-ratio box (same shape as CatalogImage) with the
+          skeleton filling it, so the grey image placeholder actually reserves the
+          picture's height instead of collapsing to a thin strip. */}
+      <Box sx={{ aspectRatio: ratio, overflow: 'hidden' }}>
+        <Skeleton variant="rectangular" animation="wave" sx={{ width: '100%', height: '100%' }} />
+      </Box>
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+        <Skeleton width="45%" height={16} />
+        <Skeleton width="85%" height={22} sx={{ mt: 0.5 }} />
+      </Box>
+    </Paper>
+  )
+}
+
+/** A grid of `count` skeleton cards, laid out like the real card grids. */
+export function CardSkeletonGrid({
+  count,
+  columns = { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+  ratio,
+}: {
+  count: number
+  columns?: object
+  /** Image-slot aspect ratio — match the real cards so nothing jumps on load. */
+  ratio?: string | object
+}) {
+  return (
+    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: columns }}>
+      {Array.from({ length: count }, (_, i) => (
+        <CardSkeleton key={i} ratio={ratio} />
+      ))}
+    </Box>
+  )
+}

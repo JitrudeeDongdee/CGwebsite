@@ -185,6 +185,9 @@ const th = {
   serviceArea: {
     head: 'พื้นที่ให้บริการ',
     body: 'สำนักงานอยู่ที่ อ.เมืองเพชรบูรณ์ ให้บริการทั่วจังหวัดเพชรบูรณ์ — หล่มสัก หล่มเก่า เขาค้อ วิเชียรบุรี ชนแดน หนองไผ่ บึงสามพัน ศรีเทพ วังโป่ง น้ำหนาว และจังหวัดใกล้เคียง เช่น พิษณุโลก ลพบุรี ชัยภูมิ ขอนแก่น',
+    openMap: 'เปิดใน Google Maps',
+    copy: 'คัดลอกที่อยู่',
+    copied: 'คัดลอกแล้ว',
   },
   placeholderNote: 'เนื้อหาและตัวเลขบางส่วนเป็นตัวอย่าง รอข้อมูลจริงของบริษัท',
 }
@@ -359,6 +362,9 @@ const en = {
   serviceArea: {
     head: 'Where we work',
     body: 'Based in Mueang Phetchabun and working across the province — Lom Sak, Lom Kao, Khao Kho, Wichian Buri, Chon Daen, Nong Phai, Bueng Sam Phan, Si Thep, Wang Pong and Nam Nao — plus neighbouring provinces such as Phitsanulok, Lopburi, Chaiyaphum and Khon Kaen.',
+    openMap: 'Open in Google Maps',
+    copy: 'Copy address',
+    copied: 'Copied',
   },
   placeholderNote: 'Some copy and figures are placeholders pending the real company data.',
 }

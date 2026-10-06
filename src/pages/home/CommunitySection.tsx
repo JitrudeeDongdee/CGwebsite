@@ -11,17 +11,17 @@ import { joinMeta } from '../../catalog/meta'
 import { projectImagePath } from '../../catalog/images'
 import { useLocalized } from '../../catalog/useLocalized'
 import type { Project } from '../../catalog/types'
-import { Wrap, Eyebrow, RAIL_SX, RAIL_CARD_SX } from './shared'
+import { Wrap, Eyebrow, RAIL_SX, RAIL_CARD_SX, CardSkeletonGrid } from './shared'
 
 /** Public-benefit works & donations — shown on the house line (and /home). */
-export function CommunitySection({ items }: { items: Project[] }) {
+export function CommunitySection({ items, loading = false }: { items: Project[]; loading?: boolean }) {
   const { t } = useTranslation()
   const L = useLocalized()
 
   return (
     <Box component="section" sx={{ py: { xs: 4.5, md: 8 }, bgcolor: 'background.paper', borderTop: 1, borderBottom: 1, borderColor: 'divider' }}>
       <Wrap>
-        <Stack direction="row" sx={{ mb: { xs: 2.5, md: 4.5 }, alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} sx={{ mb: { xs: 2.5, md: 4.5 }, alignItems: { xs: 'flex-start', md: 'flex-end' }, justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ maxWidth: '42em' }}>
             <Eyebrow>{t('mkt.home.communityEyebrow')}</Eyebrow>
             <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
@@ -33,6 +33,9 @@ export function CommunitySection({ items }: { items: Project[] }) {
             {t('mkt.home.communityAll')}
           </Button>
         </Stack>
+        {loading ? (
+          <CardSkeletonGrid count={3} columns={{ xs: '1fr 1fr', md: 'repeat(3, 1fr)' }} />
+        ) : (
         <Box sx={{ ...RAIL_SX, gridTemplateColumns: { md: 'repeat(3, 1fr)' } }}>
           {items.slice(0, 3).map((item) => (
             <Paper
@@ -55,6 +58,7 @@ export function CommunitySection({ items }: { items: Project[] }) {
             </Paper>
           ))}
         </Box>
+        )}
       </Wrap>
     </Box>
   )

@@ -89,7 +89,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
         <Typography variant="caption" sx={{ mt: 2, display: 'block', color: 'text.disabled' }}>
           {t('auth.signedInAs')} {user.email}
         </Typography>
-        <Button component={RouterLink} to="/home/house" variant="outlined" sx={{ mt: 3 }}>
+        <Button component={RouterLink} to="/home/contracting" variant="outlined" sx={{ mt: 3 }}>
           กลับหน้าแรก
         </Button>
       </Centered>

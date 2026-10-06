@@ -83,8 +83,8 @@ function App() {
       <RouteAnalytics />
     <Routes>
       <Route element={<MarketingLayout />}>
-        {/* The house line is the landing page — `/home` is kept as an alias for it. */}
-        <Route path="/home" element={<Navigate to="/home/house" replace />} />
+        {/* The contracting line is the landing page — `/home` is an alias for it. */}
+        <Route path="/home" element={<Navigate to="/home/contracting" replace />} />
         {/* Each service line gets the same home layout with its own content. */}
         <Route path="/home/:service" element={<HomePage />} />
         <Route path="/products" element={<ProductsPage />} />
@@ -145,7 +145,7 @@ function App() {
       <Route path="/services/:service" element={<ServiceRedirect />} />
 
       {/* Landing on / goes to the marketing home; the designer tool lives at /design. */}
-      <Route path="/" element={<Navigate to="/home/house" replace />} />
+      <Route path="/" element={<Navigate to="/home/contracting" replace />} />
     </Routes>
     </>
   )

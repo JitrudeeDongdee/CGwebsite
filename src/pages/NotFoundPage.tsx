@@ -36,7 +36,7 @@ export function NotFoundPage() {
         </Typography>
         <Typography sx={{ color: 'text.secondary' }}>{t('mkt.notFound.body')}</Typography>
         <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', justifyContent: 'center', gap: 1.5 }}>
-          <Button component={RouterLink} to="/home/house" variant="contained">
+          <Button component={RouterLink} to="/home/contracting" variant="contained">
             {t('mkt.notFound.home')}
           </Button>
           <Button component={RouterLink} to="/products" variant="outlined">

@@ -135,7 +135,7 @@ export function AdminLoginPage() {
         </Typography>
 
         <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-          <RouterLink to="/home/house" style={{ fontSize: 13 }}>
+          <RouterLink to="/home/contracting" style={{ fontSize: 13 }}>
             {t('auth.backToSite')}
           </RouterLink>
           <RouterLink to="/login" style={{ fontSize: 13 }}>
