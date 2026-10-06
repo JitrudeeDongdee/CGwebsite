@@ -66,6 +66,12 @@ interface AuthContextValue {
   /** Sends a password-reset e-mail to the address (delivery depends on SMTP
    *  being configured in Supabase). */
   resetPassword: (email: string) => Promise<void>
+  /** True while the user arrived from a password-reset link (Supabase emitted
+   *  PASSWORD_RECOVERY). The login page shows a "set new password" form instead
+   *  of redirecting, since a temporary session is already established. */
+  recovery: boolean
+  /** Sets a new password for the recovery (or signed-in) session. */
+  updatePassword: (password: string) => Promise<void>
   logout: () => void
 }
 
@@ -81,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [recovery, setRecovery] = useState(false)
   // The protected action waiting for a successful sign-in.
   const pendingAction = useRef<(() => void) | null>(null)
 
@@ -111,8 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Keeps every tab in step, and picks up the token refresh Supabase runs on
     // its own — without this a long-open admin tab silently loses its session.
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
+      // Arriving from a reset link: show the set-new-password form, don't redirect.
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
       if (session?.user) {
         setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.email ?? '' })
         void loadRole(session.user.id)
@@ -194,6 +203,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (failure) throw failure
   }, [])
 
+  const updatePassword = useCallback(async (secret: string) => {
+    if (!supabase) throw new Error('ยังไม่ได้ตั้งค่า Supabase')
+    const { error: failure } = await supabase.auth.updateUser({ password: secret })
+    if (failure) throw failure
+    // Password set — leave recovery mode so the normal signed-in flow resumes.
+    setRecovery(false)
+  }, [])
+
   const submit = async () => {
     setBusy(true)
     setError(null)
@@ -226,9 +243,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       resetPassword,
+      recovery,
+      updatePassword,
       logout,
     }),
-    [user, role, loading, requireAuth, openDialog, signIn, signUp, resetPassword, logout],
+    [user, role, loading, requireAuth, openDialog, signIn, signUp, resetPassword, recovery, updatePassword, logout],
   )
 
   return (

@@ -244,9 +244,15 @@
     "orContinueWith": "Or continue with",
     "continueWith": "Continue with",
     "socialSoon": "Coming soon",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "forgotPassword": "Forgot password?",
     "resetSent": "We've sent a password-reset link to your email. Check spam if it hasn't arrived.",
-    "resetNeedEmail": "Enter your email first, then tap forgot password again."
+    "resetNeedEmail": "Enter your email first, then tap forgot password again.",
+    "resetTitle": "Set a new password",
+    "resetSubtitle": "Enter your new password to reset it.",
+    "newPassword": "New password",
+    "updatePasswordBtn": "Save new password"
   },
   "account": {
     "settings": "Profile settings",
