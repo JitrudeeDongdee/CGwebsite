@@ -51,7 +51,7 @@ export function PortfolioSection({
         </Stack>
 
         {loading ? (
-          <CardSkeletonGrid count={PAGE} />
+          <CardSkeletonGrid count={PAGE} ratio="1 / 1" />
         ) : (
         <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
           {visible.map((w) => (
@@ -68,7 +68,8 @@ export function PortfolioSection({
                 transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' },
               }}
             >
-              <Box sx={{ aspectRatio: { xs: '16 / 9', md: '4 / 3' } }}>
+              {/* Square image slot (1:1) on every width. */}
+              <Box sx={{ aspectRatio: '1 / 1' }}>
                 <ImageCarousel images={w.images ?? []} category={w.category} alt={w.title} height="100%" rounded={false} />
               </Box>
               <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
