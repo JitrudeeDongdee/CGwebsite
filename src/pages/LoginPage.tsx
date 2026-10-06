@@ -11,9 +11,13 @@ import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
 import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
+import IconButton from '@mui/material/IconButton'
+import InputAdornment from '@mui/material/InputAdornment'
 import GoogleIcon from '@mui/icons-material/Google'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import ChatIcon from '@mui/icons-material/Chat'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuth } from '../auth/AuthProvider'
 
 /**
@@ -35,7 +39,7 @@ import { useAuth } from '../auth/AuthProvider'
 
 export function LoginPage() {
   const { t } = useTranslation()
-  const { signIn, signUp, resetPassword, user } = useAuth()
+  const { signIn, signUp, resetPassword, recovery, updatePassword, user } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [email, setEmail] = useState('')
@@ -43,6 +47,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn')
+  const [showPassword, setShowPassword] = useState(false)
   /** Set once the sign-up succeeded: the person must now go to their inbox. */
   const [sentTo, setSentTo] = useState<string | null>(null)
   /** Set once a password-reset e-mail has been requested. */
@@ -76,8 +81,28 @@ export function LoginPage() {
    */
   const next = params.get('next')
   useEffect(() => {
-    if (user) navigate(next ?? '/home/house', { replace: true })
-  }, [user, next, navigate])
+    // In recovery mode a temporary session exists, but we must stay on the page
+    // to let the person set a new password rather than bounce them home.
+    if (user && !recovery) navigate(next ?? '/home/house', { replace: true })
+  }, [user, recovery, next, navigate])
+
+  const submitNewPassword = async (event: FormEvent) => {
+    event.preventDefault()
+    if (password.length < 8) {
+      setError(t('auth.passwordMin'))
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await updatePassword(password)
+      // recovery clears inside updatePassword → the redirect effect now runs.
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -123,6 +148,51 @@ export function LoginPage() {
         elevation={0}
         sx={{ width: '100%', maxWidth: 420, p: { xs: 3, sm: 4 }, border: 1, borderColor: 'divider' }}
       >
+        {recovery ? (
+          <Stack component="form" spacing={2} onSubmit={(e) => void submitNewPassword(e)}>
+            <Box>
+              <Typography variant="h2" component="h1" sx={{ mb: 0.5 }}>{t('auth.resetTitle')}</Typography>
+              <Typography variant="body2" color="text.secondary">{t('auth.resetSubtitle')}</Typography>
+            </Box>
+            {error && <Alert severity="error">{error}</Alert>}
+            <TextField
+              label={t('auth.newPassword')}
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              fullWidth
+              size="small"
+              autoComplete="new-password"
+              autoFocus
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                        onClick={() => setShowPassword((v) => !v)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={busy || !password}
+              startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {t('auth.updatePasswordBtn')}
+            </Button>
+          </Stack>
+        ) : (
+        <>
         <Typography variant="h2" component="h1" sx={{ mb: 0.5 }}>
           {mode === 'signIn' ? t('auth.customerSignInTitle') : t('auth.signUpTitle')}
         </Typography>
@@ -164,12 +234,28 @@ export function LoginPage() {
           />
           <TextField
             label={t('auth.password')}
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             fullWidth
             size="small"
             autoComplete="current-password"
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                      onClick={() => setShowPassword((v) => !v)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           {mode === 'signIn' && (
             <Button
@@ -224,6 +310,8 @@ export function LoginPage() {
             </Link>
           </Typography>
         </Stack>
+        </>
+        )}
       </Paper>
 
     </Box>
