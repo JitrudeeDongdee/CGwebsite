@@ -66,9 +66,11 @@ interface AuthContextValue {
   /** Sends a password-reset e-mail to the address (delivery depends on SMTP
    *  being configured in Supabase). */
   resetPassword: (email: string) => Promise<void>
-  /** True while the user arrived from a password-reset link (Supabase emitted
-   *  PASSWORD_RECOVERY). The login page shows a "set new password" form instead
-   *  of redirecting, since a temporary session is already established. */
+  /** True while the user arrived from a password-reset OR invite link. The login
+   *  page shows a "set your password" form instead of redirecting, since a
+   *  temporary session is already established. Recovery is caught via the
+   *  PASSWORD_RECOVERY event; invite is caught from the URL hash at module load
+   *  (it only fires SIGNED_IN). */
   recovery: boolean
   /** Sets a new password for the recovery (or signed-in) session. */
   updatePassword: (password: string) => Promise<void>
@@ -76,6 +78,20 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+/**
+ * Whether the page was opened from an e-mail link that should show the
+ * "set your password" form — a password **reset** (`type=recovery`) OR an
+ * **invite** (`type=invite`). Read once at module load, BEFORE supabase-js
+ * strips the hash from the URL.
+ *
+ * Reset alone could rely on the `PASSWORD_RECOVERY` event, but an invite fires
+ * `SIGNED_IN` instead — so without this the invited user is just signed in and
+ * the login page redirects them to the home page before they ever set a
+ * password. (Default implicit flow puts the type in the URL hash.)
+ */
+const ARRIVED_TO_SET_PASSWORD =
+  typeof window !== 'undefined' && /[#&]type=(invite|recovery)\b/.test(window.location.hash)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
@@ -87,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [recovery, setRecovery] = useState(false)
+  const [recovery, setRecovery] = useState(ARRIVED_TO_SET_PASSWORD)
   // The protected action waiting for a successful sign-in.
   const pendingAction = useRef<(() => void) | null>(null)
 
