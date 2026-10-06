@@ -173,6 +173,14 @@ Storage) and fully rendered body.
   with a server that mimics the asset-first rule.
 - A route that fails to render **fails the build** (exit 1): a skipped route silently keeps the old
   generic-card behaviour, which is the bug being fixed.
+- **No Supabase env → prerender is skipped, except on `main` (2026-10-06).** Cloudflare Pages keeps
+  Preview and Production env vars separately and only Production had `VITE_SUPABASE_*`, so every
+  preview build died on `fetch('/rest/v1/…')` → "Invalid URL". A preview or local build without the vars
+  now warns and exits 0 (SPA fallback still serves every route); a production build (`CF_PAGES_BRANCH`
+  / `WORKERS_CI_BRANCH` = `main`) still fails, because shipping without prerender silently undoes the SEO.
+  Setting the vars in Pages → Settings → Environment variables → **Preview** gives previews real HTML too.
+- `/home` and `/home/` are a real **301** to `/home/house` in `_redirects` (no file exists for the alias,
+  so it used to answer 200 with the SPA shell and move in JavaScript).
 - Needs `@emotion/server` + `@emotion/cache` as devDependencies.
 - `public/robots.txt` is committed; `public/sitemap.xml` is gitignored (per-domain, regenerated each build).
 

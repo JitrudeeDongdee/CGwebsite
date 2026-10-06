@@ -38,6 +38,26 @@ if (!existsSync(serverEntry)) {
   throw new Error(`[prerender] missing ${serverEntry} — run the SSR build first (pnpm run build:ssr)`)
 }
 
+// Without Supabase there is no catalogue to render, and `fetch('/rest/v1/…')`
+// dies on "Invalid URL" and takes the whole build with it. That is what broke
+// every Cloudflare *preview* build: Pages keeps Preview and Production env vars
+// separately, and only Production had VITE_SUPABASE_*.
+//
+// Skipping is safe there — the SPA fallback still serves every route, just
+// without per-page HTML. On a production deploy it is not: shipping without
+// prerender silently undoes the SEO work, so that case still fails loudly.
+const branch = process.env.CF_PAGES_BRANCH ?? process.env.WORKERS_CI_BRANCH
+if (!supabaseUrl || !supabaseKey) {
+  if (branch === 'main') {
+    throw new Error('[prerender] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set on a production build')
+  }
+  console.warn(
+    '[prerender] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set — skipped prerendering.\n' +
+      '            Every route still works through the SPA fallback, without per-page HTML.',
+  )
+  process.exit(0)
+}
+
 /** Published rows only — RLS decides that, not a filter here. */
 async function rows(table, columns) {
   const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}`, {
