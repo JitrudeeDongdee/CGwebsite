@@ -6,7 +6,6 @@ import MemoryIcon from '@mui/icons-material/Memory'
 import ChairIcon from '@mui/icons-material/Chair'
 import AgricultureIcon from '@mui/icons-material/Agriculture'
 import EngineeringIcon from '@mui/icons-material/Engineering'
-import { PLAN_TEMPLATES } from '../drawing/templates'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { PRODUCT_CATEGORIES } from '../catalog/categories'
@@ -16,7 +15,10 @@ import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
 import { useSeo } from '../seo/useSeo'
 import type { PriceLabel, WorkCard } from './home/shared'
-import { HeroSection, type Hero } from './home/HeroSection'
+// `HeroSection` is the previous two-column text hero — kept, not deleted, so the
+// two can be compared and swapped back by changing the block below.
+import { type Hero } from './home/HeroSection'
+import { HeroBanner, HeroTrustStrip } from './home/HeroBanner'
 import { ServicesSection, type Service } from './home/ServicesSection'
 import { FeaturedSection } from './home/FeaturedSection'
 import { PortfolioSection } from './home/PortfolioSection'
@@ -108,10 +110,6 @@ export function HomePage() {
         trust: [1, 2, 3].map((n) => ({ head: t(`mkt.home.trust${n}`), sub: t(`mkt.home.trust${n}sub`) })),
       }
 
-  // The hero still draws an iso thumbnail when the best seller is a house plan;
-  // the featured grid below shows catalog products for every line.
-  const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id === heroProduct.slug) : undefined
-
   // Hero carousel: the product's own photo first, then the cover of each real job
   // in the same service line — so the best seller reads as a product AND as work
   // we've delivered. De-duped, capped so the strip stays short.
@@ -160,16 +158,13 @@ export function HomePage() {
     <Box>
       {/* Compact category strip first, then the hero. */}
       <ServicesSection services={services} cat={cat} />
-      <HeroSection
-        hero={hero}
-        heroProduct={heroProduct}
-        heroPlan={heroPlan}
-        heroImages={heroImages}
-        cat={cat}
-        ctaTo={ctaTo}
-        allProductsTo={allProductsTo}
-        priceLabel={priceLabel}
-      />
+      {/* Image-led banner. To go back to the old text hero: import HeroSection,
+          restore `const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id
+          === heroProduct.slug) : undefined`, and render it with
+          hero / heroProduct / heroPlan / heroImages / cat / ctaTo /
+          allProductsTo / priceLabel. */}
+      <HeroBanner hero={hero} heroImages={heroImages} cat={cat} ctaTo={ctaTo} allProductsTo={allProductsTo} />
+      <HeroTrustStrip hero={hero} />
       <FeaturedSection
         catProducts={catProducts}
         allProductsTo={allProductsTo}
