@@ -121,6 +121,7 @@ the phrase in title/h1, but "ผู้รับเหมา" appeared nowhere an
   changes for now ("บริการรับเหมาก่อสร้างและงานระบบ", "ผลงานรับเหมาก่อสร้างในเพชรบูรณ์").
 - JSON-LD `areaServed` lists every Phetchabun district (`อำเภอ…`) besides the provinces.
 - **Facebook Page (2026-10-07):** `https://www.facebook.com/cg9723/` ("หจก.ไทยดวงดี : CG อิเล็กทรอนิคส์", a public Page — checked via its og tags, not a personal profile) is the `facebook` channel in `contact.json` (footer + contact page) and the JSON-LD `sameAs`. Only a business Page belongs in `sameAs`; never a personal profile.
+- **Company e-mail (2026-10-07):** `contact@thaidongdee.com` replaces the two personal Gmail addresses in `contact.json` and the JSON-LD `email`. It is Cloudflare Email Routing (free) → Email Worker `contact-forward` (Cloudflare dashboard, not this repo), which forwards each message to both Gmail inboxes; the second forward is wrapped so a failure there never bounces the mail. Personal addresses no longer appear on the site.
 - The bigger lever is off-site and outside this repo: the verified Google Business Profile (map pack),
   reviews, and links from the company's Facebook posts.
 
