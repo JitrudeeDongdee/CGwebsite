@@ -39,7 +39,7 @@ import { useAuth } from '../auth/AuthProvider'
 
 export function LoginPage() {
   const { t } = useTranslation()
-  const { signIn, signUp, resetPassword, recovery, updatePassword, user } = useAuth()
+  const { signIn, signUp, resetPassword, recovery, updatePassword, verifyRecoveryOtp, user } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [email, setEmail] = useState('')
@@ -50,8 +50,10 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   /** Set once the sign-up succeeded: the person must now go to their inbox. */
   const [sentTo, setSentTo] = useState<string | null>(null)
-  /** Set once a password-reset e-mail has been requested. */
-  const [resetSent, setResetSent] = useState(false)
+  /** 'otp' once a reset code has been e-mailed and we're waiting for it. */
+  const [resetStep, setResetStep] = useState<'none' | 'otp'>('none')
+  /** The 6-digit reset code the user types in. */
+  const [otp, setOtp] = useState('')
 
   const forgotPassword = async () => {
     if (!email.trim()) {
@@ -61,10 +63,27 @@ export function LoginPage() {
     setBusy(true)
     setError(null)
     try {
+      // Sends the recovery e-mail. Its template shows a 6-digit code ({{ .Token }}),
+      // which the user types below — a code can't be eaten by e-mail link scanners
+      // the way a one-time reset LINK can.
       await resetPassword(email)
-      setResetSent(true)
+      setResetStep('otp')
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submitOtp = async (event: FormEvent) => {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await verifyRecoveryOtp(email, otp)
+      // On success `recovery` flips true → the set-new-password form shows.
+    } catch {
+      setError(t('auth.otpInvalid'))
     } finally {
       setBusy(false)
     }
@@ -207,7 +226,39 @@ export function LoginPage() {
         )}
 
 
-        {sentTo ? (
+        {resetStep === 'otp' ? (
+          <Stack component="form" spacing={2} onSubmit={(e) => void submitOtp(e)}>
+            <Alert severity="info">{t('auth.otpSubtitle', { email })}</Alert>
+            {error && <Alert severity="error">{error}</Alert>}
+            <TextField
+              label={t('auth.otpLabel')}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              fullWidth
+              size="small"
+              autoFocus
+              inputMode="numeric"
+              slotProps={{ htmlInput: { maxLength: 6, style: { letterSpacing: '0.4em', textAlign: 'center', fontSize: 20 } } }}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={busy || otp.length < 6}
+              startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {t('auth.otpVerifyBtn')}
+            </Button>
+            <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+              <Button variant="text" size="small" onClick={() => void forgotPassword()} disabled={busy}>
+                {t('auth.otpResend')}
+              </Button>
+              <Button variant="text" size="small" onClick={() => { setResetStep('none'); setOtp(''); setError(null) }} disabled={busy}>
+                {t('auth.otpBack')}
+              </Button>
+            </Stack>
+          </Stack>
+        ) : sentTo ? (
           <Stack spacing={2}>
             <Alert severity="success">
               <strong>{t('auth.confirmSentTitle')}</strong>
@@ -221,7 +272,6 @@ export function LoginPage() {
         ) : (
         <Stack component="form" spacing={2} onSubmit={(e) => void submit(e)}>
           {error && <Alert severity="error">{error}</Alert>}
-          {resetSent && <Alert severity="success" onClose={() => setResetSent(false)}>{t('auth.resetSent')}</Alert>}
           <TextField
             label={t('auth.email')}
             type="email"

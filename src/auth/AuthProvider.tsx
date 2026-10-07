@@ -74,6 +74,8 @@ interface AuthContextValue {
   recovery: boolean
   /** Sets a new password for the recovery (or signed-in) session. */
   updatePassword: (password: string) => Promise<void>
+  /** Verify a 6-digit reset code (OTP) from the e-mail and enter recovery mode. */
+  verifyRecoveryOtp: (email: string, token: string) => Promise<void>
   logout: () => void
 }
 
@@ -227,6 +229,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRecovery(false)
   }, [])
 
+  /**
+   * Verify the 6-digit code from a reset e-mail and enter set-password mode.
+   *
+   * This is the OTP alternative to the reset LINK: a code is plain text in the
+   * email, so email security scanners / ESP click-tracking can't consume it the
+   * way they break a one-time link. On success a recovery session exists and we
+   * flip `recovery` so the login page shows the "set new password" form.
+   */
+  const verifyRecoveryOtp = useCallback(async (address: string, token: string) => {
+    if (!supabase) throw new Error('ยังไม่ได้ตั้งค่า Supabase')
+    const { error: failure } = await supabase.auth.verifyOtp({
+      email: address.trim(),
+      token: token.trim(),
+      type: 'recovery',
+    })
+    if (failure) throw failure
+    setRecovery(true)
+  }, [])
+
   const submit = async () => {
     setBusy(true)
     setError(null)
@@ -261,9 +282,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       recovery,
       updatePassword,
+      verifyRecoveryOtp,
       logout,
     }),
-    [user, role, loading, requireAuth, openDialog, signIn, signUp, resetPassword, recovery, updatePassword, logout],
+    [user, role, loading, requireAuth, openDialog, signIn, signUp, resetPassword, recovery, updatePassword, verifyRecoveryOtp, logout],
   )
 
   return (

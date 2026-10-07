@@ -252,7 +252,13 @@
     "resetTitle": "Set a new password",
     "resetSubtitle": "Enter your new password to reset it.",
     "newPassword": "New password",
-    "updatePasswordBtn": "Save new password"
+    "updatePasswordBtn": "Save new password",
+    "otpSubtitle": "We sent a 6-digit code to {{email}} — enter it below (check spam if you don't see it).",
+    "otpLabel": "6-digit code",
+    "otpVerifyBtn": "Verify code",
+    "otpResend": "Resend code",
+    "otpBack": "Back",
+    "otpInvalid": "Invalid or expired code. Try again or resend a new one."
   },
   "account": {
     "settings": "Profile settings",
