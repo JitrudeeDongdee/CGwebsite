@@ -196,3 +196,56 @@ one), and `aspectRatio` alone on the Skeleton element does not produce one, so i
 `<Box sx={{ aspectRatio }}>` (same shape as `CatalogImage`) containing
 `<Skeleton sx={{ width:'100%', height:'100%' }} />`. Same lesson as the hero-card fill-image
 entry above: the aspect-ratio box owns the size, the media fills it.
+
+
+## `curl -I` measures HEAD, and HEAD is not what the browser gets
+
+**What happened**: while verifying thumbnails on the live site, `curl -sI` reported
+`cache-control: no-cache` on every catalog image. That was written up as a real
+performance problem — browsers revalidating every image on every page view — and
+committed to spec.md and MEMORY.md as a measured fact. It was wrong: a GET of the same
+URL returns `public, max-age=3600, stale-while-revalidate=86400` with
+`cf-cache-status: HIT` and an `age` of 35 hours. Caching had been working the whole time.
+
+**Root cause**: `curl -I` sends **HEAD**, and Supabase's Storage HEAD handler does not
+carry the object's cache-control; the value is only on the GET response. Two things
+turned that into a false conclusion rather than a question: the same wrong answer came
+back from every object, which read as consistency rather than as a property of the
+method; and the obvious follow-up — "the metadata says `public, max-age=3600`, so why
+would the response disagree?" — was only asked after the claim was already written down.
+Checking the stored metadata (`POST /storage/v1/object/list/<bucket>` →
+`metadata.cacheControl`) is what finally split "not stored" from "not served".
+
+**Correct behavior**: measure response headers with a GET —
+`curl -s -o /dev/null -D - <url>` — and treat a HEAD result as a hint, never as proof.
+When a header looks wrong, check the stored/configured value FIRST: if the two disagree,
+the measurement is the suspect, not the configuration. And when a finding contradicts a
+deliberate earlier decision, that is the moment to re-measure by another route before
+writing it down, not after.
+
+## (superseded) An upload's `Cache-Control` was written down as fact and never measured
+
+**What happened**: `spec.md` stated for a month that catalog images are served with
+`public, max-age=3600, stale-while-revalidate=86400`, including the reasoning for not
+using `immutable`. Checking the live site while verifying thumbnails showed every
+object — originals and thumbnails — actually answering `cache-control: no-cache`, so
+browsers revalidate every image on every page view.
+
+**Root cause**: the value was only ever *sent*. Nobody read a response header back.
+The upload code is not wrong — a test upload passing it as an HTTP header (what
+`scripts/lib/storage.mjs` does) and one passing it as the `cacheControl` form field
+(what `supabase-js` does) both came back `no-cache`, so Supabase is dropping it for
+reasons still unknown. The bug was in the documentation, which turned "we asked for
+this" into "this is what happens", and the claim then sat unchallenged because it
+sounded specific.
+
+**Correct behavior**: a header, TTL or cache rule is only true once it has been read
+back off a real response — **with a GET**, `curl -s -o /dev/null -D - <url>`. Write what
+was measured and the date, and when recording an intention that has not been verified,
+say "asking for" rather than stating the result. The same applies to anything else set on
+one side of a network boundary and assumed on the other: content type, compression, CORS,
+redirects.
+
+⚠️ **The premise of this entry was itself a bad measurement** — see the HEAD-vs-GET entry
+above. The documentation habit it argues for still holds; the specific claim that started
+it did not. Kept as the example it turned out to be.
