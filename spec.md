@@ -684,6 +684,41 @@ Current work sits on branch **`feat/tdd-catalog-and-admin`**, eight commits on t
 - **Sender logo (BIMI)** needs DMARC at enforcement + an SVG logo + `default._bimi` TXT — a later phase, after DMARC is live.
 - **SEO cutover**: the exact production host `thai-dd.pages.dev` 301-redirects to `thaidongdee.com` via **`functions/_middleware.ts`** (a Cloudflare Redirect Rule can't target `*.pages.dev` — that's Cloudflare's zone, not ours — so the redirect must come from the Pages app). It matches ONLY the exact prod host, so preview deployments keep working. ⚠️ Connect the custom domain to Pages BEFORE this is live, or pages.dev would redirect to a domain that isn't serving yet. Then add a Search Console property for `thaidongdee.com` (verify by DNS TXT).
 
+### Hero is now an image-led banner — `src/pages/home/HeroBanner.tsx` (2026-10-08)
+`/home/:service` opened with a two-column text block (`HeroSection`) and a picture beside it. For a
+contractor the photos ARE the pitch, so the hero is a **photo slideshow with the copy set over it**:
+eyebrow + headline, nothing else. **Full-bleed on a phone** (side margins waste the little width there
+is) and **contained from `md`** — the same `maxWidth: 1180` + `px: 3` as `Wrap`, with rounded corners —
+so the page keeps one left edge all the way down. ⚠️ The wrapper clips the corners, so `ImageCarousel`
+is passed `rounded={false}`: two radii leave pale slivers at each corner.
+
+- **`HeroSection` is kept, not deleted.** The two read differently (words-first vs work-first) and
+  `HomePage` swaps between them in one place; the comment there lists exactly what to restore
+  (`heroPlan`, `ctaTo`, and the fuller prop list), since both were removed as unused.
+- **Reuses `ImageCarousel`** rather than a second slideshow — the scroll-snap track, forward-only loop
+  and auto-advance already work there. Full-size images, not thumbnails: the slot is up to 600px tall.
+- **No CTAs on the banner** (removed after review). With them gone the whole overlay stays
+  `pointerEvents: none`, so the carousel underneath keeps its drag, arrows and dots with nothing to
+  work around.
+- **Two scrims, not one.** One gradient is not enough on a bright photo, and the slideshow changes the
+  photo every 5.5s, so it must read on the brightest image in the set rather than an average one: a
+  bottom-up wash (`0.92 → 0.75 → 0.35 → 0.08`) under the copy plus a left-to-right one
+  (`0.60 → 0.30 → 0`) so the headline keeps its backing where the picture is pale.
+- ⚠️ **Desktop height is capped against the viewport, not a flat number**:
+  `min(540px, calc(100vh - 230px))` at `md`, `min(600px, …)` at `lg`; phones stay 320/380. The headline
+  sits at the BOTTOM of the banner under ~230px of header + service strip, so a tall flat number **pushed
+  the `h1` off a 768px-tall laptop entirely** — measured at 700px, it ended at y=889. The height was then
+  tuned down by eye over several rounds to 540/600. The cap depends only on the
+  viewport, so switching service lines still never changes the height (the reason `HERO_HEIGHT` was
+  fixed in the first place).
+- **The headline is still the page's `h1`** — the local-search phrase lives there and the
+  "รับเหมา เพชรบูรณ์" work depends on it.
+- **`HeroTrustStrip`** carries the three selling points below the banner rather than dropping them: they
+  are real content from the `mkt.service.*` group. **Three columns at every width, phones included** —
+  the type steps down (12.5/11.5px on `xs`) instead of the columns stacking, so it stays one glanceable
+  row rather than three more things to scroll past.
+- With no photos for a line, a flat category panel stands in, so the copy never lands on white.
+
 **Home/marketing UI pass — branch `feat/marketing-home` (uncommitted working changes as of 2026-10-05).** `HomePage` was split into per-section components under `src/pages/home/` (`HeroSection`, `ServicesSection`, `FeaturedSection`, `PortfolioSection`, `CommunitySection`, `StatsSection`, `shared.tsx`). Changes this pass:
 - **HeroSection** — mobile hierarchy is name/heading → image → buttons (via a `display:contents` wrapper whose children carry their own `order`; desktop keeps the plain 2-col block, so its stacking is unchanged). Primary/secondary CTAs sit on one row and split the width (`flex:1`) on mobile; both move to the bottom of the left column on desktop; the secondary button has a solid white fill (`background.paper`) over the grid hero. Long labels truncate with an ellipsis on one line (`ELLIPSIS` const + `minWidth:0`) instead of wrapping. Mobile top padding reduced (`pt:{xs:1.5}`). The best-seller **card/carousel fills the full section height on desktop** — the grid uses `alignItems:stretch`, the card is a flex column, and the media is absolutely positioned so its intrinsic image height can't inflate the auto grid track (see MEMORY.md). Chips (ขายดี / category) are overlaid on the image's top-left, not in the card frame.
 - **`src/ui/ImageCarousel.tsx`** — the hero carousel's track is a native horizontal scroll-snap container, so it moves by trackpad/wheel/drag as well as arrows/dots/auto-advance; the active dot and auto-advance read the live scroll position.
