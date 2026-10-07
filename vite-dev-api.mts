@@ -3,6 +3,7 @@ import { fetchPostPreview, downloadImage } from './scripts/lib/facebook.mjs'
 import { downscaleJpeg } from './scripts/lib/image.mjs'
 import { deleteCatalogImage, storageConfigured, uploadCatalogImage } from './scripts/lib/storage.mjs'
 import { readFileSync, existsSync } from 'node:fs'
+import { createSign } from 'node:crypto'
 
 /**
  * A **development-only** API for the admin import screen.
@@ -65,6 +66,82 @@ const pair = (th?: string, en?: string) => ({ th: th ?? en ?? '', en: en ?? th ?
 function slugFor(body: { slug?: string }) {
   const slug = body.slug?.trim()
   return slug ? slug : null
+}
+
+// --- GA4 Data API, local mirror of functions/api/ga-stats.ts -----------------
+// The deployed dashboard reads GA through a Cloudflare Pages Function; that does
+// not run under `pnpm run dev`, so this gives the local dashboard the same
+// endpoint. Set GA4_PROPERTY_ID / GA_SA_CLIENT_EMAIL / GA_SA_PRIVATE_KEY in
+// `.env.local` to see real numbers locally (the key as a single line with \n,
+// in quotes — the same value you paste into Cloudflare). No auth check here: it
+// is localhost-only, like the rest of this dev API.
+
+function gaConfig() {
+  const env: Record<string, string | undefined> = { ...process.env }
+  // `.env.local` holds the project's secrets; parse it too, allowing digits in
+  // names (GA4_PROPERTY_ID) — the credentials() parser above only matches [A-Z_].
+  // Shell env wins; a blank there is treated as unset.
+  if (existsSync('.env.local')) {
+    for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
+      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line)
+      if (!m) continue
+      if (!env[m[1]]) env[m[1]] = m[2].replace(/^['"]|['"]$/g, '')
+    }
+  }
+  return {
+    propertyId: (env.GA4_PROPERTY_ID ?? '').trim(),
+    clientEmail: (env.GA_SA_CLIENT_EMAIL ?? '').trim(),
+    privateKey: env.GA_SA_PRIVATE_KEY ?? '',
+  }
+}
+
+async function gaAccessToken(clientEmail: string, privateKey: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url')
+  const input = `${b64({ alg: 'RS256', typ: 'JWT' })}.${b64({
+    iss: clientEmail,
+    scope: 'https://www.googleapis.com/auth/analytics.readonly',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })}`
+  const signer = createSign('RSA-SHA256')
+  signer.update(input)
+  signer.end()
+  // A key pasted into a dashboard/env often carries literal "\n" — normalise it.
+  const jwt = `${input}.${signer.sign(privateKey.replace(/\\n/g, '\n')).toString('base64url')}`
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=${encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer')}&assertion=${jwt}`,
+  })
+  const data = (await res.json()) as { access_token?: string; error_description?: string; error?: string }
+  if (!res.ok || !data.access_token) throw new Error(`ขอโทเคน Google ไม่สำเร็จ: ${data.error_description || data.error || res.status}`)
+  return data.access_token
+}
+
+type GaRow = { dimensionValues?: Array<{ value?: string }>; metricValues?: Array<{ value?: string }> }
+
+async function gaReport(token: string, pid: string, method: string, body: unknown): Promise<GaRow[]> {
+  const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${pid}:${method}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`GA4 ${method}: ${res.status} ${await res.text()}`)
+  const data = (await res.json()) as { rows?: GaRow[] }
+  return data.rows ?? []
+}
+
+const gaNum = (row: GaRow | undefined, i = 0) => Math.round(Number(row?.metricValues?.[i]?.value ?? 0)) || 0
+
+async function gaTotals(token: string, pid: string, startDate: string) {
+  const rows = await gaReport(token, pid, 'runReport', {
+    dateRanges: [{ startDate, endDate: 'today' }],
+    metrics: [{ name: 'totalUsers' }, { name: 'sessions' }, { name: 'screenPageViews' }],
+  })
+  const r = rows[0]
+  return { users: gaNum(r, 0), sessions: gaNum(r, 1), views: gaNum(r, 2) }
 }
 
 export function devApi(): Plugin {
@@ -376,6 +453,51 @@ export function devApi(): Plugin {
               return send(200, { deleted: match[1], images: [...orphans] })
             }
 
+            // GA4 visitor stats for the dashboard — the local mirror of the
+            // Cloudflare Pages Function (which doesn't run under `pnpm run dev`).
+            if (req.method === 'POST' && path === '/ga-stats') {
+              const { propertyId, clientEmail, privateKey } = gaConfig()
+              const missing = [
+                !propertyId && 'GA4_PROPERTY_ID',
+                !clientEmail && 'GA_SA_CLIENT_EMAIL',
+                !privateKey && 'GA_SA_PRIVATE_KEY',
+              ].filter(Boolean)
+              // 503 (not 500): "not set up" is a normal local state, and the
+              // dashboard shows its empty structure rather than an error for it.
+              if (missing.length) {
+                return send(503, { error: `ยังไม่ได้ตั้งค่า ${missing.join(', ')} ใน .env.local (ดูตัวอย่างใน .env.example) — ใส่แล้ว restart dev` })
+              }
+              const token = await gaAccessToken(clientEmail, privateKey)
+              const [activeUsers, last7, last28] = await Promise.all([
+                gaReport(token, propertyId, 'runRealtimeReport', { metrics: [{ name: 'activeUsers' }] }).then((r) => gaNum(r[0])),
+                gaTotals(token, propertyId, '7daysAgo'),
+                gaTotals(token, propertyId, '28daysAgo'),
+              ])
+              const topPages = await gaReport(token, propertyId, 'runReport', {
+                dateRanges: [{ startDate: '28daysAgo', endDate: 'today' }],
+                dimensions: [{ name: 'pagePath' }],
+                metrics: [{ name: 'screenPageViews' }],
+                orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+                limit: 6,
+              })
+                .then((rows) => rows.map((r) => ({ path: r.dimensionValues?.[0]?.value ?? '', views: gaNum(r) })))
+                .catch(() => [])
+              const topProducts = await gaReport(token, propertyId, 'runReport', {
+                dateRanges: [{ startDate: '28daysAgo', endDate: 'today' }],
+                dimensions: [{ name: 'itemName' }],
+                metrics: [{ name: 'itemsViewed' }],
+                orderBys: [{ metric: { metricName: 'itemsViewed' }, desc: true }],
+                limit: 8,
+              })
+                .then((rows) =>
+                  rows
+                    .map((r) => ({ name: r.dimensionValues?.[0]?.value ?? '', views: gaNum(r) }))
+                    .filter((p) => p.name && p.name !== '(not set)'),
+                )
+                .catch(() => [])
+              return send(200, { configured: true, activeUsers, last7, last28, topPages, topProducts })
+            }
+
             send(404, { error: `no such dev endpoint: ${req.method} /api${path}` })
           } catch (error) {
             const text = error instanceof Error ? error.message : String(error)
@@ -392,7 +514,7 @@ export function devApi(): Plugin {
           }
         })()
       })
-      server.config.logger.info('  ➜  dev API:  /api/unfurl, /api/projects  (development only)')
+      server.config.logger.info('  ➜  dev API:  /api/unfurl, /api/projects, /api/ga-stats  (development only)')
     },
   }
 }
