@@ -1,10 +1,5 @@
-import { useTranslation } from 'react-i18next'
-import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import Button from '@mui/material/Button'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { ImageCarousel } from '../../ui/ImageCarousel'
 import { CATEGORY_META } from '../../catalog/categories'
 import type { ProductCategory } from '../../catalog/types'
@@ -24,16 +19,25 @@ import type { Hero } from './HeroSection'
  */
 
 /** Banner height. Fixed per breakpoint so switching service lines never makes
- *  the page jump, and so the copy block always has the same room. */
-const BANNER_HEIGHT = { xs: 460, sm: 520, md: 620, lg: 660 }
-
-/** Truncate a one-line label instead of wrapping (two buttons on a phone). */
-const ELLIPSIS = {
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  minWidth: 0,
-} as const
+ *  the page jump, and so the copy block always has the same room. The phone
+ *  stays short — a tall banner there is mostly empty scrim and pushes the real
+ *  content below the fold — while desktop gets more room, where a wide screen
+ *  makes a short band look like a stripe rather than a picture.
+ *
+ *  ⚠️ Desktop is capped against the viewport, not a flat number. The headline
+ *  sits at the BOTTOM of the banner, under ~230px of header and service strip,
+ *  so a fixed 700px pushes the h1 off-screen on a 768px-tall laptop — measured:
+ *  it ended at y=889. The cap keeps the headline (and the local-search phrase
+ *  in it) visible without scrolling on a short screen, while a tall monitor
+ *  still gets the full height. It depends only on the viewport, so switching
+ *  service lines still never changes it. */
+const BANNER_MAX = 'calc(100vh - 230px)'
+const BANNER_HEIGHT = {
+  xs: 320,
+  sm: 380,
+  md: `min(700px, ${BANNER_MAX})`,
+  lg: `min(780px, ${BANNER_MAX})`,
+}
 
 /**
  * Clamp Thai copy to `lines`.
@@ -56,17 +60,12 @@ export function HeroBanner({
   hero,
   heroImages,
   cat,
-  ctaTo,
-  allProductsTo,
 }: {
   hero: Hero
   /** Best seller's photo first, then covers of real jobs in the same line. */
   heroImages: string[]
   cat: ProductCategory | null
-  ctaTo: string
-  allProductsTo: string
 }) {
-  const { t } = useTranslation()
   const category: ProductCategory = cat ?? 'house'
 
   return (
@@ -97,11 +96,17 @@ export function HeroBanner({
           pointerEvents: 'none',
           display: 'flex',
           alignItems: 'flex-end',
-          background:
-            'linear-gradient(to top, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.15) 62%, rgba(0,0,0,0.30) 100%)',
+          // Two scrims, because one is not enough on a bright photo: a strong
+          // bottom-up wash under the copy, plus a left-to-right one so the
+          // text keeps its backing even where the picture is pale. Tuned
+          // against the brightest image in the set, not an average one.
+          background: [
+            'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.75) 28%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.08) 78%, rgba(0,0,0,0.32) 100%)',
+            'linear-gradient(to right, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0) 75%)',
+          ].join(', '),
         }}
       >
-        <Wrap sx={{ width: '100%', pb: { xs: 5, md: 7 } }}>
+        <Wrap sx={{ width: '100%', pb: { xs: 4, md: 5 } }}>
           <Box sx={{ maxWidth: { xs: '100%', md: '40rem' }, color: '#fff' }}>
             <Typography
               sx={{
@@ -124,60 +129,11 @@ export function HeroBanner({
                 fontWeight: 700,
                 letterSpacing: '-0.01em',
                 textShadow: '0 2px 18px rgba(0,0,0,0.45)',
-                ...clamp(3, 1.2),
+                ...clamp(2, 1.2),
               }}
             >
               {hero.title}
             </Typography>
-
-            <Typography
-              sx={{
-                mt: { xs: 1.5, md: 2 },
-                fontSize: { xs: 15, md: 18 },
-                opacity: 0.92,
-                textShadow: '0 1px 12px rgba(0,0,0,0.5)',
-                ...clamp(2, 1.55),
-              }}
-            >
-              {hero.lead}
-            </Typography>
-
-            <Stack
-              direction="row"
-              spacing={1.5}
-              sx={{ mt: { xs: 2.5, md: 3.5 }, gap: 1.5, pointerEvents: 'auto' }}
-            >
-              <Button
-                component={RouterLink}
-                to={ctaTo}
-                variant="contained"
-                color="secondary"
-                size="large"
-                endIcon={<ArrowForwardIcon />}
-                sx={{ flex: { xs: 1, md: '0 0 auto' }, minWidth: 0, '& .MuiButton-endIcon': { flexShrink: 0 } }}
-              >
-                <Box component="span" sx={ELLIPSIS}>{hero.ctaPrimary}</Box>
-              </Button>
-              <Button
-                component={RouterLink}
-                to={allProductsTo}
-                variant="outlined"
-                size="large"
-                sx={{
-                  flex: { xs: 1, md: '0 0 auto' },
-                  minWidth: 0,
-                  // White on the photo: an outlined button in the theme's own
-                  // colours disappears against a dark image.
-                  color: '#fff',
-                  borderColor: 'rgba(255,255,255,0.7)',
-                  '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.12)' },
-                }}
-              >
-                <Box component="span" sx={ELLIPSIS}>
-                  {cat ? t('mkt.service.allProducts') : t('mkt.home.ctaSecondary')}
-                </Box>
-              </Button>
-            </Stack>
           </Box>
         </Wrap>
       </Box>
@@ -197,14 +153,23 @@ export function HeroTrustStrip({ hero }: { hero: Hero }) {
         <Box
           sx={{
             display: 'grid',
-            gap: { xs: 1.5, md: 3 },
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+            // Three across on every width, phones included. The type steps
+            // down instead of the columns stacking, so the strip stays one
+            // glanceable row rather than becoming three more things to scroll.
+            gap: { xs: 1, sm: 2, md: 3 },
+            gridTemplateColumns: 'repeat(3, 1fr)',
           }}
         >
           {hero.trust.map((item) => (
             <Box key={item.head}>
-              <Typography sx={{ fontWeight: 600, fontSize: { xs: 14, md: 15 } }}>{item.head}</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 13, md: 14 } }}>
+              <Typography sx={{ fontWeight: 600, fontSize: { xs: 12.5, sm: 14, md: 15 }, lineHeight: 1.4 }}>
+                {item.head}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontSize: { xs: 11.5, sm: 13, md: 14 }, lineHeight: 1.45 }}
+              >
                 {item.sub}
               </Typography>
             </Box>

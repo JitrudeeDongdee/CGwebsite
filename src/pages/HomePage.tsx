@@ -76,7 +76,6 @@ export function HomePage() {
   if (service !== undefined && !isCategory(service)) return <Navigate to="/home" replace />
   /** The house line keeps the designer as its call to action; the others lead to contact. */
   const isHouseish = cat === null || cat === 'house'
-  const ctaTo = isHouseish ? '/design' : '/contact'
   /** "See all" targets: the catalog / portfolio filtered to this service. */
   const allProductsTo = cat ? `/products?category=${cat}` : '/products'
   const allWorkTo = cat ? `/portfolio?category=${cat}` : '/portfolio'
@@ -161,9 +160,10 @@ export function HomePage() {
       {/* Image-led banner. To go back to the old text hero: import HeroSection,
           restore `const heroPlan = heroProduct ? PLAN_TEMPLATES.find((m) => m.id
           === heroProduct.slug) : undefined`, and render it with
-          hero / heroProduct / heroPlan / heroImages / cat / ctaTo /
-          allProductsTo / priceLabel. */}
-      <HeroBanner hero={hero} heroImages={heroImages} cat={cat} ctaTo={ctaTo} allProductsTo={allProductsTo} />
+          hero / heroProduct / heroPlan / heroImages / cat / allProductsTo /
+          priceLabel, plus `const ctaTo = isHouseish ? '/design' : '/contact'`
+          (removed with the banner's buttons). */}
+      <HeroBanner hero={hero} heroImages={heroImages} cat={cat} />
       <HeroTrustStrip hero={hero} />
       <FeaturedSection
         catProducts={catProducts}
@@ -183,7 +183,8 @@ export function HomePage() {
       {/* Names the province and its districts in body text — the site had none. */}
       <ServiceAreaSection />
       <StatsSection stats={stats} />
-      {/* <FinalCtaSection cat={cat} ctaTo={ctaTo} ctaPrimary={hero.ctaPrimary} /> */}
+      {/* <FinalCtaSection cat={cat} ctaTo={ctaTo} ctaPrimary={hero.ctaPrimary} />
+          — needs `ctaTo` back (see the hero comment above). */}
       {/* Floating quick-switch: hides on scroll-down, reappears on scroll-up. */}
       <FloatingServiceBar services={services} cat={cat} />
     </Box>
