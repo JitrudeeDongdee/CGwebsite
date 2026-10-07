@@ -75,7 +75,7 @@ export function PortfolioPage() {
             to={projectPath(p)}
             sx={{ position: 'relative', borderRadius: 3, overflow: 'hidden', border: 1, borderColor: 'divider', textDecoration: 'none', display: 'block', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' } }}
           >
-            <CatalogImage src={projectImagePath(p)} category={p.category} alt={L(p.title)} />
+            <CatalogImage src={projectImagePath(p)} category={p.category} alt={L(p.title)} thumb />
             <Box
               sx={{
                 position: 'absolute', inset: 0, p: { xs: 1.25, sm: 2 }, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',

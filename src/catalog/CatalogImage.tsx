@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import { SmartImage } from '../ui/SmartImage'
-import { imageUrl } from '../supabase/storage'
+import { imageUrl, thumbUrl } from '../supabase/storage'
 import { CATEGORY_META } from './categories'
 import type { ProductCategory } from './types'
 
@@ -17,6 +17,7 @@ export function CatalogImage({
   height,
   fallbackSrc,
   eager = false,
+  thumb = false,
 }: {
   src?: string
   category: ProductCategory
@@ -32,6 +33,17 @@ export function CatalogImage({
   /** Load immediately (above-the-fold slots like the hero). Also makes a 404 fire
    *  promptly so `fallbackSrc` swaps in without waiting to scroll into view. */
   eager?: boolean
+  /**
+   * Use the 400px copy instead of the full image.
+   *
+   * For card-sized slots only — a listing of 20 covers is ~8.7 MB of originals
+   * against ~1.3 MB of thumbnails, measured. Detail pages, heroes and the
+   * lightbox keep the full file, where 400px would visibly soften.
+   *
+   * A row whose thumbnail is missing falls back to its original through the
+   * chain below, so this is safe on content that predates thumbnails.
+   */
+  thumb?: boolean
 }) {
   const meta = CATEGORY_META[category]
   // Catalog photos are uploaded downscaled to a 1600px long edge, so a 4:3 slot
@@ -53,13 +65,32 @@ export function CatalogImage({
   return (
     <Box sx={{ ...(height === undefined ? { aspectRatio: ratio } : { height }), overflow: 'hidden' }}>
       <SmartImage
-        src={imageUrl(src)}
+        src={thumb ? thumbUrl(src) : imageUrl(src)}
         alt={alt}
         eager={eager}
         intrinsicWidth={boxW}
         intrinsicHeight={boxH}
         fallback={
-          fallbackSrc ? (
+          // Storage 404s a missing thumbnail rather than serving the original,
+          // so the full image is the first fallback before `fallbackSrc` and
+          // the coloured panel. Nesting reuses SmartImage's own error handling
+          // instead of adding a second one.
+          thumb ? (
+            <SmartImage
+              src={imageUrl(src)}
+              alt={alt}
+              eager={eager}
+              intrinsicWidth={boxW}
+              intrinsicHeight={boxH}
+              fallback={
+                fallbackSrc ? (
+                  <SmartImage src={imageUrl(fallbackSrc)} alt={alt} eager={eager} fallback={placeholder} />
+                ) : (
+                  placeholder
+                )
+              }
+            />
+          ) : fallbackSrc ? (
             <SmartImage src={imageUrl(fallbackSrc)} alt={alt} eager={eager} fallback={placeholder} />
           ) : (
             placeholder

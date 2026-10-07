@@ -66,7 +66,7 @@ export function CommunityPage() {
                 elevation={0}
                 sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
               >
-                <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} />
+                <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} thumb />
                 <Box sx={{ p: { xs: 1.5, sm: 2.5 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                   <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                     {item.year && (

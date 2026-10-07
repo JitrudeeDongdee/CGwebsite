@@ -364,7 +364,7 @@ function WorkStrip() {
             }}
           >
             <Box sx={{ position: 'absolute', inset: 0 }}>
-              <CatalogImage src={projectImagePath(project)} category={project.category} alt={L(project.title)} height="100%" />
+              <CatalogImage src={projectImagePath(project)} category={project.category} alt={L(project.title)} height="100%" thumb />
             </Box>
             <Box
               sx={{

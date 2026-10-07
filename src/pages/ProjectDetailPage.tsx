@@ -155,7 +155,7 @@ export function ProjectDetailPage() {
           }}
         >
           <Box sx={{ width: 96, flexShrink: 0, borderRadius: 2, overflow: 'hidden' }}>
-            <CatalogImage src={productImagePath(relatedProduct)} category={relatedProduct.category} alt={L(relatedProduct.name)} />
+            <CatalogImage src={productImagePath(relatedProduct)} category={relatedProduct.category} alt={L(relatedProduct.name)} thumb />
           </Box>
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="caption" color="text.secondary">{t('mkt.catalog.relatedProduct')}</Typography>
