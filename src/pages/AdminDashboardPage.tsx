@@ -13,16 +13,16 @@ import Divider from '@mui/material/Divider'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { loadAdminStats, loadRecentEdits, type AdminStats, type RecentEdit } from '../admin/statsApi'
+import { loadGaStats, type GaStatsResult } from '../admin/gaApi'
 import { unfurlAvailable } from '../admin/client'
 
 /**
  * The back-office dashboard.
  *
- * Shows what is actually in the database and what needs attention. The GA4 half
- * is a placeholder on purpose — see the card at the bottom: the measurement ID
- * is not set on the deployed site, so there is no traffic data to show yet, and
- * reading the GA4 Data API needs a Google service-account key that cannot live
- * in a browser bundle.
+ * Shows what is actually in the database and what needs attention, plus live
+ * GA4 visitor numbers read through the `/api/ga-stats` Pages Function (the
+ * Google service-account key stays server-side). The GA card degrades to an
+ * honest "what's still missing" state when the GA env vars aren't set yet.
  */
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
@@ -72,6 +72,124 @@ function Stat({
       {caption && (
         <Typography variant="caption" color="text.secondary">{caption}</Typography>
       )}
+    </Paper>
+  )
+}
+
+function GaMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{value.toLocaleString('th-TH')}</Typography>
+      <Typography variant="caption" color="text.secondary">{label}</Typography>
+    </Box>
+  )
+}
+
+/**
+ * Live GA4 visitor stats, or an honest "still missing X" card.
+ *
+ * `loadGaStats` resolves to `{ configured: false, reason }` for the normal
+ * not-set-up states (function not deployed, env vars missing) and only throws
+ * on real failures (auth expired, Google rejected the key) — so the three
+ * outcomes stay visually distinct instead of all looking like an error.
+ */
+function GaCard() {
+  const [data, setData] = useState<GaStatsResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await loadGaStats()
+        if (!cancelled) setData(r)
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const live = data?.configured === true
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{ p: 2.5, borderRadius: 3, border: 1, borderColor: 'divider', bgcolor: live ? 'background.paper' : 'background.default' }}
+    >
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+        <TrendingUpIcon sx={{ color: live ? 'primary.main' : 'text.disabled' }} />
+        <Typography sx={{ fontWeight: 600, fontSize: 15, flexGrow: 1 }}>สถิติผู้เข้าชม (GA4)</Typography>
+        {loading ? (
+          <Skeleton width={70} height={24} />
+        ) : live ? (
+          <Chip size="small" color="success" variant="outlined" label={`${(data as { activeUsers: number }).activeUsers} กำลังออนไลน์`} />
+        ) : (
+          <Chip size="small" label="ยังไม่เชื่อม" variant="outlined" />
+        )}
+      </Stack>
+
+      {loading && (
+        <>
+          <Skeleton height={44} />
+          <Skeleton height={24} width="60%" />
+        </>
+      )}
+
+      {!loading && error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
+
+      {!loading && data && !data.configured && (
+        <>
+          <Typography variant="body2" color="text.secondary">{data.reason}</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            <code>VITE_GA_ID</code> ตั้งค่าแล้ว เว็บจริงกำลังเก็บสถิติเข้า property “TDD Website” — เหลือแค่ตั้งค่า service account ด้านบนให้ฝั่งเซิร์ฟเวอร์อ่านตัวเลขออกมาได้
+          </Typography>
+        </>
+      )}
+
+      {!loading && live && (
+        <>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mt: 0.5 }}>
+            <GaMetric label="ผู้ใช้" value={(data as { last28: { users: number } }).last28.users} />
+            <GaMetric label="เซสชัน" value={(data as { last28: { sessions: number } }).last28.sessions} />
+            <GaMetric label="เพจวิว" value={(data as { last28: { views: number } }).last28.views} />
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            28 วันล่าสุด · 7 วัน: {(data as { last7: { users: number } }).last7.users.toLocaleString('th-TH')} ผู้ใช้
+          </Typography>
+
+          {(data as { topProducts: Array<{ name: string; views: number }> }).topProducts.length > 0 && (
+            <>
+              <Divider sx={{ my: 1.5 }} />
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>สินค้าที่คนดูมากสุด (28 วัน)</Typography>
+              <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                {(data as { topProducts: Array<{ name: string; views: number }> }).topProducts.slice(0, 5).map((p) => (
+                  <Stack key={p.name} direction="row" sx={{ gap: 1 }}>
+                    <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 0 }} noWrap>{p.name}</Typography>
+                    <Typography variant="body2" color="text.secondary">{p.views.toLocaleString('th-TH')}</Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            </>
+          )}
+        </>
+      )}
+
+      <Button
+        href="https://analytics.google.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        size="small"
+        endIcon={<ArrowForwardIcon />}
+        sx={{ mt: 1.5 }}
+      >
+        เปิด Google Analytics
+      </Button>
     </Paper>
   )
 }
@@ -191,36 +309,7 @@ export function AdminDashboardPage() {
             </Stack>
           </Paper>
 
-          {/* Honest placeholder. Two separate things block it, and both are
-              named so nobody has to rediscover them. */}
-          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-              <TrendingUpIcon sx={{ color: 'text.disabled' }} />
-              <Typography sx={{ fontWeight: 600, fontSize: 15 }}>สถิติผู้เข้าชม (GA4)</Typography>
-              <Chip size="small" label="ยังไม่เชื่อม" variant="outlined" />
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              ยังไม่มีข้อมูลให้แสดง เพราะ:
-            </Typography>
-            <Stack component="ol" sx={{ m: 0, mt: 1, pl: 2.5 }} spacing={0.5}>
-              <Typography component="li" variant="body2" color="text.secondary">
-                ยังไม่ได้ตั้ง <code>VITE_GA_ID</code> ใน Cloudflare Pages — เว็บจริงจึงยังไม่เก็บสถิติเลย
-              </Typography>
-              <Typography component="li" variant="body2" color="text.secondary">
-                การอ่านตัวเลขจาก GA4 ต้องใช้คีย์ของ Google ที่ห้ามอยู่ในเบราว์เซอร์ ต้องผ่าน Edge Function
-              </Typography>
-            </Stack>
-            <Button
-              href="https://analytics.google.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              size="small"
-              endIcon={<ArrowForwardIcon />}
-              sx={{ mt: 1.5 }}
-            >
-              เปิด Google Analytics
-            </Button>
-          </Paper>
+          <GaCard />
         </Box>
 
         {!unfurlAvailable && (
