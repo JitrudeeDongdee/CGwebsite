@@ -649,6 +649,14 @@ Real visitor numbers on the back-office dashboard, replacing the honest placehol
   newlines may arrive as literal `\n`; the function normalises both.
 - Same Pages-Functions caveat as admin-users: the committed `wrangler.jsonc` assets-only Worker flow does NOT
   run `functions/` — this assumes the Pages Git-integration deployment.
+- **Local dev + always-on structure (2026-10-07).** Pages Functions don't run under `pnpm run dev`, so the
+  card used to error with "no such dev endpoint" locally. `vite-dev-api.mts` now mirrors `/api/ga-stats`
+  (signing the SA JWT with `node:crypto`, no auth check — localhost only): set the same three vars in
+  `.env.local` and the local card shows real numbers. ⚠️ its `.env.local` parser allows **digits** in names
+  (`GA4_PROPERTY_ID`) — the older `credentials()` parser's `[A-Z_]` would silently skip it. `GaCard` now
+  **always renders its full structure** (the three metric boxes + the top-products section), filling "—" and
+  a short note when GA is unreachable or unconfigured, instead of collapsing to a bare error — so it reads as
+  a dashboard panel in every state.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).

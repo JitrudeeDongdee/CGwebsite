@@ -13,7 +13,7 @@ import Divider from '@mui/material/Divider'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { loadAdminStats, loadRecentEdits, type AdminStats, type RecentEdit } from '../admin/statsApi'
-import { loadGaStats, type GaStatsResult } from '../admin/gaApi'
+import { loadGaStats, type GaStats, type GaStatsResult } from '../admin/gaApi'
 import { unfurlAvailable } from '../admin/client'
 
 /**
@@ -76,22 +76,30 @@ function Stat({
   )
 }
 
-function GaMetric({ label, value }: { label: string; value: number }) {
+function GaMetric({ label, value, loading }: { label: string; value: number | null; loading?: boolean }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{value.toLocaleString('th-TH')}</Typography>
+      {loading ? (
+        <Skeleton width={48} height={30} />
+      ) : (
+        <Typography sx={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>
+          {value == null ? '—' : value.toLocaleString('th-TH')}
+        </Typography>
+      )}
       <Typography variant="caption" color="text.secondary">{label}</Typography>
     </Box>
   )
 }
 
 /**
- * Live GA4 visitor stats, or an honest "still missing X" card.
+ * GA4 visitor stats.
  *
- * `loadGaStats` resolves to `{ configured: false, reason }` for the normal
- * not-set-up states (function not deployed, env vars missing) and only throws
- * on real failures (auth expired, Google rejected the key) — so the three
- * outcomes stay visually distinct instead of all looking like an error.
+ * The card ALWAYS renders its full structure — the three metric boxes and the
+ * top-products section — so it reads as a dashboard panel whether or not GA is
+ * reachable. Numbers fill in when live; otherwise the boxes show "—" and a short
+ * note says why (not configured, or an error). `loadGaStats` resolves to
+ * `{ configured: false, reason }` for the normal not-set-up states and only
+ * throws on real failures, so "no data yet" and "something broke" stay distinct.
  */
 function GaCard() {
   const [data, setData] = useState<GaStatsResult | null>(null)
@@ -115,69 +123,60 @@ function GaCard() {
     }
   }, [])
 
-  const live = data?.configured === true
+  const live = data?.configured === true ? (data as GaStats) : null
+  // One status line, in priority order: an error, else the not-configured
+  // reason, else the live date-range caption.
+  const note = error ?? (data && !data.configured ? data.reason : null)
+  const topProducts = live?.topProducts ?? []
 
   return (
     <Paper
       elevation={0}
       sx={{ p: 2.5, borderRadius: 3, border: 1, borderColor: 'divider', bgcolor: live ? 'background.paper' : 'background.default' }}
     >
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5 }}>
         <TrendingUpIcon sx={{ color: live ? 'primary.main' : 'text.disabled' }} />
         <Typography sx={{ fontWeight: 600, fontSize: 15, flexGrow: 1 }}>สถิติผู้เข้าชม (GA4)</Typography>
         {loading ? (
           <Skeleton width={70} height={24} />
         ) : live ? (
-          <Chip size="small" color="success" variant="outlined" label={`${(data as { activeUsers: number }).activeUsers} กำลังออนไลน์`} />
+          <Chip size="small" color="success" variant="outlined" label={`${live.activeUsers} กำลังออนไลน์`} />
         ) : (
           <Chip size="small" label="ยังไม่เชื่อม" variant="outlined" />
         )}
       </Stack>
 
-      {loading && (
-        <>
-          <Skeleton height={44} />
-          <Skeleton height={24} width="60%" />
-        </>
+      {/* Structure is always present — numbers when live, "—" otherwise. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
+        <GaMetric label="ผู้ใช้" value={live?.last28.users ?? null} loading={loading} />
+        <GaMetric label="เซสชัน" value={live?.last28.sessions ?? null} loading={loading} />
+        <GaMetric label="เพจวิว" value={live?.last28.views ?? null} loading={loading} />
+      </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+        28 วันล่าสุด{live ? ` · 7 วัน: ${live.last7.users.toLocaleString('th-TH')} ผู้ใช้` : ''}
+      </Typography>
+
+      <Divider sx={{ my: 1.5 }} />
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>สินค้าที่คนดูมากสุด (28 วัน)</Typography>
+      {loading ? (
+        <Stack spacing={0.5} sx={{ mt: 0.5 }}>{[0, 1, 2].map((i) => <Skeleton key={i} height={20} />)}</Stack>
+      ) : topProducts.length > 0 ? (
+        <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+          {topProducts.slice(0, 5).map((p) => (
+            <Stack key={p.name} direction="row" sx={{ gap: 1 }}>
+              <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 0 }} noWrap>{p.name}</Typography>
+              <Typography variant="body2" color="text.secondary">{p.views.toLocaleString('th-TH')}</Typography>
+            </Stack>
+          ))}
+        </Stack>
+      ) : (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>— ยังไม่มีข้อมูล</Typography>
       )}
 
-      {!loading && error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
-
-      {!loading && data && !data.configured && (
-        <>
-          <Typography variant="body2" color="text.secondary">{data.reason}</Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            <code>VITE_GA_ID</code> ตั้งค่าแล้ว เว็บจริงกำลังเก็บสถิติเข้า property “TDD Website” — เหลือแค่ตั้งค่า service account ด้านบนให้ฝั่งเซิร์ฟเวอร์อ่านตัวเลขออกมาได้
-          </Typography>
-        </>
-      )}
-
-      {!loading && live && (
-        <>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mt: 0.5 }}>
-            <GaMetric label="ผู้ใช้" value={(data as { last28: { users: number } }).last28.users} />
-            <GaMetric label="เซสชัน" value={(data as { last28: { sessions: number } }).last28.sessions} />
-            <GaMetric label="เพจวิว" value={(data as { last28: { views: number } }).last28.views} />
-          </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            28 วันล่าสุด · 7 วัน: {(data as { last7: { users: number } }).last7.users.toLocaleString('th-TH')} ผู้ใช้
-          </Typography>
-
-          {(data as { topProducts: Array<{ name: string; views: number }> }).topProducts.length > 0 && (
-            <>
-              <Divider sx={{ my: 1.5 }} />
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>สินค้าที่คนดูมากสุด (28 วัน)</Typography>
-              <Stack spacing={0.25} sx={{ mt: 0.5 }}>
-                {(data as { topProducts: Array<{ name: string; views: number }> }).topProducts.slice(0, 5).map((p) => (
-                  <Stack key={p.name} direction="row" sx={{ gap: 1 }}>
-                    <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 0 }} noWrap>{p.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">{p.views.toLocaleString('th-TH')}</Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            </>
-          )}
-        </>
+      {!loading && note && (
+        <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: error ? 'warning.main' : 'text.secondary' }}>
+          {note}
+        </Typography>
       )}
 
       <Button
