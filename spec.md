@@ -686,14 +686,17 @@ Current work sits on branch **`feat/tdd-catalog-and-admin`**, eight commits on t
 
 ### Hero is now an image-led banner — `src/pages/home/HeroBanner.tsx` (2026-10-08)
 `/home/:service` opened with a two-column text block (`HeroSection`) and a picture beside it. For a
-contractor the photos ARE the pitch, so the hero is a **full-bleed photo slideshow with the copy set
-over it**: eyebrow + headline, nothing else.
+contractor the photos ARE the pitch, so the hero is a **photo slideshow with the copy set over it**:
+eyebrow + headline, nothing else. **Full-bleed on a phone** (side margins waste the little width there
+is) and **contained from `md`** — the same `maxWidth: 1180` + `px: 3` as `Wrap`, with rounded corners —
+so the page keeps one left edge all the way down. ⚠️ The wrapper clips the corners, so `ImageCarousel`
+is passed `rounded={false}`: two radii leave pale slivers at each corner.
 
 - **`HeroSection` is kept, not deleted.** The two read differently (words-first vs work-first) and
   `HomePage` swaps between them in one place; the comment there lists exactly what to restore
   (`heroPlan`, `ctaTo`, and the fuller prop list), since both were removed as unused.
 - **Reuses `ImageCarousel`** rather than a second slideshow — the scroll-snap track, forward-only loop
-  and auto-advance already work there. Full-size images, not thumbnails: the slot is up to 780px tall.
+  and auto-advance already work there. Full-size images, not thumbnails: the slot is up to 600px tall.
 - **No CTAs on the banner** (removed after review). With them gone the whole overlay stays
   `pointerEvents: none`, so the carousel underneath keeps its drag, arrows and dots with nothing to
   work around.
@@ -702,10 +705,10 @@ over it**: eyebrow + headline, nothing else.
   bottom-up wash (`0.92 → 0.75 → 0.35 → 0.08`) under the copy plus a left-to-right one
   (`0.60 → 0.30 → 0`) so the headline keeps its backing where the picture is pale.
 - ⚠️ **Desktop height is capped against the viewport, not a flat number**:
-  `min(700px, calc(100vh - 230px))` at `md`, `min(780px, …)` at `lg`; phones stay 320/380. The headline
-  sits at the BOTTOM of the banner under ~230px of header + service strip, so a fixed 700px **pushed the
-  `h1` off a 768px-tall laptop entirely** — measured, it ended at y=889. Measured after the cap: 538px at
-  1024×768 and 770px at 1440×1000, headline above the fold in both. The cap depends only on the
+  `min(540px, calc(100vh - 230px))` at `md`, `min(600px, …)` at `lg`; phones stay 320/380. The headline
+  sits at the BOTTOM of the banner under ~230px of header + service strip, so a tall flat number **pushed
+  the `h1` off a 768px-tall laptop entirely** — measured at 700px, it ended at y=889. The height was then
+  tuned down by eye over several rounds to 540/600. The cap depends only on the
   viewport, so switching service lines still never changes the height (the reason `HERO_HEIGHT` was
   fixed in the first place).
 - **The headline is still the page's `h1`** — the local-search phrase lives there and the

@@ -2,8 +2,8 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { ImageCarousel } from '../../ui/ImageCarousel'
 import { CATEGORY_META } from '../../catalog/categories'
-import type { ProductCategory } from '../../catalog/types'
 import { Wrap } from './shared'
+import type { ProductCategory } from '../../catalog/types'
 import type { Hero } from './HeroSection'
 
 /**
@@ -26,8 +26,8 @@ import type { Hero } from './HeroSection'
  *
  *  ⚠️ Desktop is capped against the viewport, not a flat number. The headline
  *  sits at the BOTTOM of the banner, under ~230px of header and service strip,
- *  so a fixed 700px pushes the h1 off-screen on a 768px-tall laptop — measured:
- *  it ended at y=889. The cap keeps the headline (and the local-search phrase
+ *  so a fixed tall banner pushes the h1 off-screen on a 768px-tall laptop —
+ *  measured at 700px, it ended at y=889. The cap keeps the headline (and the local-search phrase
  *  in it) visible without scrolling on a short screen, while a tall monitor
  *  still gets the full height. It depends only on the viewport, so switching
  *  service lines still never changes it. */
@@ -35,8 +35,8 @@ const BANNER_MAX = 'calc(100vh - 230px)'
 const BANNER_HEIGHT = {
   xs: 320,
   sm: 380,
-  md: `min(700px, ${BANNER_MAX})`,
-  lg: `min(780px, ${BANNER_MAX})`,
+  md: `min(540px, ${BANNER_MAX})`,
+  lg: `min(600px, ${BANNER_MAX})`,
 }
 
 /**
@@ -69,73 +69,80 @@ export function HeroBanner({
   const category: ProductCategory = cat ?? 'house'
 
   return (
-    <Box component="section" sx={{ position: 'relative', height: BANNER_HEIGHT, overflow: 'hidden' }}>
-      {heroImages.length > 0 ? (
-        <ImageCarousel
-          images={heroImages}
-          category={category}
-          alt={hero.title}
-          height="100%"
-          interval={5500}
-          // Full-bleed: no rounded corners, and the full-size files — this slot
-          // is up to 660px tall, where a 400px thumbnail visibly softens.
-          rounded={false}
-        />
-      ) : (
-        // No photos for this line yet. A flat category panel still gives the
-        // copy something to sit on, rather than white text on white.
-        <Box sx={{ height: '100%', bgcolor: CATEGORY_META[category].color }} />
-      )}
+    // Full-bleed on a phone, where side margins just waste the little width
+    // there is; from `md` it lines up with every other section (same 1180 +
+    // px:3 as `Wrap`) so the page keeps one left edge all the way down.
+    <Box component="section" sx={{ maxWidth: { md: 1180 }, mx: { md: 'auto' }, px: { md: 3 }, mt: { md: 3 } }}>
+      <Box sx={{ position: 'relative', height: BANNER_HEIGHT, overflow: 'hidden', borderRadius: { md: 3 } }}>
+        {heroImages.length > 0 ? (
+          <ImageCarousel
+            images={heroImages}
+            category={category}
+            alt={hero.title}
+            height="100%"
+            interval={5500}
+            // The wrapper clips the corners, so the carousel must not round its
+            // own — doubled radii leave pale slivers at each corner. Full-size
+            // files: this slot is up to 600px tall, where a 400px copy softens.
+            rounded={false}
+          />
+        ) : (
+          // No photos for this line yet. A flat category panel still gives the
+          // copy something to sit on, rather than white text on white.
+          <Box sx={{ height: '100%', bgcolor: CATEGORY_META[category].color }} />
+        )}
 
-      {/* Scrim + copy. `pointerEvents: none` so the carousel underneath keeps
-          its drag, arrows and dots; the buttons switch it back on. */}
-      <Box
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          display: 'flex',
-          alignItems: 'flex-end',
-          // Two scrims, because one is not enough on a bright photo: a strong
-          // bottom-up wash under the copy, plus a left-to-right one so the
-          // text keeps its backing even where the picture is pale. Tuned
-          // against the brightest image in the set, not an average one.
-          background: [
-            'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.75) 28%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.08) 78%, rgba(0,0,0,0.32) 100%)',
-            'linear-gradient(to right, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0) 75%)',
-          ].join(', '),
-        }}
-      >
-        <Wrap sx={{ width: '100%', pb: { xs: 4, md: 5 } }}>
-          <Box sx={{ maxWidth: { xs: '100%', md: '40rem' }, color: '#fff' }}>
-            <Typography
-              sx={{
-                fontWeight: 600,
-                fontSize: 12,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                opacity: 0.85,
-              }}
-            >
-              {hero.eyebrow}
-            </Typography>
+        {/* Scrim + copy. `pointerEvents: none` right through, so the carousel
+            underneath keeps its drag, arrows and dots — there is nothing
+            clickable up here since the CTAs were removed. */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'flex-end',
+            // Two scrims, because one is not enough on a bright photo: a strong
+            // bottom-up wash under the copy, plus a left-to-right one so the
+            // text keeps its backing even where the picture is pale. Tuned
+            // against the brightest image in the set, not an average one.
+            background: [
+              'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.75) 28%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.08) 78%, rgba(0,0,0,0.32) 100%)',
+              'linear-gradient(to right, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0) 75%)',
+            ].join(', '),
+          }}
+        >
+          <Box sx={{ width: '100%', px: { xs: 3, md: 4 }, pb: { xs: 4, md: 5 } }}>
+            <Box sx={{ maxWidth: { xs: '100%', md: '40rem' }, color: '#fff' }}>
+              <Typography
+                sx={{
+                  fontWeight: 600,
+                  fontSize: 12,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  opacity: 0.85,
+                }}
+              >
+                {hero.eyebrow}
+              </Typography>
 
-            {/* Stays the page's h1 — the local-search headline lives here. */}
-            <Typography
-              variant="h1"
-              sx={{
-                mt: 1,
-                fontSize: { xs: 30, sm: 38, md: 52 },
-                fontWeight: 700,
-                letterSpacing: '-0.01em',
-                textShadow: '0 2px 18px rgba(0,0,0,0.45)',
-                ...clamp(2, 1.2),
-              }}
-            >
-              {hero.title}
-            </Typography>
+              {/* Stays the page's h1 — the local-search headline lives here. */}
+              <Typography
+                variant="h1"
+                sx={{
+                  mt: 1,
+                  fontSize: { xs: 30, sm: 38, md: 52 },
+                  fontWeight: 700,
+                  letterSpacing: '-0.01em',
+                  textShadow: '0 2px 18px rgba(0,0,0,0.45)',
+                  ...clamp(2, 1.2),
+                }}
+              >
+                {hero.title}
+              </Typography>
+            </Box>
           </Box>
-        </Wrap>
+        </Box>
       </Box>
     </Box>
   )
