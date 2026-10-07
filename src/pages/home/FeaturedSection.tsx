@@ -8,6 +8,7 @@ import Paper from '@mui/material/Paper'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { CatalogImage } from '../../catalog/CatalogImage'
 import { productImagePath } from '../../catalog/images'
+import { trackProductSelect } from '../../analytics/ga'
 import { useLocalized } from '../../catalog/useLocalized'
 import type { Product } from '../../catalog/types'
 import { Wrap, Eyebrow, CardSkeletonGrid, type PriceLabel } from './shared'
@@ -62,6 +63,7 @@ export function FeaturedSection({
                 key={p.id}
                 component={RouterLink}
                 to={`/products/${p.slug}`}
+                onClick={() => trackProductSelect({ id: p.slug || p.id, name: p.name.en, category: p.category, price: p.priceFrom }, 'home_featured')}
                 elevation={0}
                 sx={{
                   borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden',

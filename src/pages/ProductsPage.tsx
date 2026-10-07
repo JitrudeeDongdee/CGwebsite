@@ -10,6 +10,7 @@ import Pagination from '@mui/material/Pagination'
 import { useProductsByCategory } from '../catalog/CatalogProvider'
 import { CATEGORY_META } from '../catalog/categories'
 import { CatalogImage } from '../catalog/CatalogImage'
+import { trackProductSelect } from '../analytics/ga'
 import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQuery'
@@ -71,6 +72,7 @@ export function ProductsPage() {
             key={p.id}
             component={RouterLink}
             to={`/products/${p.slug}`}
+            onClick={() => trackProductSelect({ id: p.slug || p.id, name: p.name.en, category: p.category, price: p.priceFrom }, 'products_page')}
             elevation={0}
             sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' } }}
           >
