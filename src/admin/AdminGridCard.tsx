@@ -3,13 +3,16 @@ import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported'
+import { AdminImage } from './AdminImage'
 
 /** Responsive grid the cards sit in. One column on a phone, four on a wide screen. */
 export const ADMIN_GRID_SX = {
   mt: 2,
   display: 'grid',
   gap: 2,
+  // Equal-height rows: every card in a row is as tall as the tallest, and the
+  // reserved text heights inside the card keep different rows matching too.
+  alignItems: 'stretch',
   gridTemplateColumns: {
     xs: '1fr',
     sm: 'repeat(2, 1fr)',
@@ -31,7 +34,7 @@ export const ADMIN_GRID_SX = {
  * different heights (see MEMORY.md).
  */
 export function AdminGridCard({
-  image,
+  imagePath,
   title,
   subtitle,
   chips,
@@ -39,7 +42,7 @@ export function AdminGridCard({
   footer,
   dimmed,
 }: {
-  image?: string
+  imagePath?: string
   title: string
   subtitle?: string
   chips?: ReactNode
@@ -58,33 +61,14 @@ export function AdminGridCard({
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        // Every card is the same height whatever its title or chips do: the grid
+        // stretches cards in a row, and the reserved heights below keep rows
+        // matching each other too.
+        height: '100%',
         opacity: dimmed ? 0.6 : 1,
       }}
     >
-      <Box
-        sx={{
-          aspectRatio: '4 / 3',
-          bgcolor: 'action.hover',
-          display: 'grid',
-          placeItems: 'center',
-          color: 'text.disabled',
-        }}
-      >
-        {image ? (
-          <Box
-            component="img"
-            src={image}
-            alt=""
-            // Covers are full-size originals (250-450 kB each) and a screen can
-            // hold 30 of them; without this they all download at once.
-            loading="lazy"
-            decoding="async"
-            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : (
-          <ImageNotSupportedIcon />
-        )}
-      </Box>
+      <AdminImage path={imagePath} />
 
       <Stack spacing={0.75} sx={{ p: 1.75, flexGrow: 1 }}>
         <Typography
@@ -98,6 +82,9 @@ export function AdminGridCard({
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
             lineHeight: 1.5,
+            // minHeight as well as maxHeight: a one-line title must still take
+            // two lines' worth of space, or cards end up different heights.
+            minHeight: '2.7em',
             maxHeight: '2.7em',
           }}
         >
@@ -108,7 +95,7 @@ export function AdminGridCard({
             {subtitle}
           </Typography>
         )}
-        {chips && <Box sx={{ pt: 0.25 }}>{chips}</Box>}
+        {chips && <Box sx={{ pt: 0.25, minHeight: 32 }}>{chips}</Box>}
         {meta && <Box sx={{ mt: 'auto', pt: 0.5 }}>{meta}</Box>}
       </Stack>
 

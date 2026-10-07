@@ -19,7 +19,8 @@
     "db:status": "supabase migration list",
     "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist-ssr",
     "prerender": "node scripts/prerender.mjs",
-    "serve:dist": "node scripts/serve-dist.mjs dist"
+    "serve:dist": "node scripts/serve-dist.mjs dist",
+    "images:thumbs": "node scripts/backfill-thumbnails.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -10,10 +10,26 @@
  *   node scripts/upload-catalog-images.mjs
  */
 import { existsSync, readFileSync } from 'node:fs'
+import { downscaleJpeg } from './image.mjs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 export const BUCKET = 'catalog'
+
+/**
+ * Thumbnails mirror the original's path under a `thumbs/` prefix:
+ * `portfolio/foo.jpg` -> `thumbs/portfolio/foo.jpg`.
+ *
+ * ⚠️ The same rule lives in `src/supabase/storage.ts` for the browser — scripts
+ * are plain .mjs and cannot import the TypeScript module. Change both.
+ */
+export const THUMB_PREFIX = 'thumbs/'
+export const THUMB_WIDTH = 400
+
+export function thumbPath(path) {
+  const clean = String(path).replace(/^\/+/, '')
+  return clean.startsWith(THUMB_PREFIX) ? clean : `${THUMB_PREFIX}${clean}`
+}
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -59,6 +75,25 @@ const CACHE_CONTROL = 'public, max-age=3600, stale-while-revalidate=86400'
  * Returns the public URL.
  */
 export async function uploadCatalogImage(path, body, contentType) {
+  const publicUrl = await putObject(path, body, contentType)
+
+  // Every CLI importer goes through here, so writing the thumbnail at this one
+  // point means `import-from-post`, `import-project`, `seed-products` and the
+  // bulk uploader all produce one without knowing about it.
+  if (!String(path).startsWith(THUMB_PREFIX)) {
+    try {
+      const small = downscaleJpeg(body, THUMB_WIDTH)
+      await putObject(thumbPath(path), small, 'image/jpeg')
+    } catch (e) {
+      // Best-effort: the full image is already stored and readers fall back to
+      // it. Losing an import over a thumbnail would be the worse trade.
+      console.warn(`  ! thumbnail for ${path} failed: ${e.message}`)
+    }
+  }
+  return publicUrl
+}
+
+async function putObject(path, body, contentType) {
   const { url, key } = credentials()
   if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to upload')
 
@@ -84,12 +119,17 @@ export async function uploadCatalogImage(path, body, contentType) {
 export async function deleteCatalogImage(path) {
   const { url, key } = credentials()
   if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to delete')
-  const response = await fetch(`${url}/storage/v1/object/${BUCKET}/${path}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${key}`, apikey: key },
-  })
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`delete ${path} failed: ${response.status} ${await response.text()}`)
+  // The thumbnail goes with the original — nothing lists the bucket, so an
+  // orphan under thumbs/ would never be found again.
+  const targets = String(path).startsWith(THUMB_PREFIX) ? [path] : [path, thumbPath(path)]
+  for (const target of targets) {
+    const response = await fetch(`${url}/storage/v1/object/${BUCKET}/${target}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${key}`, apikey: key },
+    })
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`delete ${target} failed: ${response.status} ${await response.text()}`)
+    }
   }
 }
 

@@ -33,11 +33,11 @@ import DialogActions from '@mui/material/DialogActions'
 import StarIcon from '@mui/icons-material/Star'
 import StarOutlineIcon from '@mui/icons-material/StarBorder'
 import { deleteProject, listProjects, setFeatured, setPublished, type ProjectRow } from '../admin/portfolioApi'
-import { imageUrl } from '../supabase/storage'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
 import { useViewMode } from '../admin/useViewMode'
 import { ViewModeToggle } from '../admin/ViewModeToggle'
 import { ADMIN_GRID_SX, AdminGridCard } from '../admin/AdminGridCard'
+import { AdminImage } from '../admin/AdminImage'
 import type { ProductCategory } from '../catalog/types'
 
 /**
@@ -284,7 +284,7 @@ export function AdminPortfolioListPage() {
               {filtered.map((row) => (
                 <AdminGridCard
                   key={row.id}
-                  image={row.image_path ? imageUrl(row.image_path) : undefined}
+                  imagePath={row.image_path ?? undefined}
                   title={row.title?.th || row.slug || '(ไม่มีชื่อ)'}
                   subtitle={row.slug || `id: ${row.id.slice(0, 8)}…`}
                   dimmed={!row.published}
@@ -353,18 +353,7 @@ export function AdminPortfolioListPage() {
               {filtered.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
-                    {row.image_path ? (
-                      <Box
-                        component="img"
-                        src={imageUrl(row.image_path)}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        sx={{ width: 72, aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 1.5, display: 'block' }}
-                      />
-                    ) : (
-                      <Typography variant="caption" color="text.secondary">—</Typography>
-                    )}
+                    <AdminImage path={row.image_path ?? undefined} width={72} radius={1.5} />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>{row.title?.th || row.slug || '(ไม่มีชื่อ)'}</Typography>

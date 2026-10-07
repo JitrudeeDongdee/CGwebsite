@@ -38,11 +38,11 @@ import {
   setProductPublished,
   type ProductRow,
 } from '../admin/productApi'
-import { imageUrl } from '../supabase/storage'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
 import { useViewMode } from '../admin/useViewMode'
 import { ViewModeToggle } from '../admin/ViewModeToggle'
 import { ADMIN_GRID_SX, AdminGridCard } from '../admin/AdminGridCard'
+import { AdminImage } from '../admin/AdminImage'
 import { formatCurrency } from '../pricing/estimate'
 import type { ProductCategory } from '../catalog/types'
 
@@ -250,7 +250,7 @@ export function AdminProductListPage() {
               {filtered.map((row) => (
                 <AdminGridCard
                   key={row.id}
-                  image={row.image_path ? imageUrl(row.image_path) : undefined}
+                  imagePath={row.image_path ?? undefined}
                   title={nameOf(row)}
                   subtitle={row.slug || `id: ${row.id.slice(0, 8)}…`}
                   dimmed={!row.published}
@@ -307,18 +307,7 @@ export function AdminProductListPage() {
               {filtered.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
-                    {row.image_path ? (
-                      <Box
-                        component="img"
-                        src={imageUrl(row.image_path)}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        sx={{ width: 72, aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 1.5, display: 'block' }}
-                      />
-                    ) : (
-                      <Typography variant="caption" color="text.secondary">—</Typography>
-                    )}
+                    <AdminImage path={row.image_path ?? undefined} width={72} radius={1.5} />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>{nameOf(row)}</Typography>
