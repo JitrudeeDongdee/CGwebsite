@@ -40,6 +40,9 @@ import {
 } from '../admin/productApi'
 import { imageUrl } from '../supabase/storage'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
+import { useViewMode } from '../admin/useViewMode'
+import { ViewModeToggle } from '../admin/ViewModeToggle'
+import { ADMIN_GRID_SX, AdminGridCard } from '../admin/AdminGridCard'
 import { formatCurrency } from '../pricing/estimate'
 import type { ProductCategory } from '../catalog/types'
 
@@ -64,6 +67,7 @@ export function AdminProductListPage() {
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<ProductCategory | 'all'>('all')
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all')
+  const [view, setView] = useViewMode('products')
 
   const load = async () => {
     try {
@@ -122,6 +126,40 @@ export function AdminProductListPage() {
 
   const price = (row: ProductRow) =>
     row.price_from == null ? 'สอบถามราคา' : formatCurrency(Number(row.price_from), 'THB', 'th-TH')
+
+  const publish = async (row: ProductRow) => {
+    await setProductPublished(row.id, !row.published)
+    await load()
+  }
+
+  /** The same controls in both views, so neither can quietly lose a button. */
+  const StarButton = ({ row }: { row: ProductRow }) => (
+    <Tooltip title={row.best_seller ? 'เป็นสินค้าขายดีของหมวดนี้ (กดเพื่อเอาออก)' : 'ตั้งเป็นสินค้าขายดีของหมวดนี้'}>
+      <IconButton size="small" onClick={() => void star(row)}>
+        {row.best_seller ? <StarIcon fontSize="small" color="secondary" /> : <StarBorderIcon fontSize="small" />}
+      </IconButton>
+    </Tooltip>
+  )
+
+  const RowActions = ({ row }: { row: ProductRow }) => (
+    <>
+      <Tooltip title="ดูหน้าจริง">
+        <IconButton size="small" component={RouterLink} to={`/products/${row.slug ?? row.id}`} target="_blank">
+          <VisibilityIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="แก้ไข">
+        <IconButton size="small" component={RouterLink} to={`/admin/products/edit/${row.id}`}>
+          <EditIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="ลบ">
+        <IconButton size="small" onClick={() => void remove(row)}>
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </>
+  )
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
@@ -198,8 +236,51 @@ export function AdminProductListPage() {
             <MenuItem value="published">เผยแพร่แล้ว</MenuItem>
             <MenuItem value="draft">ฉบับร่าง</MenuItem>
           </TextField>
+          <ViewModeToggle value={view} onChange={setView} />
         </Stack>
 
+        {view === 'grid' ? (
+          <>
+            {!loading && filtered.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
+                {rows.length === 0 ? 'ยังไม่มีสินค้าในฐานข้อมูล' : 'ไม่พบรายการที่ตรงกับการค้นหา'}
+              </Typography>
+            )}
+            <Box sx={ADMIN_GRID_SX}>
+              {filtered.map((row) => (
+                <AdminGridCard
+                  key={row.id}
+                  image={row.image_path ? imageUrl(row.image_path) : undefined}
+                  title={nameOf(row)}
+                  subtitle={row.slug || `id: ${row.id.slice(0, 8)}…`}
+                  dimmed={!row.published}
+                  chips={
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={t(CATEGORY_META[row.category].labelKey)}
+                    />
+                  }
+                  meta={
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'secondary.main' }}>
+                      {price(row)}
+                    </Typography>
+                  }
+                  footer={
+                    <>
+                      <StarButton row={row} />
+                      <Tooltip title={row.published ? 'เผยแพร่อยู่' : 'ฉบับร่าง'}>
+                        <Switch size="small" checked={row.published} onChange={() => void publish(row)} />
+                      </Tooltip>
+                      <Box sx={{ flexGrow: 1 }} />
+                      <RowActions row={row} />
+                    </>
+                  }
+                />
+              ))}
+            </Box>
+          </>
+        ) : (
         <Paper elevation={0} sx={{ mt: 2, borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
           <Table size="small">
             <TableHead>
@@ -231,6 +312,8 @@ export function AdminProductListPage() {
                         component="img"
                         src={imageUrl(row.image_path)}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         sx={{ width: 72, aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 1.5, display: 'block' }}
                       />
                     ) : (
@@ -248,44 +331,20 @@ export function AdminProductListPage() {
                   </TableCell>
                   <TableCell>{price(row)}</TableCell>
                   <TableCell align="center">
-                    <Tooltip title={row.best_seller ? 'เป็นสินค้าขายดีของหมวดนี้ (กดเพื่อเอาออก)' : 'ตั้งเป็นสินค้าขายดีของหมวดนี้'}>
-                      <IconButton size="small" onClick={() => void star(row)}>
-                        {row.best_seller ? <StarIcon fontSize="small" color="secondary" /> : <StarBorderIcon fontSize="small" />}
-                      </IconButton>
-                    </Tooltip>
+                    <StarButton row={row} />
                   </TableCell>
                   <TableCell align="center">
-                    <Switch
-                      size="small"
-                      checked={row.published}
-                      onChange={async () => {
-                        await setProductPublished(row.id, !row.published)
-                        await load()
-                      }}
-                    />
+                    <Switch size="small" checked={row.published} onChange={() => void publish(row)} />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title="ดูหน้าจริง">
-                      <IconButton size="small" component={RouterLink} to={`/products/${row.slug ?? row.id}`} target="_blank">
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="แก้ไข">
-                      <IconButton size="small" component={RouterLink} to={`/admin/products/edit/${row.id}`}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="ลบ">
-                      <IconButton size="small" onClick={() => void remove(row)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <RowActions row={row} />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </Paper>
+        )}
 
         <Dialog open={pendingStar !== null} onClose={() => setPendingStar(null)}>
           <DialogTitle>เปลี่ยนสินค้าขายดีของหมวดนี้?</DialogTitle>

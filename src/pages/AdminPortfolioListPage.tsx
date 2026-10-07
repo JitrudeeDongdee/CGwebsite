@@ -35,6 +35,9 @@ import StarOutlineIcon from '@mui/icons-material/StarBorder'
 import { deleteProject, listProjects, setFeatured, setPublished, type ProjectRow } from '../admin/portfolioApi'
 import { imageUrl } from '../supabase/storage'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
+import { useViewMode } from '../admin/useViewMode'
+import { ViewModeToggle } from '../admin/ViewModeToggle'
+import { ADMIN_GRID_SX, AdminGridCard } from '../admin/AdminGridCard'
 import type { ProductCategory } from '../catalog/types'
 
 /**
@@ -67,6 +70,9 @@ export function AdminPortfolioListPage() {
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<ProductCategory | 'all'>('all')
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all')
+  // Keyed by screen: portfolio and community are the same component but two
+  // different lists, and someone may want cards for one and a table for the other.
+  const [view, setView] = useViewMode(kind === 'community' ? 'community' : 'portfolio')
   // The list fetches every row (one endpoint); each screen shows only its kind.
   const rows = allRows.filter((r) => (r.kind ?? 'project') === kind)
 
@@ -140,6 +146,47 @@ export function AdminPortfolioListPage() {
 
   const nameOf = (row: ProjectRow) => row.title?.th || row.slug || row.id.slice(0, 8)
 
+  /** The same controls in both views, so neither can quietly lose a button. */
+  const StarButton = ({ row }: { row: ProjectRow }) => (
+    <Tooltip title={row.featured ? 'เป็นผลงานเด่นของหมวดนี้ (กดเพื่อเอาออก)' : 'ตั้งเป็นผลงานเด่นของหมวดนี้'}>
+      <IconButton size="small" onClick={() => void star(row)}>
+        {row.featured ? <StarIcon fontSize="small" color="secondary" /> : <StarOutlineIcon fontSize="small" />}
+      </IconButton>
+    </Tooltip>
+  )
+
+  const RowActions = ({ row }: { row: ProjectRow }) => (
+    <>
+      <Tooltip title="ดูหน้าจริง">
+        <IconButton
+          size="small"
+          component={RouterLink}
+          to={community ? '/community' : `/portfolio/${row.category}/${row.slug || row.id}`}
+          target="_blank"
+        >
+          <VisibilityIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      {row.source_url && (
+        <Tooltip title="โพสต์ต้นฉบับ">
+          <IconButton size="small" href={row.source_url} target="_blank" rel="noopener noreferrer">
+            <OpenInNewIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+      <Tooltip title="แก้ไข">
+        <IconButton size="small" component={RouterLink} to={`${base}/edit/${row.id}`}>
+          <EditIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="ลบ">
+        <IconButton size="small" onClick={() => void remove(row)}>
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </>
+  )
+
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
       <Wrap sx={{ py: 4 }}>
@@ -212,8 +259,59 @@ export function AdminPortfolioListPage() {
             <MenuItem value="published">เผยแพร่แล้ว</MenuItem>
             <MenuItem value="draft">ฉบับร่าง</MenuItem>
           </TextField>
+          <ViewModeToggle value={view} onChange={setView} />
         </Stack>
 
+        {view === 'grid' ? (
+          <>
+            {!loading && filtered.length === 0 && (
+              <Stack spacing={1.5} sx={{ mt: 3, alignItems: 'flex-start' }}>
+                <Typography variant="body2" color="text.secondary">
+                  {rows.length === 0
+                    ? community
+                      ? 'ยังไม่มีกิจกรรมในฐานข้อมูล'
+                      : 'ยังไม่มีผลงานในฐานข้อมูล'
+                    : 'ไม่พบรายการที่ตรงกับการค้นหา'}
+                </Typography>
+                {rows.length === 0 && (
+                  <Button component={RouterLink} to={`${base}/edit`} variant="outlined" startIcon={<AddIcon />}>
+                    {community ? 'เพิ่มกิจกรรมแรก' : 'เพิ่มผลงานแรก'}
+                  </Button>
+                )}
+              </Stack>
+            )}
+            <Box sx={ADMIN_GRID_SX}>
+              {filtered.map((row) => (
+                <AdminGridCard
+                  key={row.id}
+                  image={row.image_path ? imageUrl(row.image_path) : undefined}
+                  title={row.title?.th || row.slug || '(ไม่มีชื่อ)'}
+                  subtitle={row.slug || `id: ${row.id.slice(0, 8)}…`}
+                  dimmed={!row.published}
+                  chips={
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                      {!community && (
+                        <Chip size="small" variant="outlined" label={t(CATEGORY_META[row.category].labelKey)} />
+                      )}
+                      {row.year && <Chip size="small" variant="outlined" label={row.year} />}
+                      <Chip size="small" variant="outlined" label={`${photoCount(row)} รูป`} />
+                    </Stack>
+                  }
+                  footer={
+                    <>
+                      {!community && <StarButton row={row} />}
+                      <Tooltip title={row.published ? 'เผยแพร่อยู่' : 'ฉบับร่าง'}>
+                        <Switch size="small" checked={row.published} onChange={() => void toggle(row)} />
+                      </Tooltip>
+                      <Box sx={{ flexGrow: 1 }} />
+                      <RowActions row={row} />
+                    </>
+                  }
+                />
+              ))}
+            </Box>
+          </>
+        ) : (
         <Paper elevation={0} sx={{ mt: 2, borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
           <Table size="small">
             <TableHead>
@@ -260,6 +358,8 @@ export function AdminPortfolioListPage() {
                         component="img"
                         src={imageUrl(row.image_path)}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         sx={{ width: 72, aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 1.5, display: 'block' }}
                       />
                     ) : (
@@ -285,50 +385,21 @@ export function AdminPortfolioListPage() {
                   <TableCell align="center">{photoCount(row)}</TableCell>
                   {!community && (
                     <TableCell align="center">
-                      <Tooltip title={row.featured ? 'เป็นผลงานเด่นของหมวดนี้ (กดเพื่อเอาออก)' : 'ตั้งเป็นผลงานเด่นของหมวดนี้'}>
-                        <IconButton size="small" onClick={() => void star(row)}>
-                          {row.featured ? <StarIcon fontSize="small" color="secondary" /> : <StarOutlineIcon fontSize="small" />}
-                        </IconButton>
-                      </Tooltip>
+                      <StarButton row={row} />
                     </TableCell>
                   )}
                   <TableCell align="center">
                     <Switch size="small" checked={row.published} onChange={() => void toggle(row)} />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title="ดูหน้าจริง">
-                      <IconButton
-                        size="small"
-                        component={RouterLink}
-                        to={community ? '/community' : `/portfolio/${row.category}/${row.slug || row.id}`}
-                        target="_blank"
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    {row.source_url && (
-                      <Tooltip title="โพสต์ต้นฉบับ">
-                        <IconButton size="small" href={row.source_url} target="_blank" rel="noopener noreferrer">
-                          <OpenInNewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    <Tooltip title="แก้ไข">
-                      <IconButton size="small" component={RouterLink} to={`${base}/edit/${row.id}`}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="ลบ">
-                      <IconButton size="small" onClick={() => void remove(row)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <RowActions row={row} />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </Paper>
+        )}
 
         <Dialog open={pendingStar !== null} onClose={() => setPendingStar(null)}>
           <DialogTitle>เปลี่ยนผลงานเด่นของหมวดนี้?</DialogTitle>
