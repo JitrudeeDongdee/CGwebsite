@@ -87,13 +87,19 @@ export function AdminProductListPage() {
   const nameOf = (row: ProductRow) => row.name?.th || row.slug || row.id.slice(0, 8)
 
   const q = query.trim().toLowerCase()
-  const filtered = rows.filter((row) => {
-    if (cat !== 'all' && row.category !== cat) return false
-    if (status === 'published' && !row.published) return false
-    if (status === 'draft' && row.published) return false
-    if (!q) return true
-    return [row.name?.th, row.name?.en, row.slug].some((v) => v?.toLowerCase().includes(q))
-  })
+  const filtered = rows
+    .filter((row) => {
+      if (cat !== 'all' && row.category !== cat) return false
+      if (status === 'published' && !row.published) return false
+      if (status === 'draft' && row.published) return false
+      if (!q) return true
+      return [row.name?.th, row.name?.en, row.slug].some((v) => v?.toLowerCase().includes(q))
+    })
+    // Best sellers pinned to the top: they are what each service home page
+    // leads with, so they are the rows most often checked and changed. Sort is
+    // stable in every engine we target, so everything else keeps the order the
+    // API returned it in.
+    .sort((a, b) => Number(b.best_seller) - Number(a.best_seller))
   const filtering = q !== '' || cat !== 'all' || status !== 'all'
 
   const star = async (row: ProductRow) => {

@@ -77,14 +77,20 @@ export function AdminPortfolioListPage() {
   const rows = allRows.filter((r) => (r.kind ?? 'project') === kind)
 
   const q = query.trim().toLowerCase()
-  const filtered = rows.filter((row) => {
-    // Community has no category, so the category filter only applies to portfolio.
-    if (!community && cat !== 'all' && row.category !== cat) return false
-    if (status === 'published' && !row.published) return false
-    if (status === 'draft' && row.published) return false
-    if (!q) return true
-    return [row.title?.th, row.title?.en, row.slug, row.year].some((v) => v?.toLowerCase().includes(q))
-  })
+  const filtered = rows
+    .filter((row) => {
+      // Community has no category, so the category filter only applies to portfolio.
+      if (!community && cat !== 'all' && row.category !== cat) return false
+      if (status === 'published' && !row.published) return false
+      if (status === 'draft' && row.published) return false
+      if (!q) return true
+      return [row.title?.th, row.title?.en, row.slug, row.year].some((v) => v?.toLowerCase().includes(q))
+    })
+    // Featured work pinned to the top — the rows a service home page leads with,
+    // and the ones most often checked. Community has no star, so its order is
+    // left alone. Sort is stable, so everything else keeps its existing order
+    // (matching how the public /portfolio listing orders them).
+    .sort((a, b) => (community ? 0 : Number(b.featured) - Number(a.featured)))
   const filtering = q !== '' || (!community && cat !== 'all') || status !== 'all'
 
   const load = async () => {
