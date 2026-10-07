@@ -16,6 +16,13 @@
 /home       /home/contracting     301
 /home/      /home/contracting     301
 
+# Short add-friend link for the LINE OA, for print, cover images and posts:
+# thaidongdee.com/line reads as ours where line.me/R/ti/p/@610byzdy does not.
+# 302, not 301: if the OA moves to a Premium ID the target changes here and
+# every printed link follows — a 301 would be cached by browsers indefinitely.
+/line       https://line.me/R/ti/p/@610byzdy    302
+/line/      https://line.me/R/ti/p/@610byzdy    302
+
 # React Router uses BrowserRouter (real paths, no #). Without this, opening
 # /products directly — or just pressing F5 anywhere — is a 404 from the CDN,
 # because no such file exists on disk. 200 = rewrite (URL stays), NOT a redirect.
