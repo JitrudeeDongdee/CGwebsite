@@ -120,6 +120,7 @@ the phrase in title/h1, but "ผู้รับเหมา" appeared nowhere an
   `mkt.service.<cat>.productsHead` / `.workHead` and falls back to the generic label, so only contracting
   changes for now ("บริการรับเหมาก่อสร้างและงานระบบ", "ผลงานรับเหมาก่อสร้างในเพชรบูรณ์").
 - JSON-LD `areaServed` lists every Phetchabun district (`อำเภอ…`) besides the provinces.
+- **Facebook Page (2026-10-07):** `https://www.facebook.com/cg9723/` ("หจก.ไทยดวงดี : CG อิเล็กทรอนิคส์", a public Page — checked via its og tags, not a personal profile) is the `facebook` channel in `contact.json` (footer + contact page) and the JSON-LD `sameAs`. Only a business Page belongs in `sameAs`; never a personal profile.
 - The bigger lever is off-site and outside this repo: the verified Google Business Profile (map pack),
   reviews, and links from the company's Facebook posts.
 
