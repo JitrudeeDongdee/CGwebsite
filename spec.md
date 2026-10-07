@@ -378,11 +378,8 @@ the work onto a phone. The "ต้องจัดการ" box leads, before th
 counts makes you hunt for the one number that is actually a task. A project is `kind <> 'community'`
 rather than `kind = 'project'`, because rows created before that column existed have it NULL.
 
-⚠️ **GA4 is a deliberate placeholder, blocked by two separate things** that the card itself names:
-`VITE_GA_ID` is still unset on Cloudflare Pages, so the live site collects nothing and there would be no
-data to show; and reading the GA4 Data API needs a Google **service-account key**, which cannot live in a
-browser bundle — it needs an Edge Function (phase 2, and the Supabase CLI + Docker must be installed
-locally to deploy one).
+The **GA4 card is now live** — see "GA4 dashboard stats" below. (It was a placeholder until 2026-10-07
+because `VITE_GA_ID` was unset and reading the Data API needs a server-held key; both are resolved.)
 
 **Back-office sidebar — `src/admin/AdminLayout.tsx` (2026-10-03).** Every `/admin` screen sits beside a
 collapsible left nav. Two components by width, deliberately: a **permanent** drawer on `md`+ that shrinks
@@ -625,6 +622,32 @@ Full staff account management from the back office, not just roles.
 - **Degrades gracefully**: if the function isn't deployed / the secret is unset, the page falls back to `listProfiles()` (list + role changes still work) and shows a warning explaining the Cloudflare secret step; the management buttons are disabled.
 - ⚠️ **Assumes the Cloudflare *Pages* deployment** (Git integration, which reads `functions/`). The committed `wrangler.jsonc` assets-only Worker flow does NOT run Pages Functions — if the project is ever moved to that flow, `/api/admin-users` needs a Worker route instead.
 - Cannot be verified from this environment (the page is behind `AdminGuard`/sign-in and the function needs the production secret); verify after deploy by signing in as admin.
+
+## GA4 dashboard stats — `/admin` + `functions/api/ga-stats.ts` (2026-10-07)
+Real visitor numbers on the back-office dashboard, replacing the honest placeholder card.
+- **Tagging is done (item 1):** a GA4 property **"TDD Website"** (property id `557855535`, web stream
+  `16057882667`, measurement id **`G-X71E2D3Z9G`**) collects from `thaidongdee.com`. `VITE_GA_ID` is set in
+  Cloudflare Pages (Production) and verified in the live bundle. (The earlier auto-created "when-cookie-deram"
+  property is orphaned — safe to delete.)
+- **Reading the numbers (item 2) is a Cloudflare Pages Function**, same shape as `admin-users.ts`: the browser
+  POSTs to `/api/ga-stats` with the signed-in user's access token, the function verifies it + `role='admin'`
+  (service_role read), then calls the **GA4 Data API** as a Google **service account**. The service-account
+  JWT is signed in-function with **WebCrypto** (`crypto.subtle`, RS256) and exchanged for an OAuth token — so
+  the function stays dependency-free (no `google-auth-library`). It runs `runRealtimeReport` (active users) +
+  two `runReport` totals (7 / 28 days: users / sessions / pageviews) + top pages + **top products by
+  `itemName`/`itemsViewed`** (answers "which products do people look at", from our `view_item` events). The
+  two breakdowns are best-effort (a wrong item-metric name can't blank the headline numbers).
+- **`src/admin/gaApi.ts`** `loadGaStats()` returns `{configured:true, …}` or `{configured:false, reason}` —
+  not-set-up is a normal state, not an error (only auth/Google failures throw), so the card shows three
+  distinct states. **`src/pages/AdminDashboardPage.tsx`** `GaCard` renders live numbers, or names exactly
+  which env var is still missing.
+- **Manual deploy steps** (none are code): create a Google Cloud service account with the **Analytics Data
+  API** enabled, grant it **Viewer** on the GA4 property (GA → Admin → Property access management), then set
+  three Production env vars in Cloudflare Pages — `GA4_PROPERTY_ID=557855535`, `GA_SA_CLIENT_EMAIL`, and
+  `GA_SA_PRIVATE_KEY` (a **secret**). Until all three are set the card says what's missing. Private key
+  newlines may arrive as literal `\n`; the function normalises both.
+- Same Pages-Functions caveat as admin-users: the committed `wrangler.jsonc` assets-only Worker flow does NOT
+  run `functions/` — this assumes the Pages Git-integration deployment.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
