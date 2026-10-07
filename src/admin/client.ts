@@ -1,4 +1,5 @@
 import { supabase } from '../supabase/client'
+import { thumbPath } from '../supabase/storage'
 
 /**
  * The admin screens talk to Supabase **directly**, as the signed-in staff user.
@@ -43,6 +44,24 @@ export function explain(error: { message?: string; code?: string } | null, actio
 
 const MAX_WIDTH = 1600
 const JPEG_QUALITY = 0.85
+/**
+ * Listing screens render these at 72px (table) to ~300px (grid), so 400px
+ * covers both, including on a 2x display. ~25 kB against a 300 kB original.
+ */
+const THUMB_WIDTH = 400
+const THUMB_QUALITY = 0.75
+
+/** Re-encodes a bitmap as JPEG at `maxWidth`, never enlarging it. */
+async function encodeAt(bitmap: ImageBitmap, maxWidth: number, quality: number): Promise<Blob | null> {
+  const scale = Math.min(1, maxWidth / bitmap.width)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  const context = canvas.getContext('2d')
+  if (!context) return null
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+}
 
 /**
  * Shrinks a picked file to at most `MAX_WIDTH` and re-encodes it as JPEG.
@@ -96,6 +115,29 @@ function objectPath(folder: string, filename: string, kind: 'portfolio' | 'produ
   return `${kind}/${folder}/${stamp}-${safe || 'image'}.jpg`
 }
 
+/**
+ * Writes the small copy of an upload alongside it.
+ *
+ * Deliberately best-effort: a failure here is logged and swallowed, because the
+ * full image is already stored and every reader falls back to it. Failing the
+ * upload over a missing thumbnail would lose someone's photo to save a few kB.
+ */
+async function uploadThumbnail(path: string, file: File): Promise<void> {
+  try {
+    const bitmap = await createImageBitmap(file)
+    const blob = await encodeAt(bitmap, THUMB_WIDTH, THUMB_QUALITY)
+    bitmap.close()
+    const target = thumbPath(path)
+    if (!blob || !target) return
+    const { error } = await db()
+      .storage.from(BUCKET)
+      .upload(target, blob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: true })
+    if (error) throw error
+  } catch (e) {
+    console.warn('[upload] thumbnail failed, listings will use the full image:', e)
+  }
+}
+
 /** Uploads one picked file and returns its path inside the bucket. */
 export async function uploadToBucket(
   folder: string,
@@ -114,11 +156,15 @@ export async function uploadToBucket(
       upsert: false,
     })
   if (error) throw explain(error, 'อัปโหลดรูป')
+  await uploadThumbnail(path, file)
   return path
 }
 
 export async function removeFromBucket(path: string): Promise<void> {
-  const { error } = await db().storage.from(BUCKET).remove([path])
+  // The thumbnail goes with it; an orphan under thumbs/ would never be found
+  // again, since nothing lists the bucket.
+  const targets = [...new Set([path, thumbPath(path)].filter((p): p is string => Boolean(p)))]
+  const { error } = await db().storage.from(BUCKET).remove(targets)
   // A photo that is already gone is the state we wanted; only surface real
   // failures, or removing a stale thumbnail blocks the whole save.
   if (error && !/not found/i.test(error.message)) throw explain(error, 'ลบรูป')

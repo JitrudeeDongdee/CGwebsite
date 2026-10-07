@@ -72,7 +72,7 @@ export function FeaturedSection({
                   '&:hover': { borderColor: 'primary.main' },
                 }}
               >
-                <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} ratio={{ xs: '16 / 9', md: '4 / 3' }} />
+                <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} ratio={{ xs: '16 / 9', md: '4 / 3' }} thumb />
                 <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
                   <Typography sx={{ mt: 'auto', pt: 1, color: 'secondary.main', fontWeight: 700 }}>{priceLabel(p.priceFrom)}</Typography>

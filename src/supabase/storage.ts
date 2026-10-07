@@ -28,3 +28,42 @@ export function imageUrl(path?: string): string | undefined {
 
   return supabase.storage.from(CATALOG_BUCKET).getPublicUrl(clean).data.publicUrl
 }
+
+/**
+ * Thumbnails live under a `thumbs/` prefix mirroring the original's path:
+ * `portfolio/foo.jpg` -> `thumbs/portfolio/foo.jpg`.
+ *
+ * A prefix rather than a `-thumb` suffix so the two never interleave in the
+ * bucket browser, a whole folder can be regenerated or dropped in one go, and —
+ * the reason that actually matters — the uploader can tell a thumbnail from an
+ * original by its path alone and not try to make a thumbnail of a thumbnail.
+ *
+ * ⚠️ The same rule is implemented for the CLI in `scripts/lib/storage.mjs`
+ * (scripts are plain .mjs and cannot import this module). Change both.
+ */
+export const THUMB_PREFIX = 'thumbs/'
+
+/** Where the thumbnail of `path` lives, or undefined when `path` has none. */
+export function thumbPath(path?: string): string | undefined {
+  if (!path) return undefined
+  // An absolute URL is somebody else's image; we never made a thumbnail of it.
+  if (/^https?:\/\//i.test(path)) return undefined
+  const clean = path.replace(/^\/+/, '')
+  if (clean.startsWith(THUMB_PREFIX)) return clean
+  return `${THUMB_PREFIX}${clean}`
+}
+
+/**
+ * URL of the small version of `path` — a few tens of kB instead of the
+ * 250-450 kB original, which matters on a listing screen showing thirty of them.
+ *
+ * Objects uploaded before thumbnails existed have none, and Storage answers 404
+ * rather than falling back, so **every caller must handle the error** and swap
+ * in `imageUrl(path)`. `scripts/backfill-thumbnails.mjs` fills in the gap for
+ * what is already in the bucket.
+ */
+export function thumbUrl(path?: string): string | undefined {
+  const thumb = thumbPath(path)
+  if (!thumb) return imageUrl(path)
+  return imageUrl(thumb)
+}

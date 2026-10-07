@@ -73,7 +73,7 @@ export function PortfolioSection({
             >
               {/* Square image slot (1:1) on every width. */}
               <Box sx={{ aspectRatio: '1 / 1' }}>
-                <ImageCarousel images={w.images ?? []} category={w.category} alt={w.title} height="100%" rounded={false} />
+                <ImageCarousel images={w.images ?? []} category={w.category} alt={w.title} height="100%" rounded={false} thumb />
               </Box>
               <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Typography variant="caption" color="text.secondary">{joinMeta(w.place, w.year)}</Typography>

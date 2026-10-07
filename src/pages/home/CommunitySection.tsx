@@ -50,7 +50,7 @@ export function CommunitySection({ items, loading = false }: { items: Project[];
                 '&:hover': { borderColor: 'primary.main' },
               }}
             >
-              <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} />
+              <CatalogImage src={projectImagePath(item)} category={item.category} alt={L(item.title)} thumb />
               <Box sx={{ p: 2 }}>
                 <Typography variant="caption" color="text.secondary">{joinMeta(L(item.location), item.year)}</Typography>
                 <Typography sx={{ fontWeight: 600, fontSize: 17, mt: 0.25 }}>{L(item.title)}</Typography>

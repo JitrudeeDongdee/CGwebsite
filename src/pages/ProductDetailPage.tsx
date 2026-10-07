@@ -137,7 +137,7 @@ export function ProductDetailPage() {
                   '&:hover': { borderColor: 'primary.main' },
                 }}
               >
-                <CatalogImage src={projectImagePath(project)} category={project.category} alt={L(project.title)} />
+                <CatalogImage src={projectImagePath(project)} category={project.category} alt={L(project.title)} thumb />
                 <Box
                   sx={{
                     position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column',

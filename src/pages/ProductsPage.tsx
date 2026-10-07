@@ -76,7 +76,7 @@ export function ProductsPage() {
             elevation={0}
             sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden', textDecoration: 'none', color: 'inherit', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' } }}
           >
-            <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} />
+            <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} thumb />
             <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Chip
                 size="small"

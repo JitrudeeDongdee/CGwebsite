@@ -27,6 +27,7 @@ export function ImageCarousel({
   height,
   interval = 4000,
   rounded = true,
+  thumb = false,
 }: {
   images: string[]
   category: ProductCategory
@@ -37,6 +38,8 @@ export function ImageCarousel({
   /** Round the carousel's own corners. Off when it sits flush at the top of a
    *  card that already clips its corners. */
   rounded?: boolean
+  /** Card-sized slot: use the 400px copies. Off for the hero, which is large. */
+  thumb?: boolean
 }) {
   const [index, setIndex] = useState(0)
   const trackRef = useRef<HTMLDivElement | null>(null)
@@ -96,7 +99,7 @@ export function ImageCarousel({
   if (n <= 1) {
     return (
       <Box sx={{ height, borderRadius: rounded ? 2 : 0, overflow: 'hidden' }}>
-        <CatalogImage src={images[0]} category={category} alt={alt} height="100%" eager />
+        <CatalogImage src={images[0]} category={category} alt={alt} height="100%" eager thumb={thumb} />
       </Box>
     )
   }
@@ -130,7 +133,7 @@ export function ImageCarousel({
       >
         {slides.map((src, i) => (
           <Box key={`${src}-${i}`} sx={{ flex: '0 0 100%', width: '100%', height: '100%', scrollSnapAlign: 'start' }}>
-            <CatalogImage src={src} category={category} alt={alt} height="100%" eager={i === 0} />
+            <CatalogImage src={src} category={category} alt={alt} height="100%" eager={i === 0} thumb={thumb} />
           </Box>
         ))}
       </Box>

@@ -1,5 +1,8 @@
 // Types for storage.mjs — see facebook.d.mts.
 export const BUCKET: string
+export const THUMB_PREFIX: string
+export const THUMB_WIDTH: number
+export function thumbPath(path: string): string
 export function storageConfigured(): boolean
 export function uploadCatalogImage(path: string, body: Buffer, contentType: string): Promise<string>
 export function deleteCatalogImage(path: string): Promise<void>
