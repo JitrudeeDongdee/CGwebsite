@@ -21,11 +21,14 @@ export function PortfolioSection({
   work,
   allWorkTo,
   loading = false,
+  heading,
 }: {
   work: WorkCard[]
   allWorkTo: string
   /** Catalogue still loading — show skeleton cards until the projects arrive. */
   loading?: boolean
+  /** Section h2 — a service line can say what it is instead of the generic label. */
+  heading?: string
 }) {
   const { t } = useTranslation()
   const [page, setPage] = useState(0)
@@ -43,7 +46,7 @@ export function PortfolioSection({
         <Stack direction={{ xs: 'column', md: 'row' }} sx={{ mb: { xs: 2.5, md: 4.5 }, alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
             <Eyebrow>{t('mkt.home.workEyebrow')}</Eyebrow>
-            <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>{t('mkt.home.workHeading')}</Typography>
+            <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>{heading ?? t('mkt.home.workHeading')}</Typography>
           </Box>
           <Button component={RouterLink} to={allWorkTo} variant="outlined" endIcon={<ArrowForwardIcon />} sx={{ flexShrink: 0 }}>
             {t('mkt.home.workAll')}

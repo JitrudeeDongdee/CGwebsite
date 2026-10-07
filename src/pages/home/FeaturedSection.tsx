@@ -22,12 +22,15 @@ export function FeaturedSection({
   allProductsTo,
   priceLabel,
   loading = false,
+  heading,
 }: {
   catProducts: Product[]
   allProductsTo: string
   priceLabel: PriceLabel
   /** Catalogue still loading — show skeleton cards for the (async) product grid. */
   loading?: boolean
+  /** Section h2 — a service line can say what it is instead of the generic label. */
+  heading?: string
 }) {
   const { t } = useTranslation()
   const L = useLocalized()
@@ -40,7 +43,7 @@ export function FeaturedSection({
           <Box sx={{ maxWidth: '42em' }}>
             <Eyebrow>{t('mkt.service.eyebrow')}</Eyebrow>
             <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
-              {t('mkt.service.productsHead')}
+              {heading ?? t('mkt.service.productsHead')}
             </Typography>
           </Box>
           <Button component={RouterLink} to={allProductsTo} variant="outlined" endIcon={<ArrowForwardIcon />} sx={{ flexShrink: 0 }}>

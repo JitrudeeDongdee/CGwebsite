@@ -108,6 +108,21 @@ Own perspective `<Canvas shadows>` (fov 45), free orbit (`maxPolarAngle ≈ π/2
 - **Open Graph / Twitter cards** — the `tdd-site-meta` plugin in `vite.config.ts` injects them into `index.html` at build: `og:type/site_name/locale(+alternate)/title/description`, `twitter:card=summary_large_image` + title/description always; `og:url`, `og:image` (+`width/height/alt`) and `twitter:image` only when `SITE_URL` is set. Title/description are **read back out of `index.html`** so the card and the search result can't drift apart. The share image is `public/brand/og-card.png` (1200×630, blueprint-grid card with the shield + Thai tagline) — regenerate with `pnpm run og` (`scripts/make-og-card.py`, Pillow; not part of the build, output committed).
 - ~~Because this is a client-rendered SPA, these tags are site-wide~~ — **superseded 2026-10-06 by prerendering** (below). `index.html` is still the fallback for routes that are not prerendered.
 
+### Contracting local search — "รับเหมา เพชรบูรณ์" (2026-10-07)
+Goal stated by the owner: someone searching **รับเหมา เพชรบูรณ์** should find us. The page already had
+the phrase in title/h1, but "ผู้รับเหมา" appeared nowhere and the h2s were generic, so:
+- **`src/pages/home/ContractingLocalSection.tsx`**, rendered by `HomePage` on `/home/contracting` only:
+  intro (whole province, small jobs welcome — both confirmed by the owner), the work types (taken from real
+  portfolio entries), all 11 districts as chips, and a 5-question FAQ (MUI Accordion keeps collapsed answers
+  mounted, so the prerendered HTML carries every answer) + **FAQPage JSON-LD**. Google only shows FAQ rich
+  results for gov/health sites, so the markup aids understanding, not a snippet. Strings: `mkt.contractingLocal.*`.
+- `FeaturedSection` / `PortfolioSection` take an optional `heading`; `HomePage` reads
+  `mkt.service.<cat>.productsHead` / `.workHead` and falls back to the generic label, so only contracting
+  changes for now ("บริการรับเหมาก่อสร้างและงานระบบ", "ผลงานรับเหมาก่อสร้างในเพชรบูรณ์").
+- JSON-LD `areaServed` lists every Phetchabun district (`อำเภอ…`) besides the provinces.
+- The bigger lever is off-site and outside this repo: the verified Google Business Profile (map pack),
+  reviews, and links from the company's Facebook posts.
+
 ### Local SEO / structured data (2026-10-06)
 - **JSON-LD** (`index.html`, `GeneralContractor`) carries the real `geo`
   (16.345432, 101.099445 — checked against Phetchabun's bounding box before writing it, since a

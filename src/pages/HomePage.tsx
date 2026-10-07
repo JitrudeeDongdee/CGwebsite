@@ -23,6 +23,7 @@ import { PortfolioSection } from './home/PortfolioSection'
 import { FloatingServiceBar } from './home/FloatingServiceBar'
 import { CommunitySection } from './home/CommunitySection'
 import { ServiceAreaSection } from './home/ServiceAreaSection'
+import { ContractingLocalSection } from './home/ContractingLocalSection'
 import { StatsSection } from './home/StatsSection'
 // import { FinalCtaSection } from './home/FinalCtaSection' // disabled with its render below
 
@@ -147,6 +148,11 @@ export function HomePage() {
 
   // Home hero + featured grid show the bare price (no "เริ่มต้น" prefix);
   // "สอบถามราคา" still stands in when there is no price.
+  /** A line may override the generic section h2s with ones that name the service
+   *  (`mkt.service.<cat>.productsHead` / `.workHead`); others keep the defaults. */
+  const productsHeading = cat ? t(`mkt.service.${cat}.productsHead`, { defaultValue: '' }) || undefined : undefined
+  const workHeading = cat ? t(`mkt.service.${cat}.workHead`, { defaultValue: '' }) || undefined : undefined
+
   const priceLabel: PriceLabel = (from) =>
     from == null ? t('mkt.catalog.quote') : formatCurrency(from, 'THB', locale)
 
@@ -169,12 +175,15 @@ export function HomePage() {
         allProductsTo={allProductsTo}
         priceLabel={priceLabel}
         loading={loading}
+        heading={productsHeading}
       />
       {/* The home alias (cat === null) uses bundled `defaultWork`, which is instant —
           only the catalog-backed service pages show a loading skeleton. */}
       {((loading && cat !== null) || work.length > 0) && (
-        <PortfolioSection work={work} allWorkTo={allWorkTo} loading={loading && cat !== null} />
+        <PortfolioSection work={work} allWorkTo={allWorkTo} loading={loading && cat !== null} heading={workHeading} />
       )}
+      {/* Contracting only: who we are as a local contractor, coverage, FAQ. */}
+      {cat === 'contracting' && <ContractingLocalSection />}
       {(loading || communityItems.length > 0) && <CommunitySection items={communityItems} loading={loading} />}
       {/* Names the province and its districts in body text — the site had none. */}
       <ServiceAreaSection />
