@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps" viewBox="0 0 512 512">
+  <title>Thai Dongdee Engineering</title>
+  <rect x="0" y="0" width="512" height="512" fill="#C8102E"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="42" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 168 H180"/>
+    <path d="M140 168 V344"/>
+    <path d="M228 168 V344"/>
+    <path d="M228 168 C312 168 312 344 228 344"/>
+    <path d="M328 168 V344"/>
+    <path d="M328 168 C412 168 412 344 328 344"/>
+  </g>
+</svg>
