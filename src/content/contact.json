@@ -14,8 +14,8 @@
     },
     {
       "kind": "line",
-      "value": "-",
-      "url": "-"
+      "value": { "th": "เพิ่มเพื่อนทาง LINE", "en": "Add us on LINE" },
+      "url": "https://line.me/ti/p/g2oivmrzko"
     },
     {
       "kind": "email",
