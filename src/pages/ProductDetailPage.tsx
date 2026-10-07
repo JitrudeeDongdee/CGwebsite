@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -18,6 +18,7 @@ import { useLocalized } from '../catalog/useLocalized'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
+import { trackProductView } from '../analytics/ga'
 
 ensureMarketingI18n()
 
@@ -39,6 +40,18 @@ export function ProductDetailPage() {
     title: product ? L(product.name) : undefined,
     description: product ? L(product.shortDesc) : undefined,
   })
+
+  // GA4 view_item — which products people actually open. item_name is the EN name
+  // so one product isn't split across TH/EN sessions; item_id is the slug.
+  useEffect(() => {
+    if (!product) return
+    trackProductView({
+      id: product.slug || product.id,
+      name: product.name.en,
+      category: product.category,
+      price: product.priceFrom,
+    })
+  }, [product])
 
   if (!product) {
     return (

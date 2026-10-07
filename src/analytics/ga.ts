@@ -55,3 +55,45 @@ export function trackPageView(path: string): void {
     page_title: document.title,
   })
 }
+
+/** Fire any GA4 event. No-op when GA isn't configured. */
+export function trackEvent(name: string, params?: Record<string, unknown>): void {
+  if (!GA_ID || !window.gtag) return
+  window.gtag('event', name, params ?? {})
+}
+
+/**
+ * What identifies a product in the analytics item reports. `id` should be the
+ * stable slug (readable in GA), `name` a language-stable name (the English one)
+ * so the same product isn't split across TH/EN sessions.
+ */
+export interface ProductEventInput {
+  id: string
+  name: string
+  category: string
+  price?: number | null
+}
+
+function itemParams(p: ProductEventInput) {
+  return {
+    currency: 'THB',
+    items: [
+      {
+        item_id: p.id,
+        item_name: p.name,
+        item_category: p.category,
+        ...(p.price != null ? { price: p.price } : {}),
+      },
+    ],
+  }
+}
+
+/** GA4 `view_item` — fired when a product detail page is viewed. */
+export function trackProductView(p: ProductEventInput): void {
+  trackEvent('view_item', itemParams(p))
+}
+
+/** GA4 `select_item` — fired when a product card in a list is clicked. */
+export function trackProductSelect(p: ProductEventInput, listName?: string): void {
+  trackEvent('select_item', { ...(listName ? { item_list_name: listName } : {}), ...itemParams(p) })
+}
