@@ -117,6 +117,51 @@ async function loadCatalog() {
   }
 }
 
+/**
+ * Company facts + certificates for the About page.
+ *
+ * Unlike the catalogue this is allowed to fail: before the company_info
+ * migration is applied the tables do not exist (PostgREST 404), and the About
+ * page then renders the bundled fallback from src/content/company.ts — exactly
+ * what the live SPA does. Failing the build over it would block every deploy
+ * until someone ran the migration.
+ */
+async function loadCompany() {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+  let info = null
+  let certificates = []
+  try {
+    const [row] = await rows('company_info', '*')
+    if (row) {
+      info = {
+        legalName: row.legal_name ?? { th: '', en: '' },
+        registrationNo: row.registration_no ?? '',
+        registeredOn: row.registered_on,
+        capital: row.capital === null || row.capital === '' ? null : Number(row.capital),
+        status: row.status ?? { th: '', en: '' },
+        businessType: row.business_type ?? { th: '', en: '' },
+        activities: row.activities ?? { th: '', en: '' },
+      }
+    }
+    // Same rule as CompanyProvider: published, not expired, in admin order.
+    certificates = (await rows('certificates', '*&order=sort_order,created_at'))
+      .filter((r) => r.published && !(r.expires_on && r.expires_on < today))
+      .map((r) => ({
+        id: r.id,
+        title: r.title,
+        issuer: r.issuer,
+        docNo: r.doc_no,
+        issuedOn: r.issued_on,
+        expiresOn: r.expires_on,
+        filePath: r.file_path,
+        fileType: r.file_type,
+      }))
+  } catch (error) {
+    console.warn(`[prerender] company info unavailable, About uses the bundled fallback — ${error.message.split('\n')[0]}`)
+  }
+  return { info, certificates }
+}
+
 /** Replaces a `<meta>`/`<title>` in the template, or appends it when absent. */
 function setTag(head, pattern, replacement) {
   return pattern.test(head) ? head.replace(pattern, replacement) : head + `\n    ${replacement}`
@@ -245,6 +290,7 @@ function routesFor(catalog) {
 const template = readFileSync(join(dist, 'index.html'), 'utf8')
 const { render } = await import(pathToFileURL(serverEntry).href)
 const catalog = await loadCatalog()
+const company = await loadCompany()
 const routes = routesFor(catalog)
 
 let written = 0
@@ -252,7 +298,7 @@ const failures = []
 
 for (const route of routes) {
   try {
-    const { html, styles } = await render(route.path, catalog)
+    const { html, styles } = await render(route.path, catalog, company)
     const [headPart, bodyPart] = template.split('</head>')
     const head = buildHead(headPart, route)
     const page =

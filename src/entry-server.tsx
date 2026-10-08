@@ -8,6 +8,7 @@ import App from './App'
 import { AppThemeProvider } from './theme/AppThemeProvider'
 import { AuthProvider } from './auth/AuthProvider'
 import { CatalogProvider, type InitialCatalog } from './catalog/CatalogProvider'
+import { CompanyProvider, type InitialCompany } from './company/CompanyProvider'
 
 /**
  * Renders one route to HTML at build time (see `scripts/prerender.mjs`).
@@ -24,7 +25,7 @@ import { CatalogProvider, type InitialCatalog } from './catalog/CatalogProvider'
  * returning visitor may have chosen English or dark. Matching those at build
  * time is impossible; mismatching them during hydration is a visible fault.
  *
- * The catalogue is passed in because `useEffect` never runs while prerendering
+ * The catalogue (and the company facts) are passed in because `useEffect` never runs while prerendering
  * — without it every prerendered page would be an empty shop.
  *
  * ⚠️ Uses `prerenderToNodeStream` from `react-dom/static`, NOT `renderToString`.
@@ -33,7 +34,7 @@ import { CatalogProvider, type InitialCatalog } from './catalog/CatalogProvider'
  * exactly that and produced 48 byte-identical files — header and footer, no page.
  * The static API waits for lazy chunks to resolve, which is the whole point.
  */
-export async function render(url: string, catalog: InitialCatalog) {
+export async function render(url: string, catalog: InitialCatalog, company: InitialCompany) {
   // A per-render cache, or styles from one page leak into the next.
   const cache = createCache({ key: 'mui' })
   const { extractCriticalToChunks, constructStyleTagsFromChunks } = createEmotionServer(cache)
@@ -43,9 +44,11 @@ export async function render(url: string, catalog: InitialCatalog) {
       <AppThemeProvider>
         <AuthProvider>
           <CatalogProvider initial={catalog}>
-            <StaticRouter location={url}>
-              <App />
-            </StaticRouter>
+            <CompanyProvider initial={company}>
+              <StaticRouter location={url}>
+                <App />
+              </StaticRouter>
+            </CompanyProvider>
           </CatalogProvider>
         </AuthProvider>
       </AppThemeProvider>
