@@ -1,0 +1,246 @@
+[
+  {
+    "slug": "solar-on-grid-vs-off-grid",
+    "published": "2026-10-08",
+    "category": "electronics",
+    "title": {
+      "th": "โซลาร์เซลล์ On Grid กับ Off Grid ต่างกันอย่างไร เลือกแบบไหนดี",
+      "en": "On-grid vs off-grid solar: what's the difference and which to choose"
+    },
+    "description": {
+      "th": "สรุปความต่างของโซลาร์เซลล์ On Grid, Off Grid และไฮบริด ข้อดีข้อจำกัด และวิธีเลือกให้เหมาะกับบ้าน สวน และไร่ในเพชรบูรณ์",
+      "en": "How on-grid, off-grid and hybrid solar systems differ, what each is good at, and how to pick one for a home, orchard or farm in Phetchabun."
+    },
+    "sections": [
+      {
+        "heading": { "th": "On Grid: ต่อกับไฟการไฟฟ้า ลดค่าไฟตอนกลางวัน", "en": "On-grid: tied to the utility, cuts the daytime bill" },
+        "body": {
+          "th": [
+            "ระบบ On Grid ต่อเข้ากับไฟของการไฟฟ้าส่วนภูมิภาค ตอนกลางวันบ้านใช้ไฟจากแผงโซลาร์ก่อน ส่วนที่ไม่พอจึงดึงจากการไฟฟ้า ค่าไฟที่ลดได้จึงมาจากการใช้ไฟช่วงกลางวัน เช่น แอร์ ตู้เย็น ปั๊มน้ำ",
+            "ระบบนี้ไม่มีแบตเตอรี่ ต้นทุนจึงต่ำที่สุดในสามแบบ แต่เมื่อไฟการไฟฟ้าดับ อินเวอร์เตอร์จะหยุดจ่ายไฟตามมาตรฐานความปลอดภัย บ้านจึงไม่มีไฟใช้ตอนไฟดับ และก่อนเชื่อมต่อต้องยื่นเรื่องกับการไฟฟ้าตามขั้นตอนของการไฟฟ้า"
+          ],
+          "en": [
+            "An on-grid system is connected to the Provincial Electricity Authority supply. During the day the house draws on the panels first and tops up from the grid, so the saving comes from daytime use — air conditioning, fridges, water pumps.",
+            "There is no battery, which makes it the cheapest of the three. The flip side is that the inverter shuts down when the grid fails, as safety standards require, so there is no power during an outage. Connecting it also needs an application to the utility first."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "Off Grid: ไม่ต้องพึ่งสายไฟ เหมาะกับที่ที่ไฟเข้าไม่ถึง", "en": "Off-grid: no utility line needed" },
+        "body": {
+          "th": [
+            "ระบบ Off Grid ไม่ต่อกับการไฟฟ้าเลย เก็บไฟไว้ในแบตเตอรี่เพื่อใช้ตอนกลางคืนหรือตอนแดดน้อย จึงเหมาะกับสวน ไร่ ปั๊มน้ำ กระท่อม หรือที่พักที่ลากสายไฟไปไม่ถึงหรือลากไปแล้วไม่คุ้ม",
+            "ต้นทุนส่วนใหญ่อยู่ที่แบตเตอรี่ และต้องคำนวณขนาดระบบจากเครื่องใช้ไฟฟ้าที่จะใช้จริงให้ดี ถ้าออกแบบเล็กไป ไฟจะหมดก่อนเช้า ถ้าใหญ่ไปก็เสียเงินเกินจำเป็น"
+          ],
+          "en": [
+            "An off-grid system has no utility connection at all. It stores energy in batteries for the night and for cloudy spells, which suits orchards, farms, water pumps, huts and lodges where running a power line is impossible or not worth it.",
+            "Most of the cost is the battery bank, and the system has to be sized from the appliances that will really run on it: too small and the power runs out before morning, too large and the money is wasted."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "ไฮบริด: มีทั้งสองอย่าง", "en": "Hybrid: a bit of both" },
+        "body": {
+          "th": [
+            "ระบบไฮบริดต่อกับการไฟฟ้าและมีแบตเตอรี่ด้วย ใช้ลดค่าไฟได้เหมือน On Grid และยังมีไฟสำรองตอนไฟดับ เหมาะกับบ้านหรือร้านที่ไฟดับบ่อย หรือมีอุปกรณ์ที่หยุดไม่ได้ เช่น ตู้แช่ ปั๊มน้ำ กล้องวงจรปิด แลกกับต้นทุนที่สูงขึ้นจากแบตเตอรี่"
+          ],
+          "en": [
+            "A hybrid system is grid-tied and has a battery too. It cuts the bill like on-grid and keeps running through outages, which suits homes and shops with frequent power cuts or equipment that cannot stop — freezers, pumps, CCTV — at the price of the battery."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "เลือกแบบไหนดี", "en": "Which one to pick" },
+        "bullets": {
+          "th": [
+            "บ้านในเมืองที่มีไฟการไฟฟ้า ใช้ไฟกลางวันเยอะ และอยากลดค่าไฟ: On Grid",
+            "สวน ไร่ ปั๊มน้ำ หรือที่พักที่ไม่มีสายไฟเข้า: Off Grid",
+            "ไฟดับบ่อย หรือมีอุปกรณ์ที่ต้องมีไฟตลอด: ไฮบริด",
+            "ก่อนตัดสินใจ ให้ดูบิลค่าไฟย้อนหลังและรายการเครื่องใช้ไฟฟ้าที่ใช้ช่วงกลางวัน ช่างจะประเมินขนาดระบบได้แม่นขึ้น"
+          ],
+          "en": [
+            "A house on the grid with heavy daytime use that wants a lower bill: on-grid.",
+            "An orchard, farm, pump or lodge with no power line: off-grid.",
+            "Frequent outages, or equipment that must never lose power: hybrid.",
+            "Before deciding, gather a few months of electricity bills and a list of what runs during the day — it lets the installer size the system properly."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "งานโซลาร์ที่เราทำ", "en": "Our solar work" },
+        "body": {
+          "th": [
+            "ไทย ดวงดี เอ็นจิเนียริ่ง รับติดตั้งระบบโซลาร์เซลล์ทั้ง On Grid และ Off Grid ในจังหวัดเพชรบูรณ์ ตั้งแต่บ้านพักอาศัยไปจนถึงระบบควบคุมน้ำด้วยโซลาร์เซลล์สำหรับสวน ดูตัวอย่างงานจริงและชุดอุปกรณ์ได้จากลิงก์ด้านล่าง หรือโทรปรึกษาเพื่อให้ช่างช่วยประเมินระบบที่เหมาะกับหน้างาน"
+          ],
+          "en": [
+            "Thai Dongdee Engineering installs both on-grid and off-grid solar across Phetchabun, from homes to solar-powered water control for orchards. See real jobs and the kit below, or call and an installer will size a system for your site."
+          ]
+        }
+      }
+    ],
+    "related": [
+      { "to": "/portfolio/electronics/solar-on-off-grid", "label": { "th": "ผลงานติดตั้งโซลาร์เซลล์ On Grid / Off Grid", "en": "Our on-grid / off-grid solar installation" } },
+      { "to": "/products/solar-on-grid-kit", "label": { "th": "ชุดโซล่าเซลล์ออนกริด / ออฟกริด", "en": "On-grid / off-grid solar kit" } },
+      { "to": "/home/electronics", "label": { "th": "งานระบบไฟฟ้าทั้งหมด", "en": "All electrical work" } }
+    ]
+  },
+  {
+    "slug": "prepare-before-construction-quote",
+    "published": "2026-10-08",
+    "category": "contracting",
+    "title": {
+      "th": "จะจ้างผู้รับเหมา ต้องเตรียมอะไรก่อนขอใบเสนอราคา",
+      "en": "Hiring a contractor? What to prepare before asking for a quote"
+    },
+    "description": {
+      "th": "รายการข้อมูลที่ควรเตรียมก่อนขอราคางานรับเหมา ต่อเติม ซ่อมแซม หรืองานไฟฟ้า เพื่อให้ได้ราคาที่ใกล้เคียงความจริงและเริ่มงานได้เร็วขึ้น",
+      "en": "What to have ready before asking for a quote on building, extension, repair or electrical work, so the price is realistic and the job starts sooner."
+    },
+    "sections": [
+      {
+        "heading": { "th": "ทำไมข้อมูลยิ่งครบ ราคายิ่งแม่น", "en": "Why more detail means a better price" },
+        "body": {
+          "th": [
+            "ราคางานรับเหมาขึ้นกับหน้างานจริงเกือบทั้งหมด ทั้งขนาด สภาพพื้นที่ ทางเข้าออกของรถขนของ และวัสดุที่เลือก ถ้าผู้รับเหมาได้ข้อมูลน้อย ราคาที่ให้มักต้องเผื่อไว้กว้าง หรือมาเพิ่มทีหลังตอนเจอหน้างาน การเตรียมข้อมูลไว้ก่อนจึงช่วยให้เทียบราคาได้ตรงกว่าและคุยกันจบเร็วกว่า"
+          ],
+          "en": [
+            "Almost every construction price depends on the site: size, ground conditions, truck access and the materials chosen. With little to go on, a contractor either pads the quote or adds to it once on site. Preparing the details first makes quotes comparable and the conversation shorter."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "สิ่งที่ควรเตรียม", "en": "What to prepare" },
+        "bullets": {
+          "th": [
+            "ประเภทงาน: สร้างใหม่ ต่อเติม ซ่อมแซม รื้อถอน งานไฟฟ้า หรือติดตั้งระบบ",
+            "รูปหน้างานหลายมุม รวมถึงทางเข้า ถ้ามีรถใหญ่หรือรถเครนต้องเข้า ทางเข้าสำคัญมาก",
+            "ขนาดโดยประมาณ เช่น กว้าง × ยาว หรือจำนวนจุดที่ต้องติดตั้ง",
+            "ตำแหน่งหน้างาน ส่งพิกัด Google Maps จะสะดวกที่สุด",
+            "แบบหรือรูปตัวอย่างที่ชอบ ถ้ามีแบบบ้านหรือแปลน ส่งมาด้วย",
+            "งบประมาณคร่าว ๆ และช่วงเวลาที่อยากให้เสร็จ",
+            "เรื่องเอกสาร เช่น ต้องการใบกำกับภาษี หรือเป็นงานของหน่วยงานราชการ"
+          ],
+          "en": [
+            "The type of work: new build, extension, repair, demolition, electrical or a system installation.",
+            "Photos of the site from several angles, including the way in — access matters a lot if a truck or crane has to reach it.",
+            "Rough dimensions, such as width × length, or the number of points to install.",
+            "The site location — a Google Maps pin is easiest.",
+            "Plans or reference pictures you like; send the house plan if there is one.",
+            "A rough budget and when you want it finished.",
+            "Paperwork needs, such as a tax invoice, or whether it is a government job."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "เมื่อได้ใบเสนอราคาแล้ว ดูอะไรบ้าง", "en": "Reading the quote" },
+        "bullets": {
+          "th": [
+            "รายการวัสดุระบุยี่ห้อหรือสเปกชัดเจนไหม",
+            "ราคารวมค่าแรง ค่าขนส่ง และค่าเก็บงานแล้วหรือยัง",
+            "ระยะเวลาทำงานและงวดการจ่ายเงิน",
+            "การรับประกันงานหลังส่งมอบ"
+          ],
+          "en": [
+            "Are materials listed with a brand or a clear specification?",
+            "Does the price include labour, transport and clean-up?",
+            "How long the work takes and how payments are staged.",
+            "What warranty applies after handover."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "ส่งรายละเอียดให้เราประเมินราคา", "en": "Send us the details" },
+        "body": {
+          "th": [
+            "ไทย ดวงดี เอ็นจิเนียริ่ง รับงานรับเหมาก่อสร้าง ต่อเติม งานระบบไฟฟ้า และงานติดตั้งทั่วจังหวัดเพชรบูรณ์ งานเล็กก็รับ ส่งข้อมูลตามรายการข้างบนผ่านฟอร์มติดต่อ หรือโทรคุยได้เลย"
+          ],
+          "en": [
+            "Thai Dongdee Engineering takes on construction, extensions, electrical and installation work across Phetchabun, small jobs included. Send the details above through the contact form, or just call."
+          ]
+        }
+      }
+    ],
+    "related": [
+      { "to": "/contact", "label": { "th": "ส่งรายละเอียดขอใบเสนอราคา", "en": "Ask for a quote" } },
+      { "to": "/home/contracting", "label": { "th": "บริการรับเหมาก่อสร้างและงานระบบ", "en": "Construction and systems contracting" } },
+      { "to": "/portfolio?category=contracting", "label": { "th": "ผลงานรับเหมาที่ผ่านมา", "en": "Past contracting work" } }
+    ]
+  },
+  {
+    "slug": "knockdown-house-basics",
+    "published": "2026-10-08",
+    "category": "house",
+    "title": {
+      "th": "บ้านน็อคดาวน์คืออะไร ข้อดี ข้อควรรู้ก่อนสร้าง",
+      "en": "What is a knock-down house? Pros and what to check before building"
+    },
+    "description": {
+      "th": "รู้จักบ้านน็อคดาวน์ บ้านสำเร็จรูปที่ผลิตก่อนแล้วขนไปติดตั้ง ข้อดี ข้อควรเตรียมเรื่องหน้างาน ทางเข้า และระบบไฟประปา และเหมาะกับการใช้งานแบบไหน",
+      "en": "Knock-down (prefab) houses explained: built ahead, then delivered and installed — the advantages, what the site needs, and what they suit best."
+    },
+    "sections": [
+      {
+        "heading": { "th": "บ้านน็อคดาวน์คืออะไร", "en": "What it is" },
+        "body": {
+          "th": [
+            "บ้านน็อคดาวน์ หรือบ้านสำเร็จรูป คือบ้านที่ประกอบตัวบ้านหรือชิ้นส่วนหลักไว้ก่อน แล้วขนไปวางและติดตั้งที่หน้างาน ต่างจากบ้านก่อสร้างทั่วไปที่ต้องก่อผนังและเทปูนทีละส่วนที่หน้างาน งานส่วนใหญ่จึงเสร็จก่อนถึงที่ดิน"
+          ],
+          "en": [
+            "A knock-down or prefab house is built — whole or in major parts — ahead of time, then transported and installed on the plot. Unlike a conventional build, where walls and concrete go up piece by piece on site, most of the work is done before it arrives."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "ข้อดี", "en": "Advantages" },
+        "bullets": {
+          "th": [
+            "เข้าอยู่ได้เร็ว เพราะงานส่วนใหญ่ทำเสร็จก่อนขนไปหน้างาน",
+            "คุมงบง่าย ตกลงแบบและราคากันก่อนผลิต",
+            "หน้างานเลอะเทอะน้อยและใช้เวลาที่หน้างานสั้น",
+            "บางแบบย้ายตำแหน่งได้ภายหลัง"
+          ],
+          "en": [
+            "Quick to move in, since most of the work is finished before delivery.",
+            "Easier to budget — design and price are agreed before production.",
+            "Less mess and less time on the plot.",
+            "Some designs can be moved later."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "ข้อควรรู้ก่อนสร้าง", "en": "What to check first" },
+        "bullets": {
+          "th": [
+            "ทางเข้าหน้างาน: ต้องให้รถขนส่งและรถเครนเข้าถึงจุดวางบ้านได้ ถนนแคบ ทางโค้ง หรือสายไฟต่ำต้องดูก่อน",
+            "พื้นที่วางบ้าน: ต้องปรับระดับและทำฐานรองรับให้เรียบร้อยก่อนวันติดตั้ง",
+            "ไฟฟ้าและประปา: วางแผนจุดต่อเข้าบ้านไว้ล่วงหน้า",
+            "ขนาดบ้าน: ถูกจำกัดด้วยขนาดที่ขนส่งได้ บ้านใหญ่จึงมักแบ่งเป็นหลายยูนิตมาต่อกัน"
+          ],
+          "en": [
+            "Access: the delivery truck and crane must reach the spot — check narrow roads, tight bends and low power lines.",
+            "The pad: the ground must be levelled and the base prepared before installation day.",
+            "Power and water: plan where they connect to the house in advance.",
+            "Size: limited by what can be transported, so larger homes are usually several units joined together."
+          ]
+        }
+      },
+      {
+        "heading": { "th": "เหมาะกับใคร", "en": "Who it suits" },
+        "body": {
+          "th": [
+            "บ้านน็อคดาวน์เหมาะกับบ้านพักในสวน บ้านพักตากอากาศ ห้องพักรีสอร์ท บ้านพักคนงาน หรือร้านค้าเล็ก ที่อยากได้บ้านเร็วและรู้งบชัดตั้งแต่แรก ลองวางแปลนบ้านด้วยเครื่องมือออกแบบบนเว็บไซต์ แล้วส่งให้เราประเมินราคาได้เลย"
+          ],
+          "en": [
+            "Knock-down houses suit garden homes, holiday homes, resort rooms, staff housing and small shops — anyone who wants a house quickly with a clear budget from the start. Sketch a plan with the designer on this site and send it to us for a price."
+          ]
+        }
+      }
+    ],
+    "related": [
+      { "to": "/portfolio/house/a-frame-khao-kho", "label": { "th": "ผลงาน: ส่งมอบบ้านเอเฟรม อ.เขาค้อ", "en": "Project: A-frame house delivered in Khao Kho" } },
+      { "to": "/portfolio/house/knockdown-house-delivery", "label": { "th": "ผลงาน: ขนส่งบ้านน็อคดาวน์ถึงหน้างาน", "en": "Project: delivering a knock-down house to site" } },
+      { "to": "/design", "label": { "th": "ลองออกแบบบ้านของคุณ", "en": "Design your own house" } },
+      { "to": "/home/house", "label": { "th": "บ้านน็อคดาวน์ของเรา", "en": "Our knock-down houses" } }
+    ]
+  }
+]
