@@ -123,6 +123,15 @@ the phrase in title/h1, but "ผู้รับเหมา" appeared nowhere an
 - **Facebook Page (2026-10-07):** `https://www.facebook.com/cg9723/` ("หจก.ไทยดวงดี : CG อิเล็กทรอนิคส์", a public Page — checked via its og tags, not a personal profile) is the `facebook` channel in `contact.json` (footer + contact page) and the JSON-LD `sameAs`. Only a business Page belongs in `sameAs`; never a personal profile.
 - **Company e-mail (2026-10-07):** `contact@thaidongdee.com` replaces the two personal Gmail addresses in `contact.json` and the JSON-LD `email`. It is Cloudflare Email Routing (free) → Email Worker `contact-forward` (Cloudflare dashboard, not this repo), which forwards each message to both Gmail inboxes; the second forward is wrapped so a failure there never bounces the mail. Personal addresses no longer appear on the site.
 - **`/line` short link (2026-10-08):** `public/_redirects` sends `/line` (and `/line/`) to the LINE OA add-friend URL with a **302**, so printed material and images can say `thaidongdee.com/line` instead of `@610byzdy`. 302 on purpose: if a Premium ID replaces the basic ID, change the target here and every printed link follows.
+- **Articles — `/articles`, `/articles/:slug` (2026-10-08).** Knowledge articles that answer what people search
+  *before* they hire anyone, each pointing at the real jobs/products behind it (`related`). Content is
+  **`src/content/articles.json`** (bilingual `{th,en}`), typed by `src/content/articles.ts`; JSON rather than a
+  table because `scripts/prerender.mjs` and `scripts/generate-seo-files.mjs` read the same file to write each
+  article's static HTML and sitemap entry (lastmod = the article's `published` date). Detail pages carry
+  **`BlogPosting` JSON-LD**. Linked from the footer's company column (not the header, to keep the nav short).
+  First three: On Grid vs Off Grid solar, what to prepare before a contractor's quote, knock-down house basics.
+  ⚠️ **No prices in article text** until the company confirms real figures. Adding an article = append to the
+  JSON; the next build prerenders it and adds it to the sitemap.
 - The bigger lever is off-site and outside this repo: the verified Google Business Profile (map pack),
   reviews, and links from the company's Facebook posts.
 

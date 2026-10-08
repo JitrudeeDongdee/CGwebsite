@@ -80,6 +80,7 @@ function MarketingFooter() {
   const company: FooterLink[] = [
     { label: t('mkt.nav.about'), to: '/about' },
     { label: t('mkt.nav.work'), to: '/portfolio' },
+    { label: t('mkt.nav.articles'), to: '/articles' },
     { label: t('mkt.nav.models'), to: '/products?category=house' },
     { label: t('mkt.nav.contact'), to: '/contact' },
   ]

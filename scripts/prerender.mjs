@@ -27,6 +27,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ARTICLES = JSON.parse(readFileSync(join(root, 'src/content/articles.json'), 'utf8'))
 const dist = join(root, 'dist')
 const serverEntry = join(root, 'dist-ssr/entry-server.js')
 
@@ -216,6 +217,10 @@ function routesFor(catalog) {
     { path: '/products', title: 'สินค้าและบริการ', description: 'บ้านน็อคดาวน์ อิเล็กทรอนิกส์ เฟอร์นิเจอร์ และรถก่อสร้างให้เช่า' },
     { path: '/portfolio', title: 'ผลงานที่เราสร้างจริง', description: 'ตัวอย่างบ้านและงานติดตั้งที่ส่งมอบแล้ว' },
     { path: '/community', title: 'ผลงานสาธารณประโยชน์และการบริจาค', description: 'กิจกรรมเพื่อชุมชนและการบริจาคที่ทีมงานของเรามีส่วนร่วม' },
+    { path: '/articles', title: 'บทความเรื่องบ้าน งานรับเหมา และงานไฟฟ้า', description: 'ตอบคำถามที่ลูกค้าถามบ่อย ก่อนสร้าง ต่อเติม หรือติดตั้งระบบ — เขียนจากงานจริงของทีมงานในเพชรบูรณ์' },
+    // Articles are static content (src/content/articles.json), read here as JSON
+    // so the title/description in the static <head> are the article's own.
+    ...ARTICLES.map((a) => ({ path: `/articles/${a.slug}`, title: a.title.th, description: trim(a.description.th) })),
   ]
 
   for (const p of catalog.products) {

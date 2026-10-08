@@ -19,6 +19,7 @@ const th = {
     openApp: 'เข้าเครื่องออกแบบ',
     products: 'สินค้า',
     community: 'เพื่อสังคม',
+    articles: 'บทความ',
   },
   products: {
     eyebrow: 'สินค้า',
@@ -139,6 +140,17 @@ const th = {
     finalSub: 'ใช้เครื่องออกแบบฟรี ไม่ต้องสมัครก็เริ่มได้ — เห็นแปลน 3 มิติ และราคาประเมินทันที',
     finalCta: 'เริ่มออกแบบเลย',
   },
+  articles: {
+    eyebrow: 'ความรู้',
+    title: 'บทความเรื่องบ้าน งานรับเหมา และงานไฟฟ้า',
+    sub: 'ตอบคำถามที่ลูกค้าถามบ่อย ก่อนสร้าง ต่อเติม หรือติดตั้งระบบ — เขียนจากงานจริงของทีมงานในเพชรบูรณ์',
+    back: '← บทความทั้งหมด',
+    notFound: 'ไม่พบบทความนี้',
+    by: 'ไทย ดวงดี เอ็นจิเนียริ่ง',
+    related: 'อ่านต่อ / ดูงานจริง',
+    ctaQuote: 'ขอใบเสนอราคา',
+    ctaCall: 'โทร',
+  },
   community: {
     eyebrow: 'เพื่อสังคม',
     title: 'ผลงานสาธารณประโยชน์และการบริจาค',
@@ -238,7 +250,7 @@ const th = {
 const en = {
   nav: {
     home: 'Home', services: 'Services', models: 'House models', work: 'Portfolio',
-    about: 'About', contact: 'Contact', designCta: 'Design a house', openApp: 'Open the designer', products: 'Products', community: 'Community',
+    about: 'About', contact: 'Contact', designCta: 'Design a house', openApp: 'Open the designer', products: 'Products', community: 'Community', articles: 'Articles',
   },
   products: {
     eyebrow: 'Products',
@@ -358,6 +370,17 @@ const en = {
     finalHeading: 'Ready to design your home?',
     finalSub: 'The designer is free — no sign-up to start. See the 3D plan and an instant estimate.',
     finalCta: 'Start designing',
+  },
+  articles: {
+    eyebrow: 'Know-how',
+    title: 'Articles on houses, contracting and electrical work',
+    sub: 'Answers to what customers ask before building, extending or installing a system — written from our own jobs in Phetchabun.',
+    back: '← All articles',
+    notFound: 'Article not found',
+    by: 'Thai Dongdee Engineering',
+    related: 'Read more / see real jobs',
+    ctaQuote: 'Ask for a quote',
+    ctaCall: 'Call',
   },
   community: {
     eyebrow: 'In the community',

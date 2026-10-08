@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ARTICLES = JSON.parse(readFileSync(join(root, 'src/content/articles.json'), 'utf8'))
 const PRODUCTION_BRANCH = 'main'
 // Pages calls it CF_PAGES_BRANCH, Workers Builds calls it WORKERS_CI_BRANCH.
 const branch = process.env.CF_PAGES_BRANCH ?? process.env.WORKERS_CI_BRANCH
@@ -164,6 +165,10 @@ async function buildRoutes() {
     // Public-benefit works & donations — ONE page listing them all, so its
     // lastmod is the newest activity rather than a date of its own.
     { path: '/community', priority: '0.6', changefreq: 'monthly', lastmod: lastmodOf(newest(community)) || today },
+    // Knowledge articles — static content in src/content/articles.json. Each
+    // carries its own publish date (a bare YYYY-MM-DD, which <lastmod> accepts).
+    { path: '/articles', priority: '0.6', changefreq: 'monthly', lastmod: ARTICLES.reduce((m, x) => (x.published > m ? x.published : m), '') || today },
+    ...ARTICLES.map((x) => ({ path: `/articles/${x.slug}`, priority: '0.6', changefreq: 'yearly', lastmod: x.published })),
     { path: '/about', priority: '0.5', changefreq: 'yearly', lastmod: today },
     { path: '/contact', priority: '0.5', changefreq: 'yearly', lastmod: today },
     { path: '/design', priority: '0.7', changefreq: 'monthly', lastmod: today },
