@@ -135,6 +135,14 @@ the phrase in title/h1, but "ผู้รับเหมา" appeared nowhere an
   `brand/favicon-256.png` — it pointed at `brand/logo-shield.png`, which the site stopped using when the
   logo became `favicon.svg`. Because the prerenderer uses `dist/index.html` as its template, all 54 pages
   inherit it.
+- **Google-Search favicon (2026-10-08).** `index.html` carried only `<link rel="icon" type="image/svg+xml">`,
+  and Google Search routinely ignores an SVG-only icon → it showed the generic globe next to the result.
+  Added **raster PNG icons** `public/brand/favicon-{48,96,192}.png` (sizes a multiple of 48, downscaled from
+  `favicon-256.png`) as `rel="icon" type="image/png"` plus an `apple-touch-icon`, keeping the SVG first for
+  browsers. All prerendered pages inherit them via the `dist/index.html` template. ⚠️ Google only refreshes
+  the search favicon when it re-crawls the home page, so the globe persists for days/weeks after deploy — not
+  an error. (Separately: a plain Google text result shows NO og:image thumbnail by design — `og:image`
+  = `brand/og-card.png`, 1200×630, is for FB/LINE/Twitter SHARE cards, verified 200, and is already correct.)
 - **The address links to the map** (`contact.json` gained a `url` on the address channel, the same pin as
   `geo`), so the footer and contact page stop showing it as dead text.
 - **Local keywords.** `<h1>` was "บ้านน็อคดาวน์" and the word **เพชรบูรณ์ appeared in no page's body at
