@@ -341,10 +341,13 @@ function Certificates() {
       </Stack>
       <Typography variant="body2" sx={{ mt: 1.5, color: 'text.secondary' }}>{t('mkt.about.certSub')}</Typography>
 
+      {/* Flex-wrap rather than a grid so a short row is CENTRED: a grid would
+          leave one or two documents hugging the left edge. Card widths are the
+          same as the 2- and 4-column grid would give (gap 12px / 20px). */}
       <Box
         sx={{
-          mt: 3, display: 'grid', gap: { xs: 1.5, md: 2.5 },
-          gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+          mt: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: { xs: 1.5, md: 2.5 },
+          '& > *': { width: { xs: 'calc((100% - 12px) / 2)', md: 'calc((100% - 60px) / 4)' } },
         }}
       >
         {certificates.map((c) => (
