@@ -709,6 +709,28 @@ Real visitor numbers on the back-office dashboard, replacing the honest placehol
   sent immediately; reload → no banner, route changes counted; withdraw → `_ga` cookies gone, no further hits.
 - Effect on numbers: GA now counts only visitors who accept, so it under-reports real traffic by design.
 
+## Company info + certificates — `/admin/company`, `/admin/certificates` (2026-10-08)
+The legal block on `/about` and a new **"ใบอนุญาตและเอกสารรับรอง"** section are edited from the back office instead of in code.
+- **Migration `20261008120000_company_info_and_certificates.sql`** (additive, re-runnable): `company_info` — ONE row
+  (`id = 1` enforced by a CHECK), typed columns (`legal_name`/`status`/`business_type`/`activities` as `{th,en}` jsonb,
+  `registration_no`, `registered_on date`, `capital numeric`), seeded with the DBD values; public read, staff UPDATE only
+  (no insert/delete — deleting it would blank the live legal block). `certificates` — `title`/`issuer` jsonb, `doc_no`,
+  `issued_on`, `expires_on`, `file_path`, `file_type image|pdf`, `sort_order`, `published`; public reads published rows,
+  staff write. New public bucket **`documents`** (images + **PDF**, 10 MB) — `catalog` only accepts images.
+  Verified on a throwaway Postgres: applies twice, anon sees only published rows, anon writes refused, a 2nd company row rejected.
+- **Order-independent rollout.** `CompanyProvider` (`src/company/`) starts from `COMPANY_FALLBACK`
+  (`src/content/company.ts`) and keeps it when the fetch fails — which is what PostgREST's 404 (`PGRST205`) for a missing
+  table looks like — and `scripts/prerender.mjs` `loadCompany()` treats the same failure as "use the fallback" instead of
+  failing the build. So the code can deploy before the migration is pushed; nothing visible changes until it is.
+- Dates are stored as ISO (CE) and **formatted per language** on display (th-TH → พ.ศ.); capital as a number → "1,500,000 บาท" / "THB 1,500,000".
+- **Expired certificates are hidden from the public page automatically** (Bangkok date), and the admin list flags them.
+  Unpublished rows are filtered client-side too, because a staff session can read them through RLS.
+- ⚠️ The `documents` bucket is public: an unpublished certificate's file is still readable by anyone with its URL (random
+  path). The admin page warns to redact ID-card numbers/signatures before uploading.
+- The prerendered `/about` carries the certificates (`render(url, catalog, company)`), so they reach crawlers; a change
+  in admin shows on the live SPA immediately and in the static HTML on the next deploy.
+- Admin calls in `src/admin/companyApi.ts`; a refused UPDATE (RLS → 0 rows, HTTP 200) is reported as a failure, not success.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

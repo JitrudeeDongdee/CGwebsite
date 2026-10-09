@@ -67,3 +67,16 @@ export function thumbUrl(path?: string): string | undefined {
   if (!thumb) return imageUrl(path)
   return imageUrl(thumb)
 }
+
+/**
+ * Certificate scans and PDFs (see the company_info migration). Separate from
+ * `catalog` because that bucket only accepts images.
+ */
+export const DOCUMENTS_BUCKET = 'documents'
+
+/** Public URL of a file in the documents bucket, or undefined without Supabase. */
+export function documentUrl(path: string): string | undefined {
+  if (!path) return undefined
+  if (/^https?:\/\//i.test(path)) return path
+  return supabase?.storage.from(DOCUMENTS_BUCKET).getPublicUrl(path.replace(/^\/+/, '')).data.publicUrl
+}

@@ -15,6 +15,9 @@ import ConstructionIcon from '@mui/icons-material/Construction'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined'
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremiumOutlined'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import IconButton from '@mui/material/IconButton'
 import { SmartImage } from '../ui/SmartImage'
 import { CatalogImage } from '../catalog/CatalogImage'
@@ -24,7 +27,9 @@ import { useLocalized } from '../catalog/useLocalized'
 import { projectImagePath, projectPath } from '../catalog/images'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
-import { COMPANY } from '../content/company'
+import { formatCapital, formatIsoDate, type Certificate } from '../content/company'
+import { useCompany } from '../company/CompanyProvider'
+import { documentUrl } from '../supabase/storage'
 import { CONTACT_CHANNELS, contactValue } from '../content/contact'
 
 ensureMarketingI18n()
@@ -193,6 +198,8 @@ export function AboutPage() {
 
         <LegalInfo />
 
+        <Certificates />
+
         <WorkStrip />
 
         <Stack direction="row" spacing={1.5} sx={{ mt: 5, flexWrap: 'wrap', gap: 1.5 }}>
@@ -210,7 +217,8 @@ export function AboutPage() {
 
 /**
  * Legal-entity facts (from the DBD registration) — a trust block for a business
- * where customers commit real money. Values live in `content/company.ts`; empty
+ * where customers commit real money. Values come from the `company_info` table
+ * (edited at /admin/company), with `content/company.ts` as the fallback; empty
  * ones are dropped so nothing shows blank. The address is read from contact.json
  * (one source), and `legalStatus` renders as a green chip.
  */
@@ -218,16 +226,17 @@ function LegalInfo() {
   const { t, i18n } = useTranslation()
   const L = useLocalized()
   const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
+  const { info: company } = useCompany()
   const address = CONTACT_CHANNELS.find((c) => c.kind === 'address')
   const addressText = address ? contactValue(address, lang) : ''
 
   const rows: Array<{ label: string; value: string; mono?: boolean }> = [
-    { label: t('mkt.about.legalName'), value: L(COMPANY.legalName) },
-    { label: t('mkt.about.legalReg'), value: COMPANY.registrationNo, mono: true },
-    { label: t('mkt.about.legalDate'), value: L(COMPANY.registeredDate) },
-    { label: t('mkt.about.legalCapital'), value: L(COMPANY.capital) },
-    { label: t('mkt.about.legalBiz'), value: L(COMPANY.businessType) },
-    { label: t('mkt.about.legalActivities'), value: L(COMPANY.activities) },
+    { label: t('mkt.about.legalName'), value: L(company.legalName) },
+    { label: t('mkt.about.legalReg'), value: company.registrationNo, mono: true },
+    { label: t('mkt.about.legalDate'), value: formatIsoDate(company.registeredOn, lang) },
+    { label: t('mkt.about.legalCapital'), value: formatCapital(company.capital, lang) },
+    { label: t('mkt.about.legalBiz'), value: L(company.businessType) },
+    { label: t('mkt.about.legalActivities'), value: L(company.activities) },
     { label: t('mkt.about.legalAddress'), value: addressText },
   ].filter((r) => r.value && r.value !== '—' && r.value !== '-')
 
@@ -257,7 +266,7 @@ function LegalInfo() {
         </Stack>
         <Typography variant="body2" sx={{ mt: 1.5, color: 'text.secondary' }}>
           {t('mkt.about.legalSub')}
-          {L(COMPANY.status) && (
+          {L(company.status) && (
             <Box
               component="span"
               sx={{
@@ -265,7 +274,7 @@ function LegalInfo() {
                 color: 'success.dark', bgcolor: 'success.light', whiteSpace: 'nowrap',
               }}
             >
-              {L(COMPANY.status)}
+              {L(company.status)}
             </Box>
           )}
         </Typography>
@@ -293,6 +302,118 @@ function LegalInfo() {
         </Box>
       </Paper>
     </Box>
+  )
+}
+
+/**
+ * Licences, registrations and certificates, uploaded at /admin/certificates.
+ *
+ * Each card opens the real file — a scan anyone can zoom into says more than a
+ * list of claims. Hidden entirely when there is nothing to show (expired and
+ * unpublished documents are already filtered out by `CompanyProvider`).
+ */
+function Certificates() {
+  const { t, i18n } = useTranslation()
+  const L = useLocalized()
+  const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
+  const { certificates } = useCompany()
+  if (certificates.length === 0) return null
+
+  return (
+    <Box sx={{ mt: { xs: 6, md: 9 } }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <Box
+          sx={{
+            flexShrink: 0, width: 44, height: 44, borderRadius: 2, display: 'grid', placeItems: 'center',
+            bgcolor: 'secondary.main', color: 'secondary.contrastText',
+          }}
+        >
+          <WorkspacePremiumIcon />
+        </Box>
+        <Box>
+          <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            {t('mkt.about.certEyebrow')}
+          </Typography>
+          <Typography variant="h2" sx={{ fontSize: { xs: 20, md: 26 }, fontWeight: 600, lineHeight: 1.3 }}>
+            {t('mkt.about.certHeading')}
+          </Typography>
+        </Box>
+      </Stack>
+      <Typography variant="body2" sx={{ mt: 1.5, color: 'text.secondary' }}>{t('mkt.about.certSub')}</Typography>
+
+      {/* Flex-wrap rather than a grid so a short row is CENTRED: a grid would
+          leave one or two documents hugging the left edge. Card widths are the
+          same as the 2- and 4-column grid would give (gap 12px / 20px). */}
+      <Box
+        sx={{
+          mt: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: { xs: 1.5, md: 2.5 },
+          '& > *': { width: { xs: 'calc((100% - 12px) / 2)', md: 'calc((100% - 60px) / 4)' } },
+        }}
+      >
+        {certificates.map((c) => (
+          <CertificateCard key={c.id} cert={c} lang={lang} title={L(c.title)} issuer={c.issuer ? L(c.issuer) : ''} />
+        ))}
+      </Box>
+    </Box>
+  )
+}
+
+function CertificateCard({ cert, lang, title, issuer }: { cert: Certificate; lang: 'th' | 'en'; title: string; issuer: string }) {
+  const { t } = useTranslation()
+  const href = documentUrl(cert.filePath)
+  const meta = [
+    issuer && `${t('mkt.about.certIssuer')} ${issuer}`,
+    cert.docNo && `${t('mkt.about.certNo')} ${cert.docNo}`,
+    cert.issuedOn && `${t('mkt.about.certIssued')} ${formatIsoDate(cert.issuedOn, lang)}`,
+    cert.expiresOn && `${t('mkt.about.certExpires')} ${formatIsoDate(cert.expiresOn, lang)}`,
+  ].filter(Boolean) as string[]
+  const pdfTile = (
+    <Box sx={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: 'error.main', bgcolor: 'action.hover' }}>
+      <Stack sx={{ alignItems: 'center', gap: 0.5 }}>
+        <PictureAsPdfIcon sx={{ fontSize: 44 }} />
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('mkt.about.certPdf')}</Typography>
+      </Stack>
+    </Box>
+  )
+
+  return (
+    <Paper
+      elevation={0}
+      component="a"
+      href={href}
+      target="_blank"
+      rel="noopener"
+      aria-label={`${t('mkt.about.certOpen')}: ${title}`}
+      sx={{
+        borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden', textDecoration: 'none', color: 'inherit',
+        display: 'flex', flexDirection: 'column', transition: 'border-color .15s',
+        '&:hover': { borderColor: 'primary.main' },
+      }}
+    >
+      {/* Portrait box: certificates are A4. `contain`, never `cover` — a
+          document cropped at the edges looks like it is hiding something. */}
+      <Box sx={{ aspectRatio: '3 / 4', bgcolor: 'action.hover', borderBottom: 1, borderColor: 'divider' }}>
+        {cert.fileType === 'image' ? (
+          <SmartImage
+            src={href}
+            alt={title}
+            fallback={pdfTile}
+            sx={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          />
+        ) : (
+          pdfTile
+        )}
+      </Box>
+      <Box sx={{ p: { xs: 1.5, md: 2 }, display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1 }}>
+        <Typography sx={{ fontWeight: 600, fontSize: { xs: 14, md: 15 }, lineHeight: 1.45 }}>{title}</Typography>
+        {meta.map((line) => (
+          <Typography key={line} variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>{line}</Typography>
+        ))}
+        <Typography variant="caption" sx={{ mt: 'auto', pt: 0.75, color: 'primary.main', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+          {t('mkt.about.certOpen')} <OpenInNewIcon sx={{ fontSize: 14 }} />
+        </Typography>
+      </Box>
+    </Paper>
   )
 }
 

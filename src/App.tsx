@@ -33,6 +33,8 @@ const AdminProductEditPage = lazy(() => import('./pages/AdminProductEditPage').t
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
+const AdminCompanyPage = lazy(() => import('./pages/AdminCompanyPage').then((m) => ({ default: m.AdminCompanyPage })))
+const AdminCertificatesPage = lazy(() => import('./pages/AdminCertificatesPage').then((m) => ({ default: m.AdminCertificatesPage })))
 const AdminMessagesPage = lazy(() => import('./pages/AdminMessagesPage').then((m) => ({ default: m.AdminMessagesPage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })))
@@ -138,6 +140,8 @@ function App() {
         <Route path="/admin/leads" element={<AdminPage />} />
         <Route path="/admin/messages" element={<AdminMessagesPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/company" element={<AdminCompanyPage />} />
+        <Route path="/admin/certificates" element={<AdminCertificatesPage />} />
         <Route path="/admin/products" element={<AdminProductListPage />} />
         <Route path="/admin/products/edit" element={<AdminProductEditPage />} />
         <Route path="/admin/products/edit/:id" element={<AdminProductEditPage />} />
