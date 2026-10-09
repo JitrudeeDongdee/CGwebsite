@@ -5,6 +5,8 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibraryOutlined'
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
 import ContactMailIcon from '@mui/icons-material/ContactMailOutlined'
 import GroupIcon from '@mui/icons-material/GroupOutlined'
+import BusinessIcon from '@mui/icons-material/BusinessOutlined'
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import type { StaffRole } from '../auth/AuthProvider'
 
 /**
@@ -36,6 +38,8 @@ export const ADMIN_MODULES: AdminModule[] = [
     title: 'ผลงานสาธารณประโยชน์และการบริจาค',
     desc: 'กิจกรรมเพื่อสังคมและการบริจาค',
   },
+  { to: '/admin/company', icon: <BusinessIcon />, title: 'ข้อมูลบริษัท', desc: 'ข้อมูลนิติบุคคลที่แสดงในหน้าเกี่ยวกับเรา' },
+  { to: '/admin/certificates', icon: <WorkspacePremiumIcon />, title: 'เอกสารรับรอง', desc: 'ใบอนุญาตและใบรับรองที่แสดงบนเว็บ' },
   { to: '/admin/users', icon: <GroupIcon />, title: 'ผู้ใช้และสิทธิ์', desc: 'ให้สิทธิ์พนักงานเข้าหลังบ้าน', adminOnly: true },
 ]
 

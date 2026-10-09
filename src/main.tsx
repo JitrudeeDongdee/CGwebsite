@@ -7,15 +7,18 @@ import App from './App.tsx'
 import { AppThemeProvider } from './theme/AppThemeProvider'
 import { AuthProvider } from './auth/AuthProvider'
 import { CatalogProvider } from './catalog/CatalogProvider'
+import { CompanyProvider } from './company/CompanyProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppThemeProvider>
       <AuthProvider>
         <CatalogProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <CompanyProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </CompanyProvider>
         </CatalogProvider>
       </AuthProvider>
     </AppThemeProvider>
