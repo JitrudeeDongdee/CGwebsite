@@ -657,6 +657,7 @@ Full staff account management from the back office, not just roles.
 
 ## GA4 dashboard stats — `/admin` + `functions/api/ga-stats.ts` (2026-10-07)
 Real visitor numbers on the back-office dashboard, replacing the honest placeholder card.
+- ⚠️ **Fixed 2026-10-09: nothing was actually being recorded until then.** The `gtag` shim pushed a rest-parameter array instead of `arguments`, so gtag.js loaded but never sent a hit (see MEMORY.md). Numbers before the fix are zero, not low.
 - **Tagging is done (item 1):** a GA4 property **"TDD Website"** (property id `557855535`, web stream
   `16057882667`, measurement id **`G-X71E2D3Z9G`**) collects from `thaidongdee.com`. `VITE_GA_ID` is set in
   Cloudflare Pages (Production) and verified in the live bundle. (The earlier auto-created "when-cookie-deram"

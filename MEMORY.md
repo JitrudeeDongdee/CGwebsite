@@ -249,3 +249,19 @@ redirects.
 ⚠️ **The premise of this entry was itself a bad measurement** — see the HEAD-vs-GET entry
 above. The documentation habit it argues for still holds; the specific claim that started
 it did not. Kept as the example it turned out to be.
+
+## GA4 loaded but recorded nothing — `gtag` pushed an array, not `arguments`
+
+**What happened**: the GA4 property reported zero for the whole time since tagging went live, even while the owner
+was browsing the site. On the live page gtag.js was loaded and `dataLayer` held `js` / `config` / `event`, but **no
+`google-analytics.com/g/collect` request was ever made**. No console error anywhere.
+
+**Root cause**: `initGa` defined `function gtag(...args) { dataLayer.push(args) }`. A rest parameter is a plain
+array; gtag.js only acts on entries that are an `arguments` object and silently skips arrays. The comment directly
+above it said "must push `arguments`" — the code contradicted its own comment, and the tag loading looked like proof
+that analytics worked.
+
+**Correct behavior**: the `gtag` shim body must be `dataLayer.push(arguments)`. "The script loaded" is not
+verification for analytics: check that `dataLayer` entries are `[object Arguments]` and that a
+`/g/collect?...&en=page_view` request appears (`performance.getEntriesByType('resource')`), using a fake ID such as
+`VITE_GA_ID=G-TEST00000` locally so the check never pollutes the real property.
