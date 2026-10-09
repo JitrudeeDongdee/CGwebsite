@@ -764,6 +764,14 @@ is passed `rounded={false}`: two radii leave pale slivers at each corner.
 
 Verification for the pushed branch: `tsc -b` clean, `oxlint` warnings-only (pre-existing fast-refresh `only-export-components`), rebased onto `origin/main` with no conflicts, `/home/contracting` + `/products?category=contracting` render with no console errors.
 
+**Solar kit product (2026-10-08):** `solar-on-grid-kit` (electronics, quote-only, published) was added straight
+into Supabase from the Page's only product post (cg9723, 2 Oct 2022). Specs copy the post's kit sizes
+(1.6–10 kW) and its monthly figures, read as **baht of electricity a month** at 5 sun-hours/day (the post
+writes only "1200-1500/ด", so the unit is an interpretation). The post's 60-month installment and 5-year
+inverter-warranty promo were deliberately left off as 2022 terms. The cover is the post's rooftop-panel photo
+(960×540), not its promo banner, which carries an old LINE ID. Until the next build the page is served by the
+SPA, not prerendered, and is missing from the sitemap.
+
 **Catalog content as of 2026-09-07:** 21 products and ~20 portfolio projects plus 9 community items, all imported from the owner's Facebook posts through `import-from-post.mjs`.
 
 ⚠️ **Two content caveats that need a human pass before launch.** (1) Facebook publishes no post date, so **year and province were defaulted to 2568 / เพชรบูรณ์ on roughly ten rows** — the site is currently displaying guessed values as fact. (2) Many captions are jokes, complaints, recruitment notices or donation appeals rather than descriptions of the work, so the descriptions on those rows were **written from the photo** rather than taken from the post; two captions were rejected outright as unusable on a company site. The source link is always kept, so the original text is one click away.

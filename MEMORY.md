@@ -249,3 +249,18 @@ redirects.
 ⚠️ **The premise of this entry was itself a bad measurement** — see the HEAD-vs-GET entry
 above. The documentation habit it argues for still holds; the specific claim that started
 it did not. Kept as the example it turned out to be.
+
+
+## A coordinate click on a Facebook post opened a video, and the comment was typed as shortcuts
+
+**What happened**: while posting link comments, a click at the usual comment-box coordinates landed on a video
+tile instead (the post's layout had not settled). The comment text was then "typed" into the page, Facebook
+read each letter as a one-key shortcut, and it queued dialogs asking to turn single-key shortcuts on.
+
+**Root cause**: the click was aimed by screen position on a layout that was still moving, and typing started
+without confirming where focus actually was.
+
+**Correct behavior**: find the box by its label (`find` "แสดงความคิดเห็นในชื่อ…" → click the ref), then check
+`document.activeElement.getAttribute('aria-label')` before typing. Type only if focus is on the comment box.
+Confirm with `document.activeElement.innerText` that the full text is there before pressing Enter. If a stray
+shortcut dialog appears, navigate away rather than answering it, so no account setting changes.
