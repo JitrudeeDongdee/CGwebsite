@@ -47,10 +47,14 @@ export function initGa(): void {
   document.head.appendChild(s)
 
   window.dataLayer = window.dataLayer || []
-  // gtag must push `arguments` itself — an arrow function spreading into an array
-  // is NOT equivalent; GA reads the arguments object.
-  function gtag(...args: unknown[]) {
-    window.dataLayer!.push(args)
+  // gtag must push the `arguments` OBJECT. A rest parameter (`...args`) pushes a
+  // plain array, which gtag.js silently ignores: the script loads, nothing is
+  // ever sent, and the property reports zero. That shipped once — every command
+  // sat in dataLayer as an array and no /g/collect request was made. The
+  // parameter list is only there for the type; the body must use `arguments`.
+  function gtag(..._args: unknown[]) {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer!.push(arguments)
   }
   window.gtag = gtag
   gtag('js', new Date())
