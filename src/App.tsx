@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { MarketingLayout } from './marketing/MarketingLayout'
 import { SiteHeader } from './ui/SiteHeader'
 import { RouteAnalytics } from './analytics/RouteAnalytics'
+import { CookieConsent } from './consent/CookieConsent'
 import { RouteFallback } from './ui/RouteFallback'
 import { AdminGuard } from './admin/AdminGuard'
 import { AdminLayout } from './admin/AdminLayout'
@@ -38,6 +39,7 @@ const AdminMessagesPage = lazy(() => import('./pages/AdminMessagesPage').then((m
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((m) => ({ default: m.ProductsPage })))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })))
 const PortfolioPage = lazy(() => import('./pages/PortfolioPage').then((m) => ({ default: m.PortfolioPage })))
@@ -85,6 +87,8 @@ function App() {
     <>
       {/* Reports SPA route changes to GA4; inert unless VITE_GA_ID is set. */}
       <RouteAnalytics />
+      {/* Shown on every route, the designer included — consent is site-wide. */}
+      <CookieConsent />
     <Routes>
       <Route element={<MarketingLayout />}>
         {/* The contracting line is the landing page — `/home` is an alias for it. */}
@@ -105,6 +109,7 @@ function App() {
             <Route path="/articles/:slug" element={<ArticleDetailPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         {/* The signed-in user's own profile settings (redirects to /login if not). */}
         <Route path="/account" element={<ProfilePage />} />
         {/* An unknown path is NOT the home page. Redirecting it there made every

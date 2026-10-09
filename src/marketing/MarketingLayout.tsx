@@ -9,6 +9,7 @@ import Link from '@mui/material/Link'
 import { SiteHeader, Brand } from '../ui/SiteHeader'
 import { RouteFallback } from '../ui/RouteFallback'
 import { contactHref, contactLabel, contactValue, footerChannels } from '../content/contact'
+import { CookieSettingsLink } from '../consent/CookieConsent'
 import { ensureMarketingI18n } from './i18n'
 
 ensureMarketingI18n()
@@ -108,8 +109,18 @@ function MarketingFooter() {
           {col(t('mkt.footer.contactHead'), contact)}
         </Box>
         <Divider sx={{ my: 3 }} />
-        <Stack direction="row" sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-          <Typography variant="caption" color="text.secondary">© 2567 Thai Dongdee Engineering. {t('mkt.footer.rights')}.</Typography>
+        <Stack direction="row" sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary">© 2567 Thai Dongdee Engineering. {t('mkt.footer.rights')}.</Typography>
+            {/* PDPA: withdrawing consent must be as easy as giving it, so the
+                reopen control sits on every page, not inside a settings screen. */}
+            <Typography variant="caption" component={RouterLink} to="/privacy" sx={{ color: 'text.secondary', textDecoration: 'underline' }}>
+              {t('mkt.privacy.title')}
+            </Typography>
+            <Typography variant="caption" component="span" sx={{ color: 'text.secondary' }}>
+              <CookieSettingsLink />
+            </Typography>
+          </Stack>
           <Typography variant="caption" color="text.secondary">{t('mkt.placeholderNote')}</Typography>
         </Stack>
       </Box>

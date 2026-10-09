@@ -505,7 +505,7 @@ files) with no three.js at all; `/design` is 233 kB, and the 231 kB `Scene3D` ch
 use it (import cycle).
 
 **Still open after this phase:** per-route `<title>`/meta/OG (needs prerender or SSG) · a real 1200×630 share
-image (`brand/logo-shield.png` is 540×515 and will be cropped) · a PDPA cookie-consent banner before GA4 counts as compliant · custom domain + DNS.
+image (`brand/logo-shield.png` is 540×515 and will be cropped) · ~~a PDPA cookie-consent banner before GA4 counts as compliant~~ (done 2026-10-09, see "Cookie consent") · custom domain + DNS.
 
 **🔨 Phase 3 — IN PROGRESS: real backend (Supabase) + admin for catalog content.** Schema/RLS/repositories/Storage + a dev-only portfolio import have landed on `feat/supabase-catalog-admin` (see Current state); real auth and the production admin UI are still pending.
 
@@ -690,6 +690,25 @@ Real visitor numbers on the back-office dashboard, replacing the honest placehol
   a short note when GA is unreachable or unconfigured, instead of collapsing to a bare error — so it reads as
   a dashboard panel in every state.
 
+## Cookie consent (PDPA) + `/privacy` — `src/consent/`, `src/pages/PrivacyPage.tsx` (2026-10-09)
+- **Opt-in.** GA4 is not loaded at all until the visitor accepts; undecided = declined. Choice stored in
+  `cg:cookie-consent` as `{choice, at}` (the timestamp is what PDPA expects you to be able to show).
+- **Banner** (`CookieConsent`): equal-weight "ใช้เฉพาะที่จำเป็น" / "ยอมรับคุกกี้สถิติ" buttons, non-blocking, links to
+  `/privacy`. Renders nothing until mounted, so it is never baked into the 59 prerendered pages.
+- **Withdrawal** from the footer's "ตั้งค่าคุกกี้" on every page: sets GA's `ga-disable-<ID>` flag and deletes `_ga*`
+  cookies (a loaded script cannot be unloaded). `initGa` CLEARS that flag first — without it, accepting after the
+  page had already applied "undecided → disabled" loaded GA and still sent nothing until a reload (bug caught while
+  porting the work).
+- `RouteAnalytics` listens for `cg:consent-change`, so accepting starts tracking from that page view, no reload.
+- **`/privacy`** describes what the code actually does: forms, account, local profile store, GA (consent only),
+  processors (Supabase — **AWS ap-south-1 Mumbai**, verified from the DB host's IPv6 against AWS ip-ranges, not
+  Singapore as first drafted; Cloudflare; Google Analytics; Brevo; Google Maps embed). Controller = the registered
+  name + registration no. Prerendered and in the sitemap. ⚠️ Any new form, cookie or processor must update it in
+  the same change.
+- Verified in the browser with `VITE_GA_ID=G-TEST00000`: undecided → no gtag script, no hits; accept → `page_view`
+  sent immediately; reload → no banner, route changes counted; withdraw → `_ga` cookies gone, no further hits.
+- Effect on numbers: GA now counts only visitors who accept, so it under-reports real traffic by design.
+
 ## Company info + certificates — `/admin/company`, `/admin/certificates` (2026-10-08)
 The legal block on `/about` and a new **"ใบอนุญาตและเอกสารรับรอง"** section are edited from the back office instead of in code.
 - **Migration `20261008120000_company_info_and_certificates.sql`** (additive, re-runnable): `company_info` — ONE row
@@ -786,6 +805,14 @@ is passed `rounded={false}`: two radii leave pale slivers at each corner.
 **Done in Phase 3 so far:** 3.1 schema, 3.2 RLS, 3.3 repositories (`SupabaseProduct/ProjectRepository` + seed fallback + `CatalogProvider` — marketing pages no longer import `PRODUCTS`/`PROJECTS` directly), catalog Storage bucket + `imageUrl()`. **Still pending:** 3.4 real Supabase Auth (still the localStorage mock), the full admin UI (only the dev-only portfolio import exists — products/pricing/leads screens + `AdminGuard` + staff-auth gate not built), and 3.6 RLS verification against the live API.
 
 Verification for the pushed branch: `tsc -b` clean, `oxlint` warnings-only (pre-existing fast-refresh `only-export-components`), rebased onto `origin/main` with no conflicts, `/home/contracting` + `/products?category=contracting` render with no console errors.
+
+**Solar kit product (2026-10-08):** `solar-on-grid-kit` (electronics, quote-only, published) was added straight
+into Supabase from the Page's only product post (cg9723, 2 Oct 2022). Specs copy the post's kit sizes
+(1.6–10 kW) and its monthly figures, read as **baht of electricity a month** at 5 sun-hours/day (the post
+writes only "1200-1500/ด", so the unit is an interpretation). The post's 60-month installment and 5-year
+inverter-warranty promo were deliberately left off as 2022 terms. The cover is the post's rooftop-panel photo
+(960×540), not its promo banner, which carries an old LINE ID. Until the next build the page is served by the
+SPA, not prerendered, and is missing from the sitemap.
 
 **Catalog content as of 2026-09-07:** 21 products and ~20 portfolio projects plus 9 community items, all imported from the owner's Facebook posts through `import-from-post.mjs`.
 

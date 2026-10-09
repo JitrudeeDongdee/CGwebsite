@@ -171,6 +171,7 @@ async function buildRoutes() {
     ...ARTICLES.map((x) => ({ path: `/articles/${x.slug}`, priority: '0.6', changefreq: 'yearly', lastmod: x.published })),
     { path: '/about', priority: '0.5', changefreq: 'yearly', lastmod: today },
     { path: '/contact', priority: '0.5', changefreq: 'yearly', lastmod: today },
+    { path: '/privacy', priority: '0.3', changefreq: 'yearly', lastmod: today },
     { path: '/design', priority: '0.7', changefreq: 'monthly', lastmod: today },
   ]
 }
