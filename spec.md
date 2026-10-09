@@ -505,7 +505,7 @@ files) with no three.js at all; `/design` is 233 kB, and the 231 kB `Scene3D` ch
 use it (import cycle).
 
 **Still open after this phase:** per-route `<title>`/meta/OG (needs prerender or SSG) · a real 1200×630 share
-image (`brand/logo-shield.png` is 540×515 and will be cropped) · a PDPA cookie-consent banner before GA4 counts as compliant · custom domain + DNS.
+image (`brand/logo-shield.png` is 540×515 and will be cropped) · ~~a PDPA cookie-consent banner before GA4 counts as compliant~~ (done 2026-10-09, see "Cookie consent") · custom domain + DNS.
 
 **🔨 Phase 3 — IN PROGRESS: real backend (Supabase) + admin for catalog content.** Schema/RLS/repositories/Storage + a dev-only portfolio import have landed on `feat/supabase-catalog-admin` (see Current state); real auth and the production admin UI are still pending.
 
@@ -689,6 +689,25 @@ Real visitor numbers on the back-office dashboard, replacing the honest placehol
   **always renders its full structure** (the three metric boxes + the top-products section), filling "—" and
   a short note when GA is unreachable or unconfigured, instead of collapsing to a bare error — so it reads as
   a dashboard panel in every state.
+
+## Cookie consent (PDPA) + `/privacy` — `src/consent/`, `src/pages/PrivacyPage.tsx` (2026-10-09)
+- **Opt-in.** GA4 is not loaded at all until the visitor accepts; undecided = declined. Choice stored in
+  `cg:cookie-consent` as `{choice, at}` (the timestamp is what PDPA expects you to be able to show).
+- **Banner** (`CookieConsent`): equal-weight "ใช้เฉพาะที่จำเป็น" / "ยอมรับคุกกี้สถิติ" buttons, non-blocking, links to
+  `/privacy`. Renders nothing until mounted, so it is never baked into the 59 prerendered pages.
+- **Withdrawal** from the footer's "ตั้งค่าคุกกี้" on every page: sets GA's `ga-disable-<ID>` flag and deletes `_ga*`
+  cookies (a loaded script cannot be unloaded). `initGa` CLEARS that flag first — without it, accepting after the
+  page had already applied "undecided → disabled" loaded GA and still sent nothing until a reload (bug caught while
+  porting the work).
+- `RouteAnalytics` listens for `cg:consent-change`, so accepting starts tracking from that page view, no reload.
+- **`/privacy`** describes what the code actually does: forms, account, local profile store, GA (consent only),
+  processors (Supabase — **AWS ap-south-1 Mumbai**, verified from the DB host's IPv6 against AWS ip-ranges, not
+  Singapore as first drafted; Cloudflare; Google Analytics; Brevo; Google Maps embed). Controller = the registered
+  name + registration no. Prerendered and in the sitemap. ⚠️ Any new form, cookie or processor must update it in
+  the same change.
+- Verified in the browser with `VITE_GA_ID=G-TEST00000`: undecided → no gtag script, no hits; accept → `page_view`
+  sent immediately; reload → no banner, route changes counted; withdraw → `_ga` cookies gone, no further hits.
+- Effect on numbers: GA now counts only visitors who accept, so it under-reports real traffic by design.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
