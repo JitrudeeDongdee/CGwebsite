@@ -6,7 +6,6 @@ import MemoryIcon from '@mui/icons-material/Memory'
 import ChairIcon from '@mui/icons-material/Chair'
 import AgricultureIcon from '@mui/icons-material/Agriculture'
 import EngineeringIcon from '@mui/icons-material/Engineering'
-import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { PRODUCT_CATEGORIES } from '../catalog/categories'
 import { useCatalog, useCommunity, useHeroProduct, useProductsByCategory } from '../catalog/CatalogProvider'
@@ -14,7 +13,7 @@ import { productImagePath, projectImagePath, projectImagePaths, projectPath } fr
 import { useLocalized } from '../catalog/useLocalized'
 import type { ProductCategory } from '../catalog/types'
 import { useSeo } from '../seo/useSeo'
-import type { PriceLabel, WorkCard } from './home/shared'
+import type { WorkCard } from './home/shared'
 // `HeroSection` is the previous two-column text hero — kept, not deleted, so the
 // two can be compared and swapped back by changing the block below.
 import { type Hero } from './home/HeroSection'
@@ -50,9 +49,8 @@ const SERVICE_ORDER: ProductCategory[] = ['house', 'electronics', 'furniture', '
 
 export function HomePage() {
   const { service } = useParams()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const L = useLocalized()
-  const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
 
   const cat: ProductCategory | null = isCategory(service) ? service : null
 
@@ -150,9 +148,6 @@ export function HomePage() {
   const productsHeading = cat ? t(`mkt.service.${cat}.productsHead`, { defaultValue: '' }) || undefined : undefined
   const workHeading = cat ? t(`mkt.service.${cat}.workHead`, { defaultValue: '' }) || undefined : undefined
 
-  const priceLabel: PriceLabel = (from) =>
-    from == null ? t('mkt.catalog.quote') : formatCurrency(from, 'THB', locale)
-
   return (
     <Box>
       {/* Compact category strip first, then the hero. */}
@@ -168,7 +163,6 @@ export function HomePage() {
       <FeaturedSection
         catProducts={catProducts}
         allProductsTo={allProductsTo}
-        priceLabel={priceLabel}
         loading={loading}
         heading={productsHeading}
       />

@@ -123,10 +123,15 @@ export function useCatalog(): CatalogValue {
 // --- the helpers the pages used to import from products.ts / projects.ts ---
 // Same signatures, now reading whatever the provider loaded.
 
+/** A product belongs to a category if it's the primary one or one of the extras. */
+export function productInCategory(product: Product, cat: ProductCategory): boolean {
+  return product.category === cat || (product.extraCategories ?? []).includes(cat)
+}
+
 export function useProductsByCategory(cat: ProductCategory | 'all'): Product[] {
   const { products } = useCatalog()
   return useMemo(
-    () => (cat === 'all' ? products : products.filter((p) => p.category === cat)),
+    () => (cat === 'all' ? products : products.filter((p) => productInCategory(p, cat))),
     [products, cat],
   )
 }

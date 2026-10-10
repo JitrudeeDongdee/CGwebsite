@@ -13,9 +13,9 @@ import { CatalogImage } from '../catalog/CatalogImage'
 import { trackProductSelect } from '../analytics/ga'
 import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
+import { ProductBadges, ProductPriceLine } from '../catalog/ProductPrice'
 import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQuery'
 import { CatalogToolbar } from '../ui/CatalogToolbar'
-import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
 
@@ -29,19 +29,15 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
 }
 
 export function ProductsPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   useSeo({ title: t('mkt.products.title'), description: t('mkt.products.sub') })
   const L = useLocalized()
-  const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
   const { cat, query, requestedPage, update } = useCatalogQuery()
 
   const matches = useProductsByCategory(cat).filter((p) =>
     matchesQuery([p.name.th, p.name.en, p.shortDesc.th, p.shortDesc.en, p.slug], query),
   )
   const { page, pageCount, items: products } = paginate(matches, requestedPage, PAGE_SIZE)
-
-  const priceLabel = (from: number | null) =>
-    from == null ? t('mkt.catalog.quote') : `${t('mkt.catalog.from')} ${formatCurrency(from, 'THB', locale)}`
 
   return (
     <Wrap sx={{ py: { xs: 5, md: 7 } }}>
@@ -103,8 +99,9 @@ export function ProductsPage() {
               >
                 {L(p.shortDesc)}
               </Typography>
-              <Typography sx={{ mt: 1, color: 'secondary.main', fontWeight: 700 }}>
-                {priceLabel(p.priceFrom)}
+              <ProductBadges product={p} sx={{ mt: 1 }} />
+              <Typography component="div" sx={{ mt: 1, color: 'secondary.main', fontWeight: 700 }}>
+                <ProductPriceLine product={p} />
               </Typography>
             </Box>
           </Paper>

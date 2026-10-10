@@ -55,6 +55,8 @@ const th = {
     specsHead: 'รายละเอียด',
     otherProducts: 'สินค้าอื่นๆ',
     notFound: 'ไม่พบรายการนี้',
+    installmentBadge: 'ผ่อนได้',
+    chooseModel: 'เลือกรุ่น',
   },
   service: {
     eyebrow: 'บริการของเรา',
@@ -351,6 +353,8 @@ const en = {
     specsHead: 'Details',
     otherProducts: 'Other products',
     notFound: 'Item not found',
+    installmentBadge: 'Instalments',
+    chooseModel: 'Choose a model',
   },
   service: {
     eyebrow: 'Our services',

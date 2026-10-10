@@ -18,11 +18,45 @@ export interface ProductSpec {
   value: Localized
 }
 
+/** A price cut, by fixed baht (`amount`) or `percent`. */
+export type DiscountKind = 'amount' | 'percent'
+
+/**
+ * An optional discount on a product's price. `start`/`end` are ISO strings; a
+ * null/absent bound is open — so no dates at all means "always on". A discount
+ * only shows while it is active (see `catalog/pricing.ts`).
+ */
+export interface ProductDiscount {
+  kind: DiscountKind
+  /** Baht when `kind` is 'amount', a 0–100 percentage when 'percent'. */
+  value: number
+  start?: string | null
+  end?: string | null
+}
+
+/**
+ * One model/size of a product (e.g. a 3kW vs 5kW solar kit), with its own price
+ * and photos. A product with no variants behaves exactly as before.
+ */
+export interface ProductVariant {
+  /** Stable key, so React lists and the detail-page picker don't reshuffle. */
+  id: string
+  name: Localized
+  /** THB, or null for "ask for a price" on this model. */
+  priceFrom: number | null
+  priceUnit?: Localized
+  /** Variant-specific photos; empty means "use the product's photos". */
+  images: string[]
+}
+
 export interface Product {
   id: string
   /** URL slug, and the default image name: `products/<slug>.jpg` */
   slug: string
+  /** Primary category — owns the URL, the best-seller-per-category rule, the admin table. */
   category: ProductCategory
+  /** Also listed under these categories (filters + `/home/:service`), besides the primary one. */
+  extraCategories?: ProductCategory[]
   name: Localized
   shortDesc: Localized
   /** THB from-price, or null when it's quote-only. */
@@ -35,6 +69,12 @@ export interface Product {
   featured: boolean
   /** Marked as a best seller — shown with a badge, and picked for the hero card. */
   bestSeller?: boolean
+  /** Can be paid in instalments — shown as a badge; no terms stored. */
+  installment?: boolean
+  /** An active discount shows a struck-through original price; null/absent = none. */
+  discount?: ProductDiscount | null
+  /** Models/sizes; empty or absent means the product has a single price. */
+  variants?: ProductVariant[]
 }
 
 /**

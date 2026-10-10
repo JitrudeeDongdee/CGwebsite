@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -15,6 +15,8 @@ import { CatalogImage } from '../catalog/CatalogImage'
 import { projectImagePath, projectPath } from '../catalog/images'
 import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
+import { ProductBadges } from '../catalog/ProductPrice'
+import { variantPriceView } from '../catalog/pricing'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
@@ -32,6 +34,9 @@ export function ProductDetailPage() {
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
   const { slug } = useParams()
   const product = useProduct(slug)
+  // Which variant the price + photo show. null = the first one (or the product's
+  // own price when it has no variants).
+  const [variantId, setVariantId] = useState<string | null>(null)
   // Jobs delivered with this service — proof that the listing is real work.
   const relatedProjects = useProjectsForProduct(product?.id)
 
@@ -64,6 +69,14 @@ export function ProductDetailPage() {
 
   const isHouse = product.category === 'house'
 
+  // Variants: the chosen one drives the price and the main photo. With none, the
+  // product's own price/photo stand in (selected = null).
+  const variants = product.variants ?? []
+  const selected = variants.find((v) => v.id === variantId) ?? (variants.length ? variants[0] : null)
+  const pv = variantPriceView(product, selected)
+  const unit = selected?.priceUnit ?? product.priceUnit
+  const heroImage = selected?.images?.[0] ?? productImagePath(product)
+
   return (
     <Wrap sx={{ py: { xs: 4, md: 6 } }}>
       <Link component={RouterLink} to="/products" color="text.secondary" sx={{ fontSize: 14 }}>
@@ -72,7 +85,7 @@ export function ProductDetailPage() {
 
       <Box sx={{ display: 'grid', gap: { xs: 3, md: 5 }, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, mt: 2, alignItems: 'start' }}>
         <Paper elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider', overflow: 'hidden' }}>
-          <CatalogImage src={productImagePath(product)} category={product.category} alt={L(product.name)} ratio="4 / 3" />
+          <CatalogImage src={heroImage} category={product.category} alt={L(product.name)} ratio="4 / 3" />
         </Paper>
 
         <Box>
@@ -80,11 +93,45 @@ export function ProductDetailPage() {
           <Typography variant="h1" sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 600 }}>{L(product.name)}</Typography>
           <Typography sx={{ mt: 1.5, color: 'text.secondary' }}>{L(product.shortDesc)}</Typography>
 
-          <Typography sx={{ mt: 2, color: 'secondary.main', fontWeight: 700, fontSize: 22 }}>
-            {product.priceFrom == null
-              ? t('mkt.catalog.quote')
-              : `${t('mkt.catalog.from')} ${formatCurrency(product.priceFrom, 'THB', locale)}${product.priceUnit ? ' ' + L(product.priceUnit) : ''}`}
-          </Typography>
+          {/* Variant picker — swaps the price and the photo above. */}
+          {variants.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="overline" color="text.secondary">{t('mkt.catalog.chooseModel')}</Typography>
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
+                {variants.map((v) => {
+                  const on = v.id === selected?.id
+                  return (
+                    <Chip
+                      key={v.id}
+                      label={L(v.name)}
+                      onClick={() => setVariantId(v.id)}
+                      color={on ? 'secondary' : 'default'}
+                      variant={on ? 'filled' : 'outlined'}
+                    />
+                  )
+                })}
+              </Stack>
+            </Box>
+          )}
+
+          <Stack direction="row" spacing={1.5} sx={{ mt: 2, alignItems: 'baseline', flexWrap: 'wrap' }}>
+            {pv.current == null ? (
+              <Typography sx={{ color: 'secondary.main', fontWeight: 700, fontSize: 22 }}>{t('mkt.catalog.quote')}</Typography>
+            ) : (
+              <>
+                {pv.original != null && (
+                  <Typography component="span" sx={{ color: 'text.disabled', textDecoration: 'line-through', fontSize: 18 }}>
+                    {formatCurrency(pv.original, 'THB', locale)}
+                  </Typography>
+                )}
+                <Typography component="span" sx={{ color: 'secondary.main', fontWeight: 700, fontSize: 22 }}>
+                  {formatCurrency(pv.current, 'THB', locale)}
+                  {unit ? ' ' + L(unit) : ''}
+                </Typography>
+              </>
+            )}
+          </Stack>
+          <ProductBadges product={product} sx={{ mt: 1 }} />
 
           <Paper elevation={0} sx={{ mt: 2.5, borderRadius: 2, border: 1, borderColor: 'divider' }}>
             <Typography variant="overline" color="text.secondary" sx={{ px: 2, pt: 1.5, display: 'block' }}>
