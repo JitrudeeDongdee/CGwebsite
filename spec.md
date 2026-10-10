@@ -361,6 +361,12 @@ The admin screens ship to the deployed site and staff sign in to use them. The d
 - **`/admin/messages`** is new, and is why this phase mattered: `contact_messages` and `leads` are
   staff-read-only, and with no staff account **a message that arrived was stored correctly and seen by
   nobody**. The screen lists both, flags unanswered messages, and toggles `handled`.
+- **Contact-form subject (2026-10-11).** The `/contact` form gained a **topic dropdown** (`mkt.contact.topics.*`:
+  quote / productPrice / service / other) + an **optional free-text detail**; together they compose a
+  `subject` ("ขอใบเสนอราคา — ตู้เย็น") stored on a new `contact_messages.subject` column (migration
+  `20261011140000`, nullable) and shown bold above the message in `/admin/messages`. A product page's
+  "ขอใบเสนอราคา" CTA deep-links to `/contact?topic=productPrice&detail=<product name>` so the form opens
+  pre-filled; `ContactPage` reads `?topic=`/`?detail=` (topic validated against the option list).
 - **Two sign-in pages, deliberately apart (2026-10-03).** `/login` is the customer one (the designer's
   save / download / send-to-team gate); **`/admin/login`** is staff-only, with no sign-up and no social
   buttons, and `AdminGuard` sends signed-out visitors there. Its route sits OUTSIDE the guard — inside,

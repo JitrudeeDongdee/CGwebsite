@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
+import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
@@ -24,11 +26,26 @@ function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>
 }
 
+/** The subject dropdown's options; labels live in i18n `mkt.contact.topics.*`.
+ *  Also the allow-list for the `?topic=` deep-link param. */
+const TOPIC_KEYS = ['quote', 'productPrice', 'service', 'other'] as const
+
 export function ContactPage() {
   const { t, i18n } = useTranslation()
   useSeo({ title: t('mkt.contact.title'), description: t('mkt.contact.sub') })
   const lang = i18n.resolvedLanguage === 'en' ? 'en' : 'th'
-  const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' })
+  // Deep links from a product carry ?topic=&detail= so the form opens pre-filled
+  // (e.g. "สอบถามราคาสินค้า" + "ตู้เย็น" when you came from the fridge page).
+  const [params] = useSearchParams()
+  const paramTopic = params.get('topic') ?? ''
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    topic: (TOPIC_KEYS as readonly string[]).includes(paramTopic) ? paramTopic : '',
+    detail: params.get('detail') ?? '',
+    message: '',
+  })
   const [sent, setSent] = useState(false)
   const [sending, setSending] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -41,9 +58,12 @@ export function ContactPage() {
     setFailed(false)
     setSending(true)
     try {
-      await sendContactMessage(form)
+      // The subject is the chosen topic plus any detail: "ขอใบเสนอราคา — ตู้เย็น".
+      const topicLabel = form.topic ? t(`mkt.contact.topics.${form.topic}`) : ''
+      const subject = [topicLabel, form.detail.trim()].filter(Boolean).join(' — ')
+      await sendContactMessage({ name: form.name, phone: form.phone, email: form.email, subject, message: form.message })
       setSent(true)
-      setForm({ name: '', phone: '', email: '', message: '' })
+      setForm({ name: '', phone: '', email: '', topic: '', detail: '', message: '' })
     } catch (err) {
       // Never clear the form on failure — the customer would have to retype
       // everything, and most people just leave instead.
@@ -94,6 +114,29 @@ export function ContactPage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField label={t('mkt.contact.phone')} value={form.phone} onChange={set('phone')} required fullWidth size="small" />
               <TextField label={t('mkt.contact.email')} type="email" value={form.email} onChange={set('email')} fullWidth size="small" />
+            </Stack>
+            {/* Subject: a topic (dropdown) + an optional free-text detail. */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                select
+                required
+                label={t('mkt.contact.topicLabel')}
+                value={form.topic}
+                onChange={set('topic')}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { sm: 260 } }}
+              >
+                <MenuItem value="" disabled>
+                  {t('mkt.contact.topicChoose')}
+                </MenuItem>
+                {TOPIC_KEYS.map((key) => (
+                  <MenuItem key={key} value={key}>
+                    {t(`mkt.contact.topics.${key}`)}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField label={t('mkt.contact.topicDetail')} value={form.detail} onChange={set('detail')} fullWidth size="small" />
             </Stack>
             <TextField label={t('mkt.contact.message')} value={form.message} onChange={set('message')} multiline minRows={4} fullWidth size="small" />
             <Button
