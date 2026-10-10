@@ -6,6 +6,8 @@ export interface ContactMessage {
   name: string
   phone: string
   email: string
+  /** The e-mail-style subject: chosen topic + optional detail. */
+  subject: string
   message: string
 }
 
@@ -26,6 +28,7 @@ export async function sendContactMessage(input: ContactMessage): Promise<void> {
       name: input.name,
       phone: input.phone || null,
       email: input.email || null,
+      subject: input.subject || null,
       message: input.message || null,
     })
     if (error) throw error

@@ -156,7 +156,15 @@ export function ProductDetailPage() {
                 {t('mkt.catalog.customize')}
               </Button>
             ) : (
-              <Button component={RouterLink} to="/contact" variant="contained" color="secondary" size="large">
+              // Carry the product into the contact form: topic = product price,
+              // detail = this product's name, so the form opens pre-filled.
+              <Button
+                component={RouterLink}
+                to={`/contact?topic=productPrice&detail=${encodeURIComponent(L(product.name))}`}
+                variant="contained"
+                color="secondary"
+                size="large"
+              >
                 {t('mkt.catalog.requestQuote')}
               </Button>
             )}

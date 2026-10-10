@@ -34,6 +34,7 @@ interface MessageRow {
   name: string | null
   phone: string | null
   email: string | null
+  subject: string | null
   message: string | null
   handled: boolean
   created_at: string
@@ -208,8 +209,11 @@ export function AdminMessagesPage() {
                     {row.handled ? 'กลับเป็นรอติดต่อ' : 'ติดต่อแล้ว'}
                   </Button>
                 </Stack>
+                {row.subject && (
+                  <Typography sx={{ mt: 1.5, fontWeight: 600, color: 'text.primary' }}>{row.subject}</Typography>
+                )}
                 {row.message && (
-                  <Typography sx={{ mt: 1.5, whiteSpace: 'pre-line', color: 'text.primary' }}>{row.message}</Typography>
+                  <Typography sx={{ mt: row.subject ? 0.5 : 1.5, whiteSpace: 'pre-line', color: 'text.primary' }}>{row.message}</Typography>
                 )}
               </Paper>
             ))}
