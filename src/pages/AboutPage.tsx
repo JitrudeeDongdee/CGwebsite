@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
-import Button from '@mui/material/Button'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import HandshakeIcon from '@mui/icons-material/Handshake'
@@ -200,17 +198,6 @@ export function AboutPage() {
       {/* Full-width, so the shared PortfolioSection's own Wrap sets the gutter
           (nesting it inside the page Wrap would double the side padding). */}
       <WorkStrip />
-
-      <Wrap sx={{ pb: { xs: 6, md: 10 } }}>
-        <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1.5 }}>
-          <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large">
-            {t('mkt.nav.designCta')}
-          </Button>
-          <Button component={RouterLink} to="/contact" variant="outlined" size="large">
-            {t('mkt.nav.contact')}
-          </Button>
-        </Stack>
-      </Wrap>
     </Box>
   )
 }
