@@ -13,10 +13,14 @@ import Chip from '@mui/material/Chip'
 import Switch from '@mui/material/Switch'
 import IconButton from '@mui/material/IconButton'
 import CircularProgress from '@mui/material/CircularProgress'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Divider from '@mui/material/Divider'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/DeleteOutlined'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { CATEGORY_META, PRODUCT_CATEGORIES } from '../catalog/categories'
+import type { ProductCategory } from '../catalog/types'
 import { imageUrl } from '../supabase/storage'
 import { deleteImage } from '../admin/portfolioApi'
 import {
@@ -24,9 +28,11 @@ import {
   EMPTY_SPEC,
   draftFromProduct,
   listAdminProducts,
+  newVariant,
   saveProduct,
   uploadProductImage,
   type ProductDraft,
+  type VariantDraft,
 } from '../admin/productApi'
 
 /**
@@ -70,18 +76,36 @@ export function AdminProductEditPage() {
 
   const cover = form.images.includes(form.cover) ? form.cover : (form.images[0] ?? '')
 
+  // A live "฿X → ฿Y" preview under the discount editor, when there's a base price.
+  const basePrice = Number(form.priceFrom)
+  const discountNum = Number(form.discount.value)
+  const previewBase = form.discount.enabled && discountNum > 0 && Number.isFinite(basePrice) && basePrice > 0 ? basePrice : null
+  const previewSale =
+    previewBase == null
+      ? null
+      : Math.max(
+          0,
+          Math.round(form.discount.kind === 'percent' ? previewBase * (1 - discountNum / 100) : previewBase - discountNum),
+        )
+  const fmt = (n: number) => `฿${n.toLocaleString('en-US')}`
+
+  const baseFolder = () => form.slug || editing || `draft-${Date.now().toString(36)}`
+
+  // Upload to Storage (resized in the browser first), returning the new paths.
+  // `sub` keeps a variant's photos in their own folder so they don't mingle.
+  const uploadFiles = async (files: FileList | File[], sub?: string): Promise<string[]> => {
+    const folder = sub ? `${baseFolder()}/${sub}` : baseFolder()
+    const added: string[] = []
+    for (const file of Array.from(files)) added.push(await uploadProductImage(folder, file))
+    return added
+  }
+
   const addFiles = async (files: FileList | File[] | null) => {
     if (!files?.length) return
-    const folder = form.slug || editing || `draft-${Date.now().toString(36)}`
     setBusy('upload')
     setMessage(null)
     try {
-      // The file goes straight to Storage now (resized in the browser first),
-      // instead of through a base64 round-trip to a dev-only endpoint.
-      const added: string[] = []
-      for (const file of Array.from(files)) {
-        added.push(await uploadProductImage(folder, file))
-      }
+      const added = await uploadFiles(files)
       setForm((f) => ({ ...f, images: [...f.images, ...added] }))
       setMessage({ kind: 'success', text: `อัปโหลด ${added.length} รูปแล้ว` })
     } catch (error) {
@@ -89,6 +113,49 @@ export function AdminProductEditPage() {
     } finally {
       setBusy(null)
     }
+  }
+
+  // --- extra categories, discount, variants ---------------------------------
+  const toggleExtraCategory = (cat: ProductCategory) =>
+    setForm((f) => ({
+      ...f,
+      extraCategories: f.extraCategories.includes(cat)
+        ? f.extraCategories.filter((c) => c !== cat)
+        : [...f.extraCategories, cat],
+    }))
+
+  const setDiscount = (patch: Partial<ProductDraft['discount']>) =>
+    setForm((f) => ({ ...f, discount: { ...f.discount, ...patch } }))
+
+  const setVariant = (index: number, patch: Partial<VariantDraft>) =>
+    setForm((f) => ({ ...f, variants: f.variants.map((v, i) => (i === index ? { ...v, ...patch } : v)) }))
+  const addVariant = () => setForm((f) => ({ ...f, variants: [...f.variants, newVariant()] }))
+  const removeVariant = (index: number) =>
+    setForm((f) => ({ ...f, variants: f.variants.filter((_, i) => i !== index) }))
+
+  const addVariantImages = async (index: number, files: FileList | File[] | null) => {
+    if (!files?.length) return
+    setBusy('upload')
+    setMessage(null)
+    try {
+      const added = await uploadFiles(files, `v-${form.variants[index]?.id.slice(0, 8) ?? index}`)
+      setForm((f) => ({
+        ...f,
+        variants: f.variants.map((v, i) => (i === index ? { ...v, images: [...v.images, ...added] } : v)),
+      }))
+    } catch (error) {
+      setMessage({ kind: 'error', text: error instanceof Error ? error.message : String(error) })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const removeVariantImage = async (index: number, path: string) => {
+    setForm((f) => ({
+      ...f,
+      variants: f.variants.map((v, i) => (i === index ? { ...v, images: v.images.filter((p) => p !== path) } : v)),
+    }))
+    await deleteImage(path)
   }
 
   // A paste with nothing focused goes to the document, so the listener is here
@@ -174,9 +241,32 @@ export function AdminProductEditPage() {
                 onChange={set('priceFrom')}
                 fullWidth
                 size="small"
-                helperText="เว้นว่าง = แสดงว่า 'สอบถามราคา'"
+                helperText={form.variants.length ? 'มีรุ่นย่อย — การ์ดจะโชว์ช่วงราคาจากรุ่น' : "เว้นว่าง = แสดงว่า 'สอบถามราคา'"}
               />
             </Stack>
+
+            {/* Extra categories — the product also shows under these filters and
+                service pages, besides its primary category above. */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                หมวดเสริม (เลือกได้หลายหมวด) — สินค้าจะโผล่ในหมวดเหล่านี้ด้วย นอกจากหมวดหลัก
+              </Typography>
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                {PRODUCT_CATEGORIES.filter((c) => c !== form.category).map((c) => {
+                  const on = form.extraCategories.includes(c)
+                  return (
+                    <Chip
+                      key={c}
+                      label={t(CATEGORY_META[c].labelKey)}
+                      onClick={() => toggleExtraCategory(c)}
+                      color={on ? 'primary' : 'default'}
+                      variant={on ? 'filled' : 'outlined'}
+                      size="small"
+                    />
+                  )
+                })}
+              </Stack>
+            </Box>
 
             <Box sx={{ display: 'grid', gap: { xs: 2, md: 3 }, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
               <Stack spacing={2}>
@@ -332,6 +422,166 @@ export function AdminProductEditPage() {
                 เพิ่มแถว
               </Button>
             </Box>
+          </Stack>
+        </Paper>
+
+        {/* Instalments + discount */}
+        <Paper elevation={0} sx={{ p: 3, mt: 3, borderRadius: 3, border: 1, borderColor: 'divider' }}>
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Switch
+                checked={form.installment}
+                onChange={(e) => setForm((f) => ({ ...f, installment: e.target.checked }))}
+              />
+              <Box>
+                <Typography variant="subtitle2">ผ่อนชำระได้</Typography>
+                <Typography variant="caption" color="text.secondary">โชว์ป้าย "ผ่อนได้" บนการ์ดและหน้าสินค้า</Typography>
+              </Box>
+            </Stack>
+
+            <Divider />
+
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Switch checked={form.discount.enabled} onChange={(e) => setDiscount({ enabled: e.target.checked })} />
+              <Typography variant="subtitle2">ลดราคา</Typography>
+            </Stack>
+
+            {form.discount.enabled && (
+              <Stack spacing={2}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
+                  <ToggleButtonGroup
+                    exclusive
+                    size="small"
+                    value={form.discount.kind}
+                    onChange={(_, v) => v && setDiscount({ kind: v })}
+                  >
+                    <ToggleButton value="percent">เปอร์เซ็นต์ (%)</ToggleButton>
+                    <ToggleButton value="amount">จำนวนเงิน (บาท)</ToggleButton>
+                  </ToggleButtonGroup>
+                  <TextField
+                    label={form.discount.kind === 'percent' ? 'ลดกี่ %' : 'ลดกี่บาท'}
+                    value={form.discount.value}
+                    onChange={(e) => setDiscount({ value: e.target.value })}
+                    size="small"
+                    sx={{ maxWidth: 160 }}
+                  />
+                  {previewSale != null && previewBase != null && (
+                    <Typography variant="body2" color="text.secondary">
+                      ตัวอย่าง: <s>{fmt(previewBase)}</s> → <b style={{ color: 'inherit' }}>{fmt(previewSale)}</b>
+                    </Typography>
+                  )}
+                </Stack>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    label="เริ่ม (เว้นว่าง = ทันที)"
+                    type="datetime-local"
+                    value={form.discount.start}
+                    onChange={(e) => setDiscount({ start: e.target.value })}
+                    size="small"
+                    fullWidth
+                    slotProps={{ inputLabel: { shrink: true } }}
+                  />
+                  <TextField
+                    label="สิ้นสุด (เว้นว่าง = ไม่มีกำหนด)"
+                    type="datetime-local"
+                    value={form.discount.end}
+                    onChange={(e) => setDiscount({ end: e.target.value })}
+                    size="small"
+                    fullWidth
+                    slotProps={{ inputLabel: { shrink: true } }}
+                  />
+                </Stack>
+              </Stack>
+            )}
+          </Stack>
+        </Paper>
+
+        {/* Variants (models / sizes) */}
+        <Paper elevation={0} sx={{ p: 3, mt: 3, borderRadius: 3, border: 1, borderColor: 'divider' }}>
+          <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5, gap: 1 }}>
+            <Box>
+              <Typography variant="subtitle2">รุ่น / ขนาด (variants)</Typography>
+              <Typography variant="caption" color="text.secondary">
+                เช่น แผงโซลาร์ต่างรุ่น — แต่ละรุ่นมีราคาและรูปของตัวเอง · เว้นว่างได้ถ้าสินค้ามีแบบเดียว
+              </Typography>
+            </Box>
+            <Button onClick={addVariant} size="small" startIcon={<AddIcon />} sx={{ flexShrink: 0 }}>
+              เพิ่มรุ่น
+            </Button>
+          </Stack>
+          <Stack spacing={2}>
+            {form.variants.length === 0 && (
+              <Typography variant="body2" color="text.secondary">ยังไม่มีรุ่นย่อย</Typography>
+            )}
+            {form.variants.map((v, index) => (
+              <Paper key={v.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary">รุ่นที่ {index + 1}</Typography>
+                  <IconButton size="small" aria-label="ลบรุ่น" onClick={() => removeVariant(index)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                  <TextField label="ชื่อรุ่น (ไทย)" value={v.nameTh} onChange={(e) => setVariant(index, { nameTh: e.target.value })} size="small" fullWidth />
+                  <TextField label="ชื่อรุ่น (อังกฤษ)" value={v.nameEn} onChange={(e) => setVariant(index, { nameEn: e.target.value })} size="small" fullWidth />
+                  <TextField
+                    label="ราคา (บาท)"
+                    value={v.priceFrom}
+                    onChange={(e) => setVariant(index, { priceFrom: e.target.value })}
+                    size="small"
+                    sx={{ width: { md: 160 } }}
+                    helperText="เว้นว่าง = สอบถาม"
+                  />
+                </Stack>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ mt: 1 }}>
+                  <TextField label="หน่วยราคา (ไทย)" value={v.priceUnitTh} onChange={(e) => setVariant(index, { priceUnitTh: e.target.value })} size="small" fullWidth placeholder="เช่น ต่อชุด" />
+                  <TextField label="หน่วยราคา (อังกฤษ)" value={v.priceUnitEn} onChange={(e) => setVariant(index, { priceUnitEn: e.target.value })} size="small" fullWidth />
+                </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+                  รูปของรุ่นนี้ ({v.images.length}) — เว้นว่างได้ จะใช้รูปสินค้าหลัก
+                </Typography>
+                <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', mt: 0.5 }}>
+                  {v.images.map((path) => (
+                    <Box key={path} sx={{ position: 'relative' }}>
+                      <Box
+                        component="img"
+                        src={imageUrl(path)}
+                        alt=""
+                        sx={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 1, display: 'block', border: 1, borderColor: 'divider' }}
+                      />
+                      <IconButton
+                        size="small"
+                        aria-label="ลบรูป"
+                        onClick={() => void removeVariantImage(index, path)}
+                        sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'background.paper' }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  <Box
+                    component="label"
+                    sx={{
+                      aspectRatio: '4 / 3', display: 'grid', placeItems: 'center', cursor: 'pointer',
+                      border: '2px dashed', borderColor: 'divider', borderRadius: 1, color: 'text.secondary',
+                      '&:hover': { borderColor: 'primary.main', color: 'primary.main' },
+                    }}
+                  >
+                    <input
+                      hidden
+                      multiple
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        void addVariantImages(index, e.target.files)
+                        e.target.value = ''
+                      }}
+                    />
+                    <AddIcon fontSize="small" />
+                  </Box>
+                </Box>
+              </Paper>
+            ))}
           </Stack>
         </Paper>
 

@@ -731,6 +731,35 @@ The legal block on `/about` and a new **"ใบอนุญาตและเอ
   in admin shows on the live SPA immediately and in the static HTML on the next deploy.
 - Admin calls in `src/admin/companyApi.ts`; a refused UPDATE (RLS → 0 rows, HTTP 200) is reported as a failure, not success.
 
+## Product models, multi-category, discount & instalments — (2026-10-10)
+Four additive product features, all behind one migration
+(`20261010120000_product_variants_categories_discount_installment.sql`). Every new column has a
+default, and `repository.ts` / `productApi.ts` default each field, so a DB that hasn't run the
+migration still loads and edits products (the new controls just do nothing until it runs).
+- **Multi-category — primary + extras.** `category` stays the single primary one (URL `/home/:service`,
+  best-seller-per-category, admin table, the product's own path); a new `extra_categories text[]` lists
+  others it should ALSO appear under. `productInCategory()` (in `CatalogProvider`) is the one matcher —
+  `useProductsByCategory` now uses it, so a product shows in every selected category's `/products` filter
+  and service home. A CHECK keeps the array to the five valid categories; the primary is never duplicated
+  into it. (NOT a pure array — chosen to avoid rewriting URL/best-seller/table logic; the fork the user picked.)
+- **Instalments — a boolean** `installment`; shows a "ผ่อนได้" chip on cards + detail. No terms stored (the user's choice).
+- **Discount** `discount jsonb` = `{kind:'amount'|'percent', value, start?, end?}`, null when off. A null/absent
+  `start`/`end` is an open bound, so no dates = always on; it only shows while active (`discountActive`).
+  `catalog/pricing.ts` is the one place the rules live (`applyDiscount`, `discountBadge`, `productPriceView`,
+  `variantPriceView`); cards/detail show the original struck through + the sale price + a `-10%`/`-฿N` chip.
+- **Variants (รุ่น/ขนาด)** `variants jsonb` = `[{id, name:{th,en}, priceFrom, priceUnit?, images[]}]`, each
+  with its own price and photos. The detail page gets a variant picker that swaps the price + main photo;
+  cards show a "from" range (lowest price across the product + variants). Empty = single-price product, as before.
+  Discount + instalments are **product-level** (apply to every variant) — per-variant was deliberately not built.
+- **Admin** (`AdminProductEditPage` + `productApi.ts`, Supabase-direct, same in dev & prod): extra-category
+  chips, an instalment switch, a discount editor (type toggle + value + optional datetime-local window with a
+  live ฿X→฿Y preview), and a variants repeater with per-variant image upload (own Storage sub-folder `v-<id>`).
+  `ProductPriceLine` / `ProductBadges` (`catalog/ProductPrice.tsx`) render the price + chips consistently on
+  `FeaturedSection`, `ProductsPage` and the detail page (the old per-page `priceLabel` helpers are gone).
+- ⚠️ **The migration must be run in Supabase** (SQL editor) before the columns exist; verified so far by
+  `tsc -b` + `oxlint` (warnings-only) + `vite build`. The admin form is behind sign-in and needs the
+  migration, so the end-to-end save/display is verified after deploy — same caveat as the other admin features.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

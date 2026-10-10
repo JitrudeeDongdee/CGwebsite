@@ -1,4 +1,4 @@
-import type { Localized, ProductCategory } from '../catalog/types'
+import type { DiscountKind, Localized, ProductCategory, ProductDiscount, ProductVariant } from '../catalog/types'
 import { db, explain, removeFromBucket, uploadToBucket } from './client'
 
 /**
@@ -11,6 +11,7 @@ export interface ProductRow {
   id: string
   slug: string | null
   category: ProductCategory
+  extra_categories: ProductCategory[] | null
   name: Localized
   short_desc: Localized | null
   price_from: string | number | null
@@ -19,6 +20,9 @@ export interface ProductRow {
   featured: boolean
   best_seller: boolean
   published: boolean
+  installment: boolean | null
+  discount: ProductDiscount | null
+  variants: ProductVariant[] | null
   image_path: string | null
   images: string[] | null
 }
@@ -30,10 +34,32 @@ export interface SpecDraft {
   valueEn: string
 }
 
+/** A variant row as the form edits it (price is a string, like the base price). */
+export interface VariantDraft {
+  id: string
+  nameTh: string
+  nameEn: string
+  priceFrom: string
+  priceUnitTh: string
+  priceUnitEn: string
+  images: string[]
+}
+
+/** The discount as the form edits it: a switch + type + value + optional window. */
+export interface DiscountDraft {
+  enabled: boolean
+  kind: DiscountKind
+  value: string
+  /** datetime-local strings (`YYYY-MM-DDTHH:mm`); blank = open bound. */
+  start: string
+  end: string
+}
+
 export interface ProductDraft {
   id: string
   slug: string
   category: ProductCategory
+  extraCategories: ProductCategory[]
   nameTh: string
   nameEn: string
   shortDescTh: string
@@ -48,14 +74,30 @@ export interface ProductDraft {
   featured: boolean
   bestSeller: boolean
   published: boolean
+  installment: boolean
+  discount: DiscountDraft
+  variants: VariantDraft[]
 }
 
 export const EMPTY_SPEC: SpecDraft = { labelTh: '', labelEn: '', valueTh: '', valueEn: '' }
+
+export const EMPTY_DISCOUNT: DiscountDraft = { enabled: false, kind: 'percent', value: '', start: '', end: '' }
+
+export const newVariant = (): VariantDraft => ({
+  id: crypto.randomUUID(),
+  nameTh: '',
+  nameEn: '',
+  priceFrom: '',
+  priceUnitTh: '',
+  priceUnitEn: '',
+  images: [],
+})
 
 export const EMPTY_PRODUCT: ProductDraft = {
   id: '',
   slug: '',
   category: 'house',
+  extraCategories: [],
   nameTh: '',
   nameEn: '',
   shortDescTh: '',
@@ -69,13 +111,34 @@ export const EMPTY_PRODUCT: ProductDraft = {
   featured: false,
   bestSeller: false,
   published: true,
+  installment: false,
+  discount: { ...EMPTY_DISCOUNT },
+  variants: [],
+}
+
+/** ISO (stored) → a `datetime-local` input value in the browser's local time. */
+function toLocalInput(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** A `datetime-local` value → ISO for storage; blank → null (open bound). */
+function fromLocalInput(s: string): string | null {
+  if (!s.trim()) return null
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
 export function draftFromProduct(row: ProductRow): ProductDraft {
+  const d = row.discount
   return {
     id: row.id,
     slug: row.slug ?? '',
     category: row.category,
+    extraCategories: (row.extra_categories ?? []).filter((c) => c !== row.category),
     nameTh: row.name?.th ?? '',
     nameEn: row.name?.en ?? '',
     shortDescTh: row.short_desc?.th ?? '',
@@ -96,6 +159,19 @@ export function draftFromProduct(row: ProductRow): ProductDraft {
     featured: row.featured,
     bestSeller: row.best_seller,
     published: row.published,
+    installment: Boolean(row.installment),
+    discount: d
+      ? { enabled: true, kind: d.kind, value: String(d.value), start: toLocalInput(d.start), end: toLocalInput(d.end) }
+      : { ...EMPTY_DISCOUNT },
+    variants: (row.variants ?? []).map((v) => ({
+      id: v.id || crypto.randomUUID(),
+      nameTh: v.name?.th ?? '',
+      nameEn: v.name?.en ?? '',
+      priceFrom: v.priceFrom == null ? '' : String(v.priceFrom),
+      priceUnitTh: v.priceUnit?.th ?? '',
+      priceUnitEn: v.priceUnit?.en ?? '',
+      images: v.images ?? [],
+    })),
   }
 }
 
@@ -123,9 +199,35 @@ export async function saveProduct(draft: ProductDraft): Promise<ProductRow> {
   const cover = draft.images.includes(draft.cover) ? draft.cover : draft.images[0]
   const ordered = cover ? [cover, ...draft.images.filter((path) => path !== cover)] : draft.images
 
+  // A discount is stored only when switched on and given a positive value;
+  // otherwise null so an active discount never lingers behind the off switch.
+  const discountValue = Number(draft.discount.value)
+  const discount: ProductDiscount | null =
+    draft.discount.enabled && discountValue > 0
+      ? {
+          kind: draft.discount.kind,
+          value: discountValue,
+          start: fromLocalInput(draft.discount.start),
+          end: fromLocalInput(draft.discount.end),
+        }
+      : null
+
+  const variants: ProductVariant[] = draft.variants
+    // A variant needs at least a name to be worth keeping.
+    .filter((v) => v.nameTh.trim() || v.nameEn.trim())
+    .map((v) => ({
+      id: v.id || crypto.randomUUID(),
+      name: pair(v.nameTh, v.nameEn),
+      priceFrom: v.priceFrom.trim() === '' ? null : Number(v.priceFrom),
+      priceUnit: v.priceUnitTh.trim() || v.priceUnitEn.trim() ? pair(v.priceUnitTh, v.priceUnitEn) : undefined,
+      images: v.images,
+    }))
+
   const payload = {
     slug: slug || null,
     category: draft.category,
+    // The primary category is never duplicated into the extras.
+    extra_categories: [...new Set(draft.extraCategories.filter((c) => c !== draft.category))],
     name: pair(draft.nameTh, draft.nameEn),
     short_desc: pair(draft.shortDescTh, draft.shortDescEn),
     // Blank is a real state — "สอบถามราคา" — not a zero.
@@ -137,6 +239,9 @@ export async function saveProduct(draft: ProductDraft): Promise<ProductRow> {
     featured: Boolean(draft.featured),
     best_seller: Boolean(draft.bestSeller),
     published: Boolean(draft.published),
+    installment: Boolean(draft.installment),
+    discount,
+    variants,
     image_path: cover ?? null,
     images: ordered,
   }

@@ -38,6 +38,12 @@ function toProduct(row: Record<string, unknown>): Product {
     imagePath: (row.image_path as string) ?? undefined,
     featured: Boolean(row.featured),
     bestSeller: Boolean(row.best_seller),
+    // All four are absent on a DB that hasn't run the 20261010 migration yet —
+    // default them so an un-migrated project still loads its products.
+    extraCategories: (row.extra_categories as Product['extraCategories']) ?? undefined,
+    installment: Boolean(row.installment),
+    discount: (row.discount as Product['discount']) ?? undefined,
+    variants: (row.variants as Product['variants']) ?? undefined,
   }
 }
 

@@ -10,8 +10,9 @@ import { CatalogImage } from '../../catalog/CatalogImage'
 import { productImagePath } from '../../catalog/images'
 import { trackProductSelect } from '../../analytics/ga'
 import { useLocalized } from '../../catalog/useLocalized'
+import { ProductBadges, ProductPriceLine } from '../../catalog/ProductPrice'
 import type { Product } from '../../catalog/types'
-import { Wrap, Eyebrow, CardSkeletonGrid, type PriceLabel } from './shared'
+import { Wrap, Eyebrow, CardSkeletonGrid } from './shared'
 
 /**
  * Featured block: the service line's catalog products, in the same card grid
@@ -21,13 +22,11 @@ import { Wrap, Eyebrow, CardSkeletonGrid, type PriceLabel } from './shared'
 export function FeaturedSection({
   catProducts,
   allProductsTo,
-  priceLabel,
   loading = false,
   heading,
 }: {
   catProducts: Product[]
   allProductsTo: string
-  priceLabel: PriceLabel
   /** Catalogue still loading — show skeleton cards for the (async) product grid. */
   loading?: boolean
   /** Section h2 — a service line can say what it is instead of the generic label. */
@@ -75,7 +74,10 @@ export function FeaturedSection({
                 <CatalogImage src={productImagePath(p)} category={p.category} alt={L(p.name)} ratio={{ xs: '16 / 9', md: '4 / 3' }} thumb />
                 <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography sx={{ fontWeight: 600, fontSize: 17 }}>{L(p.name)}</Typography>
-                  <Typography sx={{ mt: 'auto', pt: 1, color: 'secondary.main', fontWeight: 700 }}>{priceLabel(p.priceFrom)}</Typography>
+                  <ProductBadges product={p} sx={{ mt: 0.75 }} />
+                  <Typography component="div" sx={{ mt: 'auto', pt: 1, color: 'secondary.main', fontWeight: 700 }}>
+                    <ProductPriceLine product={p} />
+                  </Typography>
                 </Box>
               </Paper>
             ))}
