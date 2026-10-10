@@ -22,7 +22,7 @@ import { useSeo } from '../seo/useSeo'
 ensureMarketingI18n()
 
 /** Products per page in the catalog grid. */
-const PAGE_SIZE = 6
+const PAGE_SIZE = 16
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>
@@ -62,7 +62,7 @@ export function ProductsPage() {
         <Typography color="text.secondary" sx={{ mt: 4 }}>{t('mkt.catalog.noResults')}</Typography>
       )}
 
-      <Box sx={{ display: 'grid', gap: { xs: 1.5, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' }, mt: 2 }}>
+      <Box sx={{ display: 'grid', gap: { xs: 1.5, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, mt: 2 }}>
         {products.map((p) => (
           <Paper
             key={p.id}
