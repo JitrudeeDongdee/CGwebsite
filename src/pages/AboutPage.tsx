@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -12,19 +12,15 @@ import HandshakeIcon from '@mui/icons-material/Handshake'
 import BoltIcon from '@mui/icons-material/Bolt'
 import PersonIcon from '@mui/icons-material/Person'
 import ConstructionIcon from '@mui/icons-material/Construction'
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import IconButton from '@mui/material/IconButton'
 import { SmartImage } from '../ui/SmartImage'
-import { CatalogImage } from '../catalog/CatalogImage'
-import { joinMeta } from '../catalog/meta'
 import { useCatalog } from '../catalog/CatalogProvider'
 import { useLocalized } from '../catalog/useLocalized'
-import { projectImagePath, projectPath } from '../catalog/images'
+import { projectImagePaths, projectPath } from '../catalog/images'
+import { PortfolioSection } from './home/PortfolioSection'
+import type { WorkCard } from './home/shared'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
 import { formatCapital, formatIsoDate, type Certificate } from '../content/company'
@@ -199,10 +195,14 @@ export function AboutPage() {
         <LegalInfo />
 
         <Certificates />
+      </Wrap>
 
-        <WorkStrip />
+      {/* Full-width, so the shared PortfolioSection's own Wrap sets the gutter
+          (nesting it inside the page Wrap would double the side padding). */}
+      <WorkStrip />
 
-        <Stack direction="row" spacing={1.5} sx={{ mt: 5, flexWrap: 'wrap', gap: 1.5 }}>
+      <Wrap sx={{ pb: { xs: 6, md: 10 } }}>
+        <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1.5 }}>
           <Button component={RouterLink} to="/design" variant="contained" color="secondary" size="large">
             {t('mkt.nav.designCta')}
           </Button>
@@ -426,85 +426,21 @@ function CertificateCard({ cert, lang, title, issuer }: { cert: Certificate; lan
  * and trackpad already behave); the arrows are just a mouse affordance.
  */
 function WorkStrip() {
-  const { t } = useTranslation()
   const L = useLocalized()
   const { projects } = useCatalog()
-  const rail = useRef<HTMLDivElement | null>(null)
 
   if (projects.length === 0) return null
 
-  const scroll = (direction: 1 | -1) => {
-    const el = rail.current
-    if (!el) return
-    el.scrollBy({ left: direction * Math.max(280, el.clientWidth * 0.8), behavior: 'smooth' })
-  }
+  // The same card section as /home/:service, over every delivered project.
+  const work: WorkCard[] = projects.map((p) => ({
+    key: p.id,
+    place: L(p.location),
+    year: p.year,
+    title: L(p.title),
+    to: projectPath(p),
+    images: projectImagePaths(p),
+    category: p.category,
+  }))
 
-  return (
-    <Box component="section" sx={{ mt: 8 }}>
-      <Stack direction="row" sx={{ mb: 3, alignItems: 'flex-end', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-        <Box sx={{ maxWidth: '42em' }}>
-          <Typography sx={{ color: 'secondary.main', fontWeight: 600, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-            {t('mkt.about.workEyebrow')}
-          </Typography>
-          <Typography variant="h2" sx={{ mt: 1, fontSize: { xs: 24, md: 32 }, fontWeight: 600 }}>
-            {t('mkt.about.workHeading')}
-          </Typography>
-          <Typography sx={{ mt: 1.5, color: 'text.secondary' }}>{t('mkt.about.workSub')}</Typography>
-        </Box>
-        <Stack direction="row" spacing={1} sx={{ display: { xs: 'none', md: 'flex' } }}>
-          <IconButton aria-label={t('mkt.about.scrollPrev')} onClick={() => scroll(-1)} sx={{ border: 1, borderColor: 'divider' }}>
-            <ChevronLeftIcon />
-          </IconButton>
-          <IconButton aria-label={t('mkt.about.scrollNext')} onClick={() => scroll(1)} sx={{ border: 1, borderColor: 'divider' }}>
-            <ChevronRightIcon />
-          </IconButton>
-        </Stack>
-      </Stack>
-
-      <Box
-        ref={rail}
-        sx={{
-          display: 'flex', gap: 2, overflowX: 'auto', scrollSnapType: 'x mandatory',
-          // Room for the cards' shadow/edge, and a scrollbar that does not sit
-          // on top of the cards on the platforms that always show one.
-          pb: 1.5,
-          scrollbarWidth: 'thin',
-          '&::-webkit-scrollbar': { height: 8 },
-          '&::-webkit-scrollbar-thumb': { borderRadius: 4, bgcolor: 'divider' },
-        }}
-      >
-        {projects.map((project) => (
-          <Box
-            key={project.id}
-            component={RouterLink}
-            to={projectPath(project)}
-            sx={{
-              flex: '0 0 auto', width: { xs: 260, md: 300 }, scrollSnapAlign: 'start',
-              position: 'relative', aspectRatio: '4 / 3', borderRadius: 3, overflow: 'hidden',
-              border: 1, borderColor: 'divider', bgcolor: 'primary.dark', textDecoration: 'none',
-            }}
-          >
-            <Box sx={{ position: 'absolute', inset: 0 }}>
-              <CatalogImage src={projectImagePath(project)} category={project.category} alt={L(project.title)} height="100%" thumb />
-            </Box>
-            <Box
-              sx={{
-                position: 'absolute', inset: 0, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                color: '#fff', background: 'linear-gradient(0deg, rgba(11,34,49,0.85), transparent 60%)',
-              }}
-            >
-              <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                {joinMeta(L(project.location), project.year)}
-              </Typography>
-              <Typography sx={{ fontWeight: 600, fontSize: 15 }}>{L(project.title)}</Typography>
-            </Box>
-          </Box>
-        ))}
-      </Box>
-
-      <Button component={RouterLink} to="/portfolio" variant="outlined" endIcon={<ArrowForwardIcon />} sx={{ mt: 2.5 }}>
-        {t('mkt.about.workAll')}
-      </Button>
-    </Box>
-  )
+  return <PortfolioSection work={work} allWorkTo="/portfolio" />
 }
