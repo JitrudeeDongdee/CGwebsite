@@ -40,6 +40,7 @@ export function ContactPage() {
   const paramTopic = params.get('topic') ?? ''
   const [form, setForm] = useState({
     name: '',
+    organization: '',
     phone: '',
     email: '',
     topic: (TOPIC_KEYS as readonly string[]).includes(paramTopic) ? paramTopic : '',
@@ -61,9 +62,9 @@ export function ContactPage() {
       // The subject is the chosen topic plus any detail: "ขอใบเสนอราคา — ตู้เย็น".
       const topicLabel = form.topic ? t(`mkt.contact.topics.${form.topic}`) : ''
       const subject = [topicLabel, form.detail.trim()].filter(Boolean).join(' — ')
-      await sendContactMessage({ name: form.name, phone: form.phone, email: form.email, subject, message: form.message })
+      await sendContactMessage({ name: form.name, organization: form.organization, phone: form.phone, email: form.email, subject, message: form.message })
       setSent(true)
-      setForm({ name: '', phone: '', email: '', topic: '', detail: '', message: '' })
+      setForm({ name: '', organization: '', phone: '', email: '', topic: '', detail: '', message: '' })
     } catch (err) {
       // Never clear the form on failure — the customer would have to retype
       // everything, and most people just leave instead.
@@ -110,7 +111,10 @@ export function ContactPage() {
             </Alert>
           )}
           <Stack spacing={2}>
-            <TextField label={t('mkt.contact.name')} value={form.name} onChange={set('name')} required fullWidth size="small" />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField label={t('mkt.contact.name')} value={form.name} onChange={set('name')} required fullWidth size="small" />
+              <TextField label={t('mkt.contact.organization')} value={form.organization} onChange={set('organization')} fullWidth size="small" />
+            </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField label={t('mkt.contact.phone')} value={form.phone} onChange={set('phone')} required fullWidth size="small" />
               <TextField label={t('mkt.contact.email')} type="email" value={form.email} onChange={set('email')} fullWidth size="small" />

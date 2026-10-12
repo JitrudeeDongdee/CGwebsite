@@ -366,7 +366,10 @@ The admin screens ship to the deployed site and staff sign in to use them. The d
   `subject` ("ขอใบเสนอราคา — ตู้เย็น") stored on a new `contact_messages.subject` column (migration
   `20261011140000`, nullable) and shown bold above the message in `/admin/messages`. A product page's
   "ขอใบเสนอราคา" CTA deep-links to `/contact?topic=productPrice&detail=<product name>` so the form opens
-  pre-filled; `ContactPage` reads `?topic=`/`?detail=` (topic validated against the option list).
+  pre-filled; `ContactPage` reads `?topic=`/`?detail=` (topic validated against the option list). The form
+  also carries an **optional `organization`** field (บริษัท/หน่วยงาน the sender is contacting on behalf of),
+  stored on a second nullable column added by the same migration and shown next to the name in
+  `/admin/messages`.
 - **Two sign-in pages, deliberately apart (2026-10-03).** `/login` is the customer one (the designer's
   save / download / send-to-team gate); **`/admin/login`** is staff-only, with no sign-up and no social
   buttons, and `AdminGuard` sends signed-out visitors there. Its route sits OUTSIDE the guard — inside,

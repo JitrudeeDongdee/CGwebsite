@@ -32,6 +32,7 @@ import { formatCurrency } from '../pricing/estimate'
 interface MessageRow {
   id: string
   name: string | null
+  organization: string | null
   phone: string | null
   email: string | null
   subject: string | null
@@ -192,6 +193,11 @@ export function AdminMessagesPage() {
                   <Box sx={{ minWidth: 0 }}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                       <Typography sx={{ fontWeight: 600 }}>{row.name || '(ไม่ระบุชื่อ)'}</Typography>
+                      {row.organization && (
+                        <Typography variant="body2" color="text.secondary">
+                          · {row.organization}
+                        </Typography>
+                      )}
                       {!row.handled && <Chip size="small" color="secondary" label="รอติดต่อกลับ" />}
                     </Stack>
                     <Typography variant="caption" color="text.secondary">
