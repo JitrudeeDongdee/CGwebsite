@@ -32,8 +32,10 @@ import { formatCurrency } from '../pricing/estimate'
 interface MessageRow {
   id: string
   name: string | null
+  organization: string | null
   phone: string | null
   email: string | null
+  subject: string | null
   message: string | null
   handled: boolean
   created_at: string
@@ -191,6 +193,11 @@ export function AdminMessagesPage() {
                   <Box sx={{ minWidth: 0 }}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                       <Typography sx={{ fontWeight: 600 }}>{row.name || '(ไม่ระบุชื่อ)'}</Typography>
+                      {row.organization && (
+                        <Typography variant="body2" color="text.secondary">
+                          · {row.organization}
+                        </Typography>
+                      )}
                       {!row.handled && <Chip size="small" color="secondary" label="รอติดต่อกลับ" />}
                     </Stack>
                     <Typography variant="caption" color="text.secondary">
@@ -208,8 +215,11 @@ export function AdminMessagesPage() {
                     {row.handled ? 'กลับเป็นรอติดต่อ' : 'ติดต่อแล้ว'}
                   </Button>
                 </Stack>
+                {row.subject && (
+                  <Typography sx={{ mt: 1.5, fontWeight: 600, color: 'text.primary' }}>{row.subject}</Typography>
+                )}
                 {row.message && (
-                  <Typography sx={{ mt: 1.5, whiteSpace: 'pre-line', color: 'text.primary' }}>{row.message}</Typography>
+                  <Typography sx={{ mt: row.subject ? 0.5 : 1.5, whiteSpace: 'pre-line', color: 'text.primary' }}>{row.message}</Typography>
                 )}
               </Paper>
             ))}

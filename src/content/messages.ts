@@ -4,8 +4,12 @@ const STORAGE_KEY = 'cg:contact-messages'
 
 export interface ContactMessage {
   name: string
+  /** Company / organisation the sender is contacting on behalf of (optional). */
+  organization: string
   phone: string
   email: string
+  /** The e-mail-style subject: chosen topic + optional detail. */
+  subject: string
   message: string
 }
 
@@ -24,8 +28,10 @@ export async function sendContactMessage(input: ContactMessage): Promise<void> {
   if (supabase) {
     const { error } = await supabase.from('contact_messages').insert({
       name: input.name,
+      organization: input.organization || null,
       phone: input.phone || null,
       email: input.email || null,
+      subject: input.subject || null,
       message: input.message || null,
     })
     if (error) throw error
