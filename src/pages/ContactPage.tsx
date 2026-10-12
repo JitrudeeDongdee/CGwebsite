@@ -8,8 +8,8 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon'
 import PhoneIcon from '@mui/icons-material/Phone'
-import ChatIcon from '@mui/icons-material/Chat'
 import MailIcon from '@mui/icons-material/Mail'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import PlaceIcon from '@mui/icons-material/Place'
@@ -19,6 +19,15 @@ import { useSeo } from '../seo/useSeo'
 import { messagesReachTheTeam, sendContactMessage } from '../content/messages'
 
 ensureMarketingI18n()
+
+/** The LINE logo — MUI has no brand icon for it, so it's an inline glyph. */
+function LineIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon viewBox="0 0 24 24" {...props}>
+      <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.59.121.303.079.776.039 1.085l-.17 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967C23.176 14.393 24 12.458 24 10.304zM7.65 13.625H5.269a.631.631 0 0 1-.63-.63V8.233a.63.63 0 1 1 1.26 0v4.132H7.65a.63.63 0 1 1 0 1.26zm2.466-.63a.631.631 0 0 1-1.26 0V8.233a.63.63 0 1 1 1.26 0v4.762zm5.741 0a.629.629 0 0 1-.631.63.625.625 0 0 1-.51-.261l-2.441-3.321v2.952a.63.63 0 1 1-1.26 0V8.233a.628.628 0 0 1 .63-.63c.189 0 .369.09.489.248l2.466 3.336V8.233a.63.63 0 1 1 1.258 0v4.762zm3.862-3.011h-1.755v1.126h1.755a.63.63 0 1 1 0 1.26h-2.386a.631.631 0 0 1-.629-.63V8.233c0-.345.282-.63.63-.63h2.385a.63.63 0 1 1 0 1.26h-1.755v1.121z" />
+    </SvgIcon>
+  )
+}
 
 function Wrap({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, ...sx }}>{children}</Box>
@@ -57,16 +66,23 @@ export function ContactPage() {
   // Same source as the footer: `src/content/contact.json`.
   const icons: Record<ContactKind, ReactNode> = {
     phone: <PhoneIcon fontSize="small" />,
-    line: <ChatIcon fontSize="small" />,
+    line: <LineIcon fontSize="small" />,
     email: <MailIcon fontSize="small" />,
     facebook: <FacebookIcon fontSize="small" />,
     address: <PlaceIcon fontSize="small" />,
+  }
+  // LINE and Facebook get their own brand colour on the icon tile; the rest keep
+  // the site's primary red. Icon stays white, which reads on all three.
+  const brandTile: Partial<Record<ContactKind, string>> = {
+    line: '#06C755',
+    facebook: '#1877F2',
   }
   const info = CONTACT_CHANNELS.map((c, index) => ({
     // `kind` repeats now (two phones, two e-mails), so the key cannot be the
     // label or the kind — React would reuse the first row's DOM for the second.
     key: `${c.kind}-${index}`,
     icon: icons[c.kind],
+    tile: brandTile[c.kind],
     label: contactLabel(c, lang, t),
     value: contactValue(c, lang),
     href: contactHref(c, lang),
@@ -125,7 +141,7 @@ export function ContactPage() {
           <Stack spacing={2.5}>
             {info.map((i) => (
               <Stack key={i.key} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                <Box sx={{ width: 38, height: 38, borderRadius: 2, display: 'grid', placeItems: 'center', bgcolor: 'primary.main', color: 'primary.contrastText', flexShrink: 0 }}>
+                <Box sx={{ width: 38, height: 38, borderRadius: 2, display: 'grid', placeItems: 'center', bgcolor: i.tile ?? 'primary.main', color: '#fff', flexShrink: 0 }}>
                   {i.icon}
                 </Box>
                 <Box>
