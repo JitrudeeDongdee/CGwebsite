@@ -32,7 +32,8 @@ export function ProductsPage() {
   const L = useLocalized()
   const { cat, query, requestedPage, update } = useCatalogQuery()
 
-  const matches = useProductsByCategory(cat).filter((p) =>
+  const inCategory = useProductsByCategory(cat)
+  const matches = inCategory.filter((p) =>
     matchesQuery([p.name.th, p.name.en, p.shortDesc.th, p.shortDesc.en, p.slug], query),
   )
   const { page, pageCount, items: products } = paginate(matches, requestedPage, PAGE_SIZE)
@@ -54,6 +55,7 @@ export function ProductsPage() {
         onQuery={(next) => update({ q: next })}
         searchPlaceholder={t('mkt.catalog.search')}
         resultCount={matches.length}
+        suggestions={inCategory.map((p) => L(p.name))}
       />
 
       {matches.length === 0 && (

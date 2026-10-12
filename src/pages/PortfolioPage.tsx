@@ -32,7 +32,8 @@ export function PortfolioPage() {
   const { cat, query, requestedPage, update } = useCatalogQuery()
 
   const { projects: allProjects } = useCatalog()
-  const matches = (cat === 'all' ? allProjects : allProjects.filter((p) => p.category === cat)).filter((p) =>
+  const inCategory = cat === 'all' ? allProjects : allProjects.filter((p) => p.category === cat)
+  const matches = inCategory.filter((p) =>
     matchesQuery(
       [p.title.th, p.title.en, p.location.th, p.location.en, p.description.th, p.description.en, p.year, p.slug],
       query,
@@ -61,6 +62,7 @@ export function PortfolioPage() {
         onQuery={(next) => update({ q: next })}
         searchPlaceholder={t('mkt.catalog.searchWork')}
         resultCount={matches.length}
+        suggestions={inCategory.map((p) => L(p.title))}
       />
 
       {matches.length === 0 && (

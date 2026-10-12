@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
+import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
 import Badge from '@mui/material/Badge'
@@ -28,6 +29,9 @@ import type { ProductCategory } from '../catalog/types'
 
 type Cat = ProductCategory | 'all'
 
+/** Show at most a handful of suggestions, matched case-insensitively. */
+const filterSuggestions = createFilterOptions<string>({ limit: 8, trim: true })
+
 /**
  * A full-width search box + a filter the category picker lives behind: on
  * desktop the filter icon opens a dropdown menu, on a phone it opens a panel
@@ -42,6 +46,7 @@ export function CatalogToolbar({
   onQuery,
   searchPlaceholder,
   resultCount,
+  suggestions = [],
 }: {
   category: Cat
   query: string
@@ -49,6 +54,8 @@ export function CatalogToolbar({
   onQuery: (next: string) => void
   searchPlaceholder: string
   resultCount: number
+  /** Words offered as you type in the search box (e.g. product/project names). */
+  suggestions?: string[]
 }) {
   const { t } = useTranslation()
   const theme = useTheme()
@@ -59,6 +66,7 @@ export function CatalogToolbar({
   const cats: Cat[] = ['all', ...PRODUCT_CATEGORIES]
   const labelFor = (c: Cat) => (c === 'all' ? t('mkt.catalog.all') : t(CATEGORY_META[c].labelKey))
   const filtered = category !== 'all'
+  const options = Array.from(new Set(suggestions.filter(Boolean)))
 
   const openFilter = (e: React.MouseEvent<HTMLElement>) => {
     if (isMobile) setDrawerOpen(true)
@@ -76,28 +84,33 @@ export function CatalogToolbar({
   return (
     <>
       <Stack direction="row" spacing={1.5} sx={{ mt: 3, alignItems: 'center' }}>
-        <TextField
+        <Autocomplete
+          freeSolo
           fullWidth
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder={searchPlaceholder}
+          options={options}
+          filterOptions={filterSuggestions}
+          inputValue={query}
+          onInputChange={(_, value) => onQuery(value)}
+          autoHighlight
           sx={{ flex: 1 }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-              endAdornment: query ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" aria-label={t('mkt.catalog.clear')} onClick={() => onQuery('')}>
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            },
-          }}
+          slotProps={{ paper: { sx: { borderRadius: 2 } } }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder={searchPlaceholder}
+              slotProps={{
+                ...params.slotProps,
+                input: {
+                  ...params.slotProps.input,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          )}
         />
         <Tooltip title={t('mkt.catalog.filter')}>
           <IconButton
