@@ -446,9 +446,36 @@ screen would have reported success for a change that never happened. `profiles_a
 refuses `id = auth.uid()`: a sole admin demoting themselves would lock every human out of role
 management permanently, recoverable only with the service key.
 
-**Still open:** `/admin/leads` is the legacy localStorage table, superseded by `/admin/messages`;
-nothing notifies anyone when a message arrives — see the LINE Messaging API plan discussed 2026-09-13
-(LINE Notify itself shut down 2025-03-31 and is not an option).
+**Still open:** `/admin/leads` is the legacy localStorage table, superseded by `/admin/messages`.
+
+## Contact-message notifications — `functions/api/notify-contact.ts` (2026-10-12)
+Until now a submitted contact form only landed in `contact_messages`; **nobody was notified** and a
+message was seen only when staff happened to open `/admin/messages`. Now a **Supabase Database Webhook**
+on `contact_messages` (event INSERT) POSTs each new row to the Pages Function `notify-contact`, which
+fans it out over two independent channels:
+- **E-mail** via the **Brevo** transactional API (`POST /v3/smtp/email`) → `NOTIFY_EMAIL_TO`
+  (contact@thaidongdee.com). `replyTo` is set to the customer's own address so staff can reply directly.
+- **LINE** via the **Messaging API** `push` → each id in `LINE_NOTIFY_TO` (the staff group/room/user).
+  ⚠️ **Never broadcast**: with no target set, LINE is skipped rather than messaging the OA's customers.
+  (LINE Notify shut down 2025-03-31 and is not an option; this is the Messaging API plan from 2026-09-13.)
+- Firing from the **DB webhook**, not the form, so every insert is covered wherever it came from and no
+  key/token reaches the browser — same shape as `admin-users.ts` / `ga-stats.ts`, dependency-free `fetch`.
+- **Best-effort + independent**: a channel whose env vars are unset is skipped; one failing never blocks
+  the other. The endpoint is authenticated by a shared `x-webhook-secret` header (refuses 503 if the
+  secret is unset, 401 on mismatch) so it can't be used to spam the team; once authenticated it always
+  returns 200 (a channel failure is in the body) so the webhook is not retried into re-spamming.
+- Verified with a local Node harness (stubbed `fetch`): GET→405, bad/absent secret→401, full env → a
+  correctly-shaped Brevo body (sender/to/subject/replyTo) + a LINE push to **each** target, missing env →
+  both skipped with zero outbound calls (still 200), non-INSERT ignored. tsc clean.
+- ⚠️ **Manual, post-deploy** (cannot be verified from code — needs live keys): set the Production env
+  vars in Cloudflare Pages (see `.env.example`: `CONTACT_WEBHOOK_SECRET`, `BREVO_API_KEY`,
+  `NOTIFY_EMAIL_TO/FROM[/_NAME]`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_NOTIFY_TO`); issue a LINE Messaging
+  API channel access token for the OA and capture the staff **group id** (add the OA to the group, read
+  `source.groupId` from a webhook event — e.g. point the channel's webhook at webhook.site once); then
+  create the Supabase webhook (Database → Webhooks → `contact_messages`, Insert, HTTP Request, URL
+  `https://thaidongdee.com/api/notify-contact`, header `x-webhook-secret`). Same Pages-Functions caveat as
+  admin-users/ga-stats: the committed `wrangler.jsonc` assets-only Worker flow does NOT run `functions/`.
+- Scoped to `contact_messages` only; the designer's `leads` could be wired the same way later.
 
 **🚀 Phase 2.5 — Deploy to Cloudflare Pages (2026-09-06).** Ship the marketing site publicly *before*
 starting Phase 3, so the DB work happens against a real deployment.
