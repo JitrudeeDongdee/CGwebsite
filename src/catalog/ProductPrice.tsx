@@ -22,6 +22,13 @@ export function ProductPriceLine({ product, view }: { product: Product; view?: P
   const locale = useLocale()
   const pv = view ?? productPriceView(product)
   if (pv.current == null) return <>{t('mkt.catalog.quote')}</>
+  if (pv.max != null) {
+    return (
+      <Box component="span">
+        {formatCurrency(pv.current, 'THB', locale)} – {formatCurrency(pv.max, 'THB', locale)}
+      </Box>
+    )
+  }
   return (
     <Box component="span" sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 0.75, flexWrap: 'wrap' }}>
       {pv.from && (

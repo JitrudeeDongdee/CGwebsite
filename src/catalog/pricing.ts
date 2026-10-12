@@ -34,11 +34,31 @@ function numericPrices(product: Product): number[] {
   return all.filter((p): p is number => typeof p === 'number')
 }
 
+/**
+ * Prices read from a product's spec rows — but ONLY from values that name baht
+ * (e.g. a rate list like "25 บาท/เมตร" on a quote-only service product). Values
+ * without a baht marker (dimensions, wattage, litres) are ignored, so they are
+ * never mistaken for a price.
+ */
+function specPrices(product: Product): number[] {
+  const out: number[] = []
+  for (const s of product.specs ?? []) {
+    const v = s.value?.th || s.value?.en || ''
+    if (!/บาท|฿|THB/i.test(v)) continue
+    const m = v.replace(/,/g, '').match(/\d+(?:\.\d+)?/)
+    if (m) out.push(Number(m[0]))
+  }
+  return out
+}
+
 export interface PriceView {
   /** Lowest price to show now (after discount if active); null = quote-only. */
   current: number | null
   /** The pre-discount value of `current`, only when a discount actually reduced it. */
   original: number | null
+  /** The top of a price range, when the product spans several prices (a rate
+   *  list) and should read as "min – max"; null when there is a single price. */
+  max: number | null
   /** True when the product spans more than one price (variants) → prefix "from". */
   from: boolean
   /** True when a discount is active on this product. */
@@ -52,19 +72,27 @@ export interface PriceView {
  */
 export function productPriceView(product: Product, now: number = Date.now()): PriceView {
   const prices = numericPrices(product)
-  const distinct = new Set(prices)
-  if (prices.length === 0) {
-    return { current: null, original: null, from: false, discounted: false }
+  if (prices.length > 0) {
+    const distinct = new Set(prices)
+    const lowest = Math.min(...prices)
+    const active = discountActive(product.discount, now)
+    const current = active ? applyDiscount(lowest, product.discount!) : lowest
+    return {
+      current,
+      original: active && current < lowest ? lowest : null,
+      max: null,
+      from: distinct.size > 1 || (product.variants?.length ?? 0) > 0,
+      discounted: active && current < lowest,
+    }
   }
-  const lowest = Math.min(...prices)
-  const active = discountActive(product.discount, now)
-  const current = active ? applyDiscount(lowest, product.discount!) : lowest
-  return {
-    current,
-    original: active && current < lowest ? lowest : null,
-    from: distinct.size > 1 || (product.variants?.length ?? 0) > 0,
-    discounted: active && current < lowest,
+  // Quote-only product: if its specs list several baht rates, show them as a
+  // range (min – max) instead of "ask for a price". A single rate stays a quote.
+  const sp = specPrices(product)
+  const distinct = new Set(sp)
+  if (distinct.size < 2) {
+    return { current: null, original: null, max: null, from: false, discounted: false }
   }
+  return { current: Math.min(...sp), original: null, max: Math.max(...sp), from: true, discounted: false }
 }
 
 /** The price to show for a single chosen variant (or the product's own base price). */
@@ -74,8 +102,8 @@ export function variantPriceView(
   now: number = Date.now(),
 ): PriceView {
   const base = variant ? variant.priceFrom : product.priceFrom
-  if (base == null) return { current: null, original: null, from: false, discounted: false }
+  if (base == null) return { current: null, original: null, max: null, from: false, discounted: false }
   const active = discountActive(product.discount, now)
   const current = active ? applyDiscount(base, product.discount!) : base
-  return { current, original: active && current < base ? base : null, from: false, discounted: active && current < base }
+  return { current, original: active && current < base ? base : null, max: null, from: false, discounted: active && current < base }
 }
