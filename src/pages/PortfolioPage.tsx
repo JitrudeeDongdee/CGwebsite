@@ -73,33 +73,26 @@ export function PortfolioPage() {
             key={p.id}
             component={RouterLink}
             to={projectPath(p)}
-            sx={{ position: 'relative', borderRadius: 3, overflow: 'hidden', border: 1, borderColor: 'divider', textDecoration: 'none', display: 'block', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' } }}
+            sx={{ borderRadius: 3, overflow: 'hidden', border: 1, borderColor: 'divider', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' } }}
           >
             <CatalogImage src={projectImagePath(p)} category={p.category} alt={L(p.title)} thumb />
-            <Box
-              sx={{
-                position: 'absolute', inset: 0, p: { xs: 1.25, sm: 2 }, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: '#fff',
-                background: { xs: 'linear-gradient(0deg, rgba(11,34,49,0.92), transparent 70%)', sm: 'linear-gradient(0deg, rgba(11,34,49,0.88), transparent 55%)' },
-              }}
-            >
-              <Typography variant="caption" sx={{ opacity: 0.85, fontSize: { xs: 11, sm: 12 } }}>
-                {joinMeta(L(p.location), p.year)}
-              </Typography>
-              {/* Two columns are ~157px wide: a long Thai title would fill the
-                  whole card, so it is capped at three lines over the photo. */}
+            {/* Same shape as the /products card: image on top, white body with the
+                title at the top and the location·year pinned to the bottom (mt:auto)
+                so it lines up across a row (the grid stretches cards to equal height). */}
+            <Box sx={{ p: { xs: 1.5, sm: 2 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
               <Typography
                 sx={{
-                  fontWeight: 600, fontSize: { xs: 13, sm: 16 }, lineHeight: 1.4,
-                  display: '-webkit-box', WebkitBoxOrient: 'vertical',
-                  // A two-column card is only ~118px tall: at three lines the
-                  // caption covered the photo it is captioning.
-                  WebkitLineClamp: { xs: 2, sm: 3 }, overflow: 'hidden',
-                  // Short of the line boundary, so Thai tone marks from the
-                  // clipped line do not peek over the cut.
-                  maxHeight: { xs: '2.5em', sm: '3.9em' },
+                  fontWeight: 600, fontSize: { xs: 15, sm: 17 }, lineHeight: 1.4,
+                  display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden',
+                  // Clipped just short of the line boundary so Thai tone marks on
+                  // the cut line do not peek over the edge.
+                  maxHeight: '2.85em',
                 }}
               >
                 {L(p.title)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 'auto', pt: 1 }}>
+                {joinMeta(L(p.location), p.year)}
               </Typography>
             </Box>
           </Box>
