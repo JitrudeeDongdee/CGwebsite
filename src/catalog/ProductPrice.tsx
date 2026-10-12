@@ -4,11 +4,23 @@ import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import { formatCurrency } from '../pricing/estimate'
 import { discountBadge, productPriceView, type PriceView } from './pricing'
+import { useLocalized } from './useLocalized'
 import type { Product } from './types'
 
 function useLocale() {
   const { i18n } = useTranslation()
   return i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
+}
+
+/** The price unit ("ต่อ ตร.ม." etc) shown muted after the price, or null. */
+function UnitSuffix({ text }: { text: string }) {
+  if (!text) return null
+  return (
+    <Box component="span" sx={{ fontWeight: 400, fontSize: '0.8em', color: 'text.secondary' }}>
+      {' '}
+      {text}
+    </Box>
+  )
 }
 
 /**
@@ -20,12 +32,15 @@ function useLocale() {
 export function ProductPriceLine({ product, view }: { product: Product; view?: PriceView }) {
   const { t } = useTranslation()
   const locale = useLocale()
+  const L = useLocalized()
   const pv = view ?? productPriceView(product)
+  const unit = product.priceUnit ? L(product.priceUnit) : ''
   if (pv.current == null) return <>{t('mkt.catalog.quote')}</>
   if (pv.max != null) {
     return (
       <Box component="span">
         {formatCurrency(pv.current, 'THB', locale)} – {formatCurrency(pv.max, 'THB', locale)}
+        <UnitSuffix text={unit} />
       </Box>
     )
   }
@@ -41,7 +56,10 @@ export function ProductPriceLine({ product, view }: { product: Product; view?: P
           {formatCurrency(pv.original, 'THB', locale)}
         </Box>
       )}
-      <Box component="span">{formatCurrency(pv.current, 'THB', locale)}</Box>
+      <Box component="span">
+        {formatCurrency(pv.current, 'THB', locale)}
+        <UnitSuffix text={unit} />
+      </Box>
     </Box>
   )
 }
