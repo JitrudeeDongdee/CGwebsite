@@ -16,7 +16,7 @@ import { projectImagePath, projectPath } from '../catalog/images'
 import { productImagePath } from '../catalog/images'
 import { useLocalized } from '../catalog/useLocalized'
 import { ProductBadges } from '../catalog/ProductPrice'
-import { variantPriceView } from '../catalog/pricing'
+import { productPriceView, variantPriceView } from '../catalog/pricing'
 import { formatCurrency } from '../pricing/estimate'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
@@ -73,7 +73,9 @@ export function ProductDetailPage() {
   // product's own price/photo stand in (selected = null).
   const variants = product.variants ?? []
   const selected = variants.find((v) => v.id === variantId) ?? (variants.length ? variants[0] : null)
-  const pv = variantPriceView(product, selected)
+  // With a variant chosen, that variant's price; otherwise the product view,
+  // which may be a range (min–max) for a quote-only rate list.
+  const pv = selected ? variantPriceView(product, selected) : productPriceView(product)
   const unit = selected?.priceUnit ?? product.priceUnit
   const heroImage = selected?.images?.[0] ?? productImagePath(product)
 
@@ -117,6 +119,10 @@ export function ProductDetailPage() {
           <Stack direction="row" spacing={1.5} sx={{ mt: 2, alignItems: 'baseline', flexWrap: 'wrap' }}>
             {pv.current == null ? (
               <Typography sx={{ color: 'secondary.main', fontWeight: 700, fontSize: 22 }}>{t('mkt.catalog.quote')}</Typography>
+            ) : pv.max != null ? (
+              <Typography component="span" sx={{ color: 'secondary.main', fontWeight: 700, fontSize: 22 }}>
+                {formatCurrency(pv.current, 'THB', locale)} – {formatCurrency(pv.max, 'THB', locale)}
+              </Typography>
             ) : (
               <>
                 {pv.original != null && (
