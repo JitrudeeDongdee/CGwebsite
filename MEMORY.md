@@ -280,3 +280,40 @@ that analytics worked.
 verification for analytics: check that `dataLayer` entries are `[object Arguments]` and that a
 `/g/collect?...&en=page_view` request appears (`performance.getEntriesByType('resource')`), using a fake ID such as
 `VITE_GA_ID=G-TEST00000` locally so the check never pollutes the real property.
+
+## Furniture was drawn correctly and hidden by the camera angle
+
+**What happened**: the new 3D furniture did not appear. The data was right (logged: seven
+fixtures with sane positions and sizes), the component rendered, there was no console error —
+and the only piece visible was the kitchen. A long hunt for a bug in the furniture code
+followed.
+
+**Root cause**: the camera. It sat at about 29° above the horizon, which is the right angle for
+looking at the OUTSIDE of a house, and at 29° a 2.7 m wall hides `2.7 / tan(29°)` ≈ 4.95 m of
+floor behind it — more than the depth of most of these plans. Every piece was drawn and then
+hidden behind the near wall. The kitchen showed because its wall units reach 1.78 m, above the
+hidden strip. So "roof off" alone does not make an interior visible; the angle is the other half
+of it, and the cutaway now raises the camera to about 65°.
+
+**Correct behavior**: when something that is provably in the scene does not appear, check what
+the camera can actually see before reading the code again — the occlusion a wall of height `h`
+casts at elevation `θ` is `h / tan(θ)`, and it is easy to arithmetic rather than guess. Logging
+the data proved the data; it said nothing about visibility.
+
+## A roof anchored at its overhang edge leaves the walls open
+
+**What happened**: the shed roof rendered with the whole top of its high elevation missing — you
+could see straight into the house over the wall. The same mistake, smaller, was in every other
+shape: a slot a few centimetres high all the way round where the wall met the roof.
+
+**Root cause**: two separate things, both from treating the roof as a lid rather than as a plane
+resting on the walls. The slope was anchored so the OVERHANG EDGE sat at wall-top height, which
+puts the roof above the wall everywhere inside that edge; and a shed's high end wall — a full
+`rise` of wall, not a sliver — was never emitted at all, because the code only emitted the
+triangular ends it thought of as "gables".
+
+**Correct behavior**: set a pitched roof's slope so it passes through the top of the wall at the
+WALL LINE and let the overhang hang below that, which is where a rafter sits. Then enumerate the
+walls, not the roof: for each of the four wall lines, ask what the roof height is there and close
+the gap. Catching this needed every roof shape tried in the browser — the default (gable) looked
+fine, because its slot was hidden behind the overhang.

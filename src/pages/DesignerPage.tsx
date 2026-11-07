@@ -21,6 +21,7 @@ import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
 import { RouteFallback } from '../ui/RouteFallback'
 import type { Building3DOptions } from '../scene3d/Scene3D'
+import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
 
 /**
  * three.js + r3f + drei is ~570 kB of the designer's chunk, and it is only needed
@@ -86,9 +87,15 @@ export function DesignerPage() {
   const [view, setView] = useState<'plan' | 'three'>('plan')
   const [building3d, setBuilding3d] = useState<Building3DOptions>({
     roof: 'gable',
+    pitch: 'medium',
+    storeys: 1,
     wall: 'plaster',
+    wallColor: WALL_FINISH.plaster.defaultColor,
     frame: 'aluminium',
     roofMaterial: 'tile',
+    roofColor: ROOF_FINISH.tile.defaultColor,
+    showRoof: true,
+    furniture: true,
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 

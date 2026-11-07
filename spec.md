@@ -11,7 +11,7 @@
 - **Bilingual (Thai + English).** ✅ Implemented. Thai is the default/fallback; English confirmed as the second language. i18n layer is in from the start, no hardcoded UI strings.
 - **Dark/light theme.** ✅ Implemented via `AppThemeProvider` — a `ThemePreference` of `system | light | dark`; `system` follows `useMediaQuery('(prefers-color-scheme: dark)')`, the other two are explicit overrides. **The default is `light` for a first-time visitor regardless of the OS setting** (`DEFAULT_PREFERENCE`); every choice, `system` included, is persisted in `cg:theme-preference` (an empty key now means "hasn't chosen", not "follow the OS"). three.js material/grid colours are themed **separately** from the MUI/DOM side via `sceneColors[mode]`.
 - **2D view looks like a real architectural floor plan.** ✅ Mitered double-line wall poché, dimension strings with measurements, door swing arcs / window glazing symbols, room-area labels — not the old debug thin-lines-and-dots look.
-- **3D view stays simple and structural.** ✅ Implemented (`scene3d/`): readable massing (extruded walls, punched openings, parametric roof), explicitly not photoreal.
+- **3D view stays simple and structural.** ✅ Implemented (`scene3d/`), and **substantially upgraded 2026-11-07** (see "3D view — realism pass"): patterned finishes, real window/door units, eaves and fascia, two storeys, furniture, a cutaway. Still a readable impression rather than a photoreal render.
 
 ## Source layout
 
@@ -70,7 +70,7 @@ Own perspective `<Canvas shadows>` (fov 45), free orbit (`maxPolarAngle ≈ π/2
 - `useDrawingState()` returns: read state (`state`, `roomArea`, `rooms`, `exteriorWallIds`); wall ops (`addWall`, `removeWall`, `copyWall`, `dragWallBy`, `finalizeWallMove`); node ops (`beginNodeDrag`, `updateNodePosition`, `finalizeNodeMove`, `removeNode`); opening ops (`placeOpening`, `removeOpening`); fixture ops (`placeFixture`, `updateFixturePosition`, `finalizeFixtureMove`, `turnFixture`, `removeFixture`); plan/room ops (`applyTemplate`, `nameRoom`, `clearAll`); history (`undo`, `redo`, `canUndo`, `canRedo`). Live drags use `*Position`/`dragWallBy` (amend, no undo step) then a `finalize*` (one undo step).
 - `useInteraction(options)` where `options` carries `state`, `tool`, and all the drawing-state callbacks above → `{ draft, moveSnap, cursor, isDrawing, onDown, onMove, onUp, cancelDrawing }`. `GroundPlane` and `DrawingCanvas` depend on this exact shape.
 - Pointer input into `useInteraction` is a normalized `Point` (`{x,y}` world/grid units, not screen px) — produced by `GroundPlane`'s raycast, one code path for mouse and touch.
-- `Building3DOptions = { roof, wall, frame, roofMaterial }` — shared between `DesignerPage`, `Building3DPanel`, `Scene3D`.
+- `Building3DOptions = { roof, pitch, storeys, wall, wallColor, frame, roofMaterial, roofColor, showRoof, furniture }` — shared between `DesignerPage`, `Building3DPanel`, `Scene3D`. Colours are hex strings from `WALL_COLORS` / `ROOF_COLORS`; `storeys` is 1 or 2; `showRoof: false` is the cutaway.
 - `PriceEstimate` / `PriceConfig` — shared between `pricing/`, `EstimatePanel`, and `Lead.estimate`.
 
 ## Done
@@ -823,6 +823,54 @@ migration still loads and edits products (the new controls just do nothing until
 - ⚠️ **The migration must be run in Supabase** (SQL editor) before the columns exist; verified so far by
   `tsc -b` + `oxlint` (warnings-only) + `vite build`. The admin form is behind sign-in and needs the
   migration, so the end-to-end save/display is verified after deploy — same caveat as the other admin features.
+
+## 3D view — realism pass (2026-11-07)
+The owner's ask: a customer should see the house they want as closely as possible. Chosen
+direction: make the in-app three.js view look real (no AI render service, no per-image cost); the
+owner's priorities, in order, were **more materials/colours**, then **detail on the house itself**,
+then **furniture**. Sky and planting were explicitly deferred.
+
+- **Finishes are a PATTERN × a COLOUR**, not a fixed list: 7 wall patterns (plaster, painted,
+  brick, timber lap, fibre cement, stone, bare concrete), 4 roof (tile, metal, shingle, concrete
+  deck), 5 frame finishes, with 10 wall and 8 roof colour swatches. Picking a material sets the
+  colour it usually comes in; the swatch row then overrides it. Catalogue in
+  `src/drawing/materials.ts` (pure data — `drawing/` still imports no three.js).
+- **Textures are DRAWN IN CODE** onto a canvas (`src/scene3d/textures.ts`), not loaded as images:
+  no megabytes to download, no third-party licence, tiles seamlessly by construction, and the
+  greys tint to any colour because the material's `color` multiplies them. The same canvas is the
+  colour map and the bump map. ⚠️ **The repeat must be per surface**, not per material — a box's
+  UVs run 0..1 whatever its size, so one shared material stretches the same brick over a 1 m pier
+  and an 8 m wall. `tiledMaterial()` clones the texture per surface (clones share the one uploaded
+  canvas) and `PatternedBox` owns and disposes it.
+- **Roof** (`roof.ts`): slope anchored at the WALL LINE with the overhang hanging below it, a
+  fascia/barge board round every open edge, 3 pitches (`PITCH_RISE`), gable and shed ends closed
+  with **wall** finish rather than roofing, and UVs in metres with **V always down the slope** so
+  one drawing of corrugated sheet runs the right way whichever side the ridge lands on.
+- **Openings** (`Openings.tsx`): a window is jambs + head + sill + mullion + pane + a projecting
+  sill; a door is frame + panelled leaf + lever + threshold. At any distance a customer looks
+  from, the frame is most of what says "window" — the old single translucent slab said nothing.
+- **Two storeys** (`building3d.ts`): `{ storeys: 1 | 2 }` repeats the same plan a floor up, with a
+  floor band between that both fills the structural gap and is what makes it READ as two storeys,
+  plus a plinth at the foot of the exterior walls. The upper floor can only be the same plan —
+  there is one plan — and the panel says so.
+- **Furniture in 3D** (`Furniture.tsx`): beds, sofa, table, kitchen run, toilet, basin, built from
+  boxes at each fixture's OWN width/depth so nothing overhangs the plan symbol it came from.
+  Free-standing columns are drawn; junction columns are not (they are buried in their wall).
+  Which way a piece faces cannot be read from the plan — the 2D symbol is a bare rectangle — so
+  the convention is **back at local -depth**: headboard, sofa back, kitchen splashback.
+- **Cutaway** — "ถอดหลังคา" hides the roof AND raises the camera, because at the ~29° that reads
+  best for the outside a 2.7 m wall hides nearly 5 m of floor (see MEMORY.md). Only on that
+  toggle, never on a plan edit, which would yank the view out from under an orbit.
+- Lighting is a hemisphere + a sun with a shadow camera fitted to the plan + a fill from the
+  shaded side. `shadows="percentage"`: three 0.185 deprecated `PCFSoftShadowMap`, which both
+  `shadows` and `shadows="soft"` ask for.
+- **Deferred, by the owner's call:** sky shader, planting, camera presets, a download-image
+  button, and any AI photoreal render. An environment map for glass reflections went with the sky.
+- Verified in the browser on the `two-bed-8x6` template: all four roof shapes, both pitches
+  either side of normal, 1 and 2 storeys, brick + colour swatches, and the cutaway with every
+  piece of furniture visible. `tsc -b` clean, `oxlint` warnings-only (the pre-existing
+  fast-refresh class), `pnpm run build` passes.
+
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
