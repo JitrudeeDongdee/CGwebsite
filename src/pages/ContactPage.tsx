@@ -19,6 +19,7 @@ import { CONTACT_CHANNELS, contactHref, contactLabel, contactValue, type Contact
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
 import { messagesReachTheTeam, sendContactMessage } from '../content/messages'
+import { trackContactClick, trackLead } from '../analytics/ga'
 
 ensureMarketingI18n()
 
@@ -72,6 +73,9 @@ export function ContactPage() {
       const topicLabel = form.topic ? t(`mkt.contact.topics.${form.topic}`) : ''
       const subject = [topicLabel, form.detail.trim()].filter(Boolean).join(' — ')
       await sendContactMessage({ name: form.name, organization: form.organization, phone: form.phone, email: form.email, subject, message: form.message })
+      // Only once it is stored — a failed send is not a lead. The topic KEY
+      // goes to GA, never the name/phone/e-mail or the detail they typed.
+      trackLead('contact_form', form.topic || undefined)
       setSent(true)
       setForm({ name: '', organization: '', phone: '', email: '', topic: '', detail: '', message: '' })
     } catch (err) {
@@ -102,6 +106,7 @@ export function ContactPage() {
     // `kind` repeats now (two phones, two e-mails), so the key cannot be the
     // label or the kind — React would reuse the first row's DOM for the second.
     key: `${c.kind}-${index}`,
+    kind: c.kind,
     icon: icons[c.kind],
     tile: brandTile[c.kind],
     label: contactLabel(c, lang, t),
@@ -197,6 +202,7 @@ export function ContactPage() {
                     <Typography
                       component={Link}
                       href={i.href}
+                      onClick={() => trackContactClick(i.kind, 'contact_page')}
                       target={i.href.startsWith('http') ? '_blank' : undefined}
                       rel={i.href.startsWith('http') ? 'noopener' : undefined}
                       underline="hover"

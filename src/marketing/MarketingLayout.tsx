@@ -9,6 +9,7 @@ import Link from '@mui/material/Link'
 import { SiteHeader, Brand } from '../ui/SiteHeader'
 import { RouteFallback } from '../ui/RouteFallback'
 import { contactHref, contactLabel, contactValue, footerChannels } from '../content/contact'
+import { trackContactClick } from '../analytics/ga'
 import { CookieSettingsLink } from '../consent/CookieConsent'
 import { ensureMarketingI18n } from './i18n'
 
@@ -39,7 +40,7 @@ export function MarketingLayout() {
 }
 
 /** One footer entry: an in-app route (`to`), an external/protocol link (`href`), or plain text. */
-type FooterLink = { label: string; to?: string; href?: string }
+type FooterLink = { label: string; to?: string; href?: string; onClick?: () => void }
 
 function MarketingFooter() {
   const { t, i18n } = useTranslation()
@@ -53,6 +54,7 @@ function MarketingFooter() {
           <Link
             key={it.label}
             {...(it.to ? { component: RouterLink, to: it.to } : { href: it.href })}
+            onClick={it.onClick}
             variant="body2"
             underline="hover"
             color="text.secondary"
@@ -91,6 +93,9 @@ function MarketingFooter() {
     return {
       label: c.kind === 'email' ? value : `${contactLabel(c, lang, t)} ${value}`,
       href: contactHref(c, lang),
+      // A tel:/LINE/mailto click leaves the site, so it is never a page_view —
+      // unmeasured, the footer's contact details look like dead weight.
+      onClick: () => trackContactClick(c.kind, 'footer'),
     }
   })
 
