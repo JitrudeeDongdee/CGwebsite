@@ -317,3 +317,42 @@ WALL LINE and let the overhang hang below that, which is where a rafter sits. Th
 walls, not the roof: for each of the four wall lines, ask what the roof height is there and close
 the gap. Catching this needed every roof shape tried in the browser — the default (gable) looked
 fine, because its slot was hidden behind the overhang.
+
+## `Disallow` in robots.txt is not `noindex`, and it blocks the fix
+
+**What happened**: `/admin` and `/login` were listed as `Disallow` in robots.txt and treated as
+"kept out of Google". They were not. Both answered **HTTP 200** with the SPA shell, carried no
+`robots` meta and no `X-Robots-Tag`, and the only instruction Google had was one that says
+"do not fetch this" — not "do not list this".
+
+**Root cause**: the two directives were conflated. `Disallow` controls **crawling**; `noindex`
+controls **indexing**. A disallowed URL that is linked from anywhere can still be indexed
+URL-only, and the trap is what happens next: because the page may not be fetched, Google can
+never see a `noindex` placed on it, so the listing cannot be removed. Blocking crawling makes
+the remedy unreachable. It read as safe because the robots.txt line was *there* and nobody asked
+what it actually promised.
+
+**Correct behavior**: to keep a page out of the index, let it be crawled and serve
+`X-Robots-Tag: noindex` (`public/_headers` on Cloudflare Pages) or a `robots` meta — never
+`Disallow` alone. Use `Disallow` for crawl budget, not for privacy, and never as a substitute
+for access control: on a static host the page is public either way, and the real gate is auth.
+Belt-and-braces is worth it here, because the header cannot be checked from inside the app and
+depends on the host reading `_headers`: `useSeo({ index: false })` in the layout covers every
+guarded screen even if the header never arrives. And verify the header off the deployed site
+with a GET (`curl -s -o /dev/null -D - <url>`) — `pnpm run serve:dist` does not model `_headers`,
+so a local run proves nothing about it.
+
+## A JSON round-trip silently dropped a duplicate i18n key
+
+**What happened**: adding two keys to `src/i18n/locales/{th,en}.json` with a Python
+`json.load` → `json.dumps` round-trip produced a diff that ALSO deleted a `forgotPassword` line
+from each file.
+
+**Root cause**: both files contained `"forgotPassword"` twice in the `auth` group. JSON parsers
+keep the last occurrence, so the duplicate had been dead weight all along and re-serialising
+collapsed it. Harmless here only because the two values were byte-identical — had they differed,
+the round-trip would have silently changed a user-facing string with no sign in review.
+
+**Correct behavior**: after editing a JSON file by parse-and-rewrite, read the whole diff, not
+just the lines you meant to add — a parser normalises away anything it considers redundant.
+Where duplicates might carry different values, compare the occurrences before rewriting.

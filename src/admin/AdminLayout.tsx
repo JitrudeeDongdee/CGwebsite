@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
@@ -18,6 +19,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import MenuIcon from '@mui/icons-material/Menu'
 import { RouteFallback } from '../ui/RouteFallback'
+import { useSeo } from '../seo/useSeo'
 import { useAuth } from '../auth/AuthProvider'
 import { activeModule, modulesFor } from './modules'
 
@@ -35,6 +37,13 @@ const RAIL = 64
 const STORAGE_KEY = 'cg:admin-nav-collapsed'
 
 export function AdminLayout() {
+  const { t } = useTranslation()
+  // Second, independent noindex signal. `public/_headers` serves X-Robots-Tag
+  // for these paths, but that depends on the host reading `_headers` (the
+  // assets-only Worker flow in wrangler.jsonc does not run Pages config the same
+  // way), and a header cannot be checked from inside the app. Google renders JS,
+  // so the meta covers the case where the header does not arrive.
+  useSeo({ index: false, title: t('app.navAdmin') })
   const theme = useTheme()
   // `md` is where the content column still has room beside a 248px sidebar.
   const desktop = useMediaQuery(theme.breakpoints.up('md'))
