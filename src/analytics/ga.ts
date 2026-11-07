@@ -136,3 +136,45 @@ export function trackProductView(p: ProductEventInput): void {
 export function trackProductSelect(p: ProductEventInput, listName?: string): void {
   trackEvent('select_item', { ...(listName ? { item_list_name: listName } : {}), ...itemParams(p) })
 }
+
+/* ── Conversions ───────────────────────────────────────────────────────────
+ * Page views and product views say what people LOOK at. These two say when
+ * someone actually tried to reach the company, which is the only number that
+ * tells a quote apart from a bounce.
+ *
+ * ⚠️ Never pass a name, phone number, e-mail address or anything the visitor
+ * typed. Personal data in GA breaks Google's terms, and `/privacy` promises in
+ * writing that this dataset contains none — so a stray parameter here makes the
+ * notice false, not just untidy.
+ */
+
+/** Which form produced the lead. */
+export type LeadMethod = 'contact_form' | 'designer_plan'
+
+/** Where a contact link was clicked, so the two renderers can be told apart. */
+export type ContactSurface = 'footer' | 'contact_page'
+
+/**
+ * GA4 `generate_lead` — a customer asked us to get in touch.
+ *
+ * Fired only after the message is actually stored: a failed send is not a lead,
+ * and counting the click instead would quietly inflate the one number the
+ * company would plan around.
+ *
+ * `topic` is the dropdown's KEY ('quote', 'productPrice', …) — never the
+ * free-text detail beside it, which is whatever the visitor felt like typing.
+ */
+export function trackLead(method: LeadMethod, topic?: string): void {
+  trackEvent('generate_lead', { method, ...(topic ? { lead_topic: topic } : {}) })
+}
+
+/**
+ * A click on a phone / LINE / e-mail / Facebook / address link.
+ *
+ * These leave the site or hand off to the dialler, so they never produce a
+ * page_view — without this event the most common way a customer here makes
+ * contact is completely invisible in GA.
+ */
+export function trackContactClick(channel: string, surface: ContactSurface): void {
+  trackEvent('contact_click', { contact_channel: channel, contact_surface: surface })
+}

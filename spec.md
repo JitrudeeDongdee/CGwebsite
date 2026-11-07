@@ -717,6 +717,34 @@ Real visitor numbers on the back-office dashboard, replacing the honest placehol
   newlines may arrive as literal `\n`; the function normalises both.
 - Same Pages-Functions caveat as admin-users: the committed `wrangler.jsonc` assets-only Worker flow does NOT
   run `functions/` — this assumes the Pages Git-integration deployment.
+
+### Conversion events — `generate_lead`, `contact_click` (2026-11-07)
+GA measured what people **looked at** (`page_view`, `view_item`, `select_item`) and nothing about whether
+anyone actually made contact: a form send is an AJAX insert and a `tel:`/LINE/`mailto:` click leaves the
+page, so neither is ever a page view. For a contractor's site that is the only number worth planning around.
+- **`trackLead(method, topic?)` → GA4 `generate_lead`** (a recommended event, so it reports natively).
+  `method` is `contact_form` (`ContactPage`) or `designer_plan` (`LeadFormDialog`). Fired **after** the
+  record is stored, never on the click — `sendContactMessage` / `onSubmit` throw on failure, and a message
+  that reached nobody must not be counted. Verified: a forced HTTP 400 on the insert produced **0** events.
+- **`trackContactClick(channel, surface)` → custom `contact_click`**, with `contact_channel`
+  (phone/line/email/facebook/address) and `contact_surface` (`footer` | `contact_page`). Both renderers read
+  `contact.json`, so every channel is covered at one place each: `FooterLink` gained an optional `onClick`,
+  and the contact page's `info` rows now carry their `kind`.
+- ⚠️ **No personal data, ever.** `lead_topic` is the dropdown's KEY (`quote`, `productPrice`, …), never the
+  free-text detail; no name, phone, e-mail or message text is passed. Google's terms forbid it and
+  `/privacy` states in writing that this dataset holds none — a stray parameter makes the notice false.
+  `mkt.privacy.collect4d` (th + en) and the notice's date were updated **in the same change**, per the rule
+  in `PrivacyPage.tsx`.
+- Consent is inherited for free: `trackEvent` no-ops until `window.gtag` exists, and gtag only loads after
+  the visitor accepts (`RouteAnalytics`); after a withdrawal the `ga-disable-<ID>` flag drops the hits.
+- **Verified locally** (`VITE_GA_ID=G-TESTONLY0`, Supabase insert stubbed in the browser so no real message
+  or team notification was sent): all four `contact_click` variants and `generate_lead`
+  (`method: contact_form`, `lead_topic: quote`) reach `gtag` with the right parameters, `dataLayer` entries
+  are `[object Arguments]` (the 2026-10-09 failure mode is absent) and `page_view` physically reaches
+  `/g/collect`. ⚠️ The event hits themselves could **not** be observed on the wire: GA stops sending after
+  its config response for a measurement ID that does not exist — a hand-written `gtag('event', …)` control
+  behaved identically, so this is the fake ID, not the code. **Confirm on the real property after deploy**
+  (GA → Realtime / DebugView), then mark `generate_lead` as a key event in GA → Admin → Events.
 - **Local dev + always-on structure (2026-10-07).** Pages Functions don't run under `pnpm run dev`, so the
   card used to error with "no such dev endpoint" locally. `vite-dev-api.mts` now mirrors `/api/ga-stats`
   (signing the SA JWT with `node:crypto`, no auth check — localhost only): set the same three vars in

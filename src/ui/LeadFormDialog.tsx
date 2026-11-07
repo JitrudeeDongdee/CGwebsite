@@ -11,6 +11,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Alert from '@mui/material/Alert'
 import type { LeadContact } from '../leads/types'
+import { trackLead } from '../analytics/ga'
 
 const TIMELINE_OPTIONS = [
   { value: 'asap', labelKey: 'lead.timelineAsap' },
@@ -79,6 +80,9 @@ export function LeadFormDialog({ open, onClose, onSubmit, hasEstimate }: LeadFor
     setSubmitting(true)
     try {
       await onSubmit(contact)
+      // After the save, not before: `onSubmit` throws on failure, and a lead
+      // that was never stored must not be counted as one.
+      trackLead('designer_plan')
       setContact(EMPTY_CONTACT)
       setErrors({})
     } finally {
