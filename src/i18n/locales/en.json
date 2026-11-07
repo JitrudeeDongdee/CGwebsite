@@ -2,7 +2,9 @@
   "app": {
     "title": "House Plan Designer",
     "navDesigner": "Design",
-    "navAdmin": "Admin"
+    "navAdmin": "Admin",
+    "seoTitle": "Design your house online — draw a plan, see it in 3D",
+    "seoDesc": "Draw your own floor plan in the browser, add doors and windows, view it in 3D and see a ballpark price straight away. Free, nothing to install."
   },
   "canvas": {
     "hint": "Click to start a wall · move, then click again to place it · Esc or right-click to cancel",
@@ -162,6 +164,7 @@
     "whole": "Whole house",
     "cutaway": "Roof off",
     "furniture": "Show furniture",
+    "scenery": "Show planting",
     "storeys": "Storeys",
     "storey1": "1 storey",
     "storey2": "2 storeys",
@@ -286,7 +289,6 @@
     "socialSoon": "Coming soon",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "forgotPassword": "Forgot password?",
     "resetSent": "We've sent a password-reset link to your email. Check spam if it hasn't arrived.",
     "resetNeedEmail": "Enter your email first, then tap forgot password again.",
     "resetTitle": "Set a new password",

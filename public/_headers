@@ -1,0 +1,24 @@
+# Cloudflare Pages response headers.
+# Served from the deploy root, same as _redirects. Paths are matched top-down;
+# `/admin/*` does NOT match `/admin` itself, so bare paths need their own rule.
+
+# Keep the private screens out of the index.
+#
+# robots.txt used to Disallow these, which was the wrong tool and quietly the
+# worse outcome: Disallow stops Google CRAWLING a URL, not indexing it. A
+# disallowed page that is linked anywhere can still be listed URL-only, and
+# because Google may not fetch it, it can never read a noindex and the entry
+# cannot be removed. Serving `X-Robots-Tag: noindex` on a crawlable page is the
+# instruction that actually takes effect. Nothing here is secret — these are
+# login screens and an empty SPA shell; the real gate is Supabase Auth + RLS.
+/admin
+  X-Robots-Tag: noindex
+
+/admin/*
+  X-Robots-Tag: noindex
+
+/login
+  X-Robots-Tag: noindex
+
+/account
+  X-Robots-Tag: noindex

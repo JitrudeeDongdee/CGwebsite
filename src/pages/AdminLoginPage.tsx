@@ -11,6 +11,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import LockIcon from '@mui/icons-material/LockOutlined'
 import { useAuth } from '../auth/AuthProvider'
+import { useSeo } from '../seo/useSeo'
 
 /**
  * Staff sign-in, kept apart from the customer one at `/login`.
@@ -28,7 +29,9 @@ import { useAuth } from '../auth/AuthProvider'
  * cannot do anything.
  */
 export function AdminLoginPage() {
+  // Outside AdminGuard, so it needs its own — see the note in AdminLayout.
   const { t } = useTranslation()
+  useSeo({ index: false, title: t('auth.adminTitle') })
   const { signIn, user, isStaff, loading, logout } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
