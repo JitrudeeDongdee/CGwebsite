@@ -158,32 +158,72 @@
   },
   "building3d": {
     "title": "3D view",
+    "view": "View",
+    "whole": "Whole house",
+    "cutaway": "Roof off",
+    "furniture": "Show furniture",
+    "storeys": "Storeys",
+    "storey1": "1 storey",
+    "storey2": "2 storeys",
+    "storeyNote": "The upper storey repeats the ground-floor plan.",
     "roofShape": "Roof shape",
+    "pitch": "Roof pitch",
     "roofMaterial": "Roof material",
+    "roofColor": "Roof colour",
     "wallMaterial": "Wall material",
+    "wallColor": "Wall colour",
     "frameMaterial": "Door / window material",
-    "note": "Only walls, doors and windows are built in 3D — furniture is not shown.",
+    "note": "Built from the plan you drew — walls, doors, windows, roof and the furniture you placed. An impression of the shape and colours, not a construction drawing.",
     "roof": {
       "gable": "Gable",
       "hip": "Hip",
       "shed": "Shed",
       "flat": "Flat"
     },
+    "pitches": {
+      "low": "Shallow",
+      "medium": "Normal",
+      "steep": "Steep"
+    },
     "roofMat": {
       "tile": "Tile",
       "metal": "Metal",
-      "shingle": "Shingle"
+      "shingle": "Shingle",
+      "deck": "Concrete deck"
     },
     "wallMat": {
       "plaster": "Plaster",
+      "paint": "Painted",
       "brick": "Brick",
-      "wood": "Wood",
-      "concrete": "Concrete"
+      "wood": "Timber lap",
+      "fibre": "Fibre cement",
+      "stone": "Stone",
+      "concrete": "Bare concrete"
     },
     "frameMat": {
       "aluminium": "Aluminium",
       "wood": "Wood",
-      "white": "White"
+      "white": "White",
+      "black": "Black",
+      "bronze": "Bronze"
+    },
+    "color": {
+      "white": "White",
+      "cream": "Cream",
+      "sand": "Sand",
+      "greyLight": "Light grey",
+      "greyDark": "Dark grey",
+      "wood": "Timber",
+      "terracotta": "Terracotta",
+      "sage": "Sage",
+      "blueGrey": "Blue grey",
+      "charcoal": "Charcoal",
+      "brickRed": "Brick red",
+      "orange": "Orange",
+      "brown": "Brown",
+      "black": "Black",
+      "green": "Green",
+      "blue": "Blue"
     }
   },
   "view": {

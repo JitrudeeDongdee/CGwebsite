@@ -2,16 +2,22 @@ import type { DrawingState, OpeningKind } from './types'
 import { distance } from './geometry'
 import { EXTERIOR_WALL_THICKNESS, INTERIOR_WALL_THICKNESS } from './wallOutline'
 
-/** Storey and opening heights in metres, typical for a single-storey house. */
+/** Storey and opening heights in metres, typical for a house built here. */
 export const WALL_HEIGHT = 2.7
+/** Floor structure between two storeys — and the band that shows outside. */
+export const SLAB_THICKNESS = 0.25
+/** Floor to floor. */
+export const LEVEL_HEIGHT = WALL_HEIGHT + SLAB_THICKNESS
 export const DOOR_HEIGHT = 2.0
 export const WINDOW_SILL = 0.9
 export const WINDOW_HEIGHT = 1.2
+/** Plinth at the foot of the exterior walls: the edge of the floor slab. */
+export const PLINTH_HEIGHT = 0.3
 
 /** A box of wall, positioned in world space. */
 export interface WallBox {
   id: string
-  /** Centre of the box. `y` is height above the floor. */
+  /** Centre of the box. `y` is height above the ground. */
   x: number
   y: number
   z: number
@@ -22,17 +28,42 @@ export interface WallBox {
   angle: number
 }
 
-export interface OpeningPanel extends WallBox {
+/**
+ * A hole in a wall, with everything needed to build a real window or door
+ * into it — frame, glazing, leaf. The scene composes those; the geometry
+ * here only says where the hole is and how deep the wall around it is.
+ */
+export interface OpeningUnit {
+  id: string
   kind: OpeningKind
+  /** Centre of the hole. */
+  x: number
+  y: number
+  z: number
+  angle: number
+  width: number
+  height: number
+  wallThickness: number
 }
 
 export interface Building3D {
   /** Solid masonry: full-height stretches, plus sills and headers. */
   walls: WallBox[]
-  /** Door leaves and window glazing filling the holes. */
-  panels: OpeningPanel[]
+  /** Window and door units filling the holes. */
+  openings: OpeningUnit[]
+  /** Plinth and the floor band between storeys — painted trim, not masonry. */
+  trim: WallBox[]
+  /** Free-standing columns the customer placed, e.g. carport posts. */
+  columns: WallBox[]
   /** Footprint of the exterior walls, for the roof and the floor slab. */
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null
+  /** Top of the topmost wall — where the roof sits. */
+  eaves: number
+}
+
+export interface Building3DShape {
+  /** 1 or 2. A second storey repeats the same plan above the first. */
+  storeys: number
 }
 
 interface Span {
@@ -43,20 +74,29 @@ interface Span {
 }
 
 /**
- * Turns the 2D plan into the boxes a simple 3D massing needs.
+ * Turns the 2D plan into the boxes a 3D view needs.
  *
  * Openings are cut by *splitting* each wall along its length rather than by
  * boolean subtraction: the stretches between openings run full height, and
  * each opening contributes a header above it (and a sill below, for a
  * window). That gives real holes with no CSG dependency, and every piece
  * stays an axis-aligned box.
+ *
+ * A second storey repeats the same walls and openings one floor up. There is
+ * only one plan to work from, so an upper floor can only be the same plan —
+ * the UI says so rather than pretending otherwise.
  */
 export function buildBuilding3D(
   state: DrawingState,
   exteriorWallIds: ReadonlySet<string>,
+  shape: Building3DShape = { storeys: 1 },
 ): Building3D {
+  const storeys = Math.max(1, Math.round(shape.storeys))
   const walls: WallBox[] = []
-  const panels: OpeningPanel[] = []
+  const openings: OpeningUnit[] = []
+  const trim: WallBox[] = []
+  const columns: WallBox[] = []
+  const eaves = (storeys - 1) * LEVEL_HEIGHT + WALL_HEIGHT
 
   for (const wall of state.walls) {
     const a = state.nodes[wall.a]
@@ -67,12 +107,14 @@ export function buildBuilding3D(
     if (length === 0) continue
 
     const angle = Math.atan2(b.y - a.y, b.x - a.x)
+    const exterior = exteriorWallIds.has(wall.id)
     const thickness =
-      wall.thickness ??
-      (exteriorWallIds.has(wall.id) ? EXTERIOR_WALL_THICKNESS : INTERIOR_WALL_THICKNESS)
+      wall.thickness ?? (exterior ? EXTERIOR_WALL_THICKNESS : INTERIOR_WALL_THICKNESS)
 
     const dirX = (b.x - a.x) / length
     const dirZ = (b.y - a.y) / length
+    const midX = (a.x + b.x) / 2
+    const midZ = (a.y + b.y) / 2
 
     /** Places a span of this wall as a box in world space. */
     const boxFor = (id: string, span: Span): WallBox | null => {
@@ -93,12 +135,7 @@ export function buildBuilding3D(
       }
     }
 
-    const push = (id: string, span: Span) => {
-      const box = boxFor(id, span)
-      if (box) walls.push(box)
-    }
-
-    const openings = state.openings
+    const wallOpenings = state.openings
       .filter((opening) => opening.wallId === wall.id)
       .map((opening) => ({
         ...opening,
@@ -107,60 +144,126 @@ export function buildBuilding3D(
       }))
       .sort((one, two) => one.start - two.start)
 
-    let cursor = 0
+    for (let level = 0; level < storeys; level++) {
+      const base = level * LEVEL_HEIGHT
+      const top = base + WALL_HEIGHT
 
-    for (const opening of openings) {
-      if (opening.start > cursor) {
-        push(`${wall.id}-solid-${cursor}`, {
-          from: cursor,
-          to: opening.start,
-          bottom: 0,
-          top: WALL_HEIGHT,
-        })
+      const push = (id: string, span: Span) => {
+        const box = boxFor(`${id}-L${level}`, span)
+        if (box) walls.push(box)
       }
 
-      const head = opening.kind === 'door' ? DOOR_HEIGHT : WINDOW_SILL + WINDOW_HEIGHT
+      let cursor = 0
 
-      // Header over the hole.
-      push(`${wall.id}-head-${opening.id}`, {
-        from: opening.start,
-        to: opening.end,
-        bottom: head,
-        top: WALL_HEIGHT,
-      })
+      for (const opening of wallOpenings) {
+        if (opening.start > cursor) {
+          push(`${wall.id}-solid-${cursor}`, {
+            from: cursor,
+            to: opening.start,
+            bottom: base,
+            top,
+          })
+        }
 
-      // Wall under a window; a door goes to the floor.
-      if (opening.kind === 'window') {
-        push(`${wall.id}-sill-${opening.id}`, {
+        const head = base + (opening.kind === 'door' ? DOOR_HEIGHT : WINDOW_SILL + WINDOW_HEIGHT)
+
+        // Header over the hole.
+        push(`${wall.id}-head-${opening.id}`, {
           from: opening.start,
           to: opening.end,
-          bottom: 0,
-          top: WINDOW_SILL,
+          bottom: head,
+          top,
+        })
+
+        // Wall under a window; a door goes to the floor. On an upper storey a
+        // door opens onto a balcony, so it keeps its full height.
+        if (opening.kind === 'window') {
+          push(`${wall.id}-sill-${opening.id}`, {
+            from: opening.start,
+            to: opening.end,
+            bottom: base,
+            top: base + WINDOW_SILL,
+          })
+        }
+
+        const holeSpan: Span =
+          opening.kind === 'door'
+            ? { from: opening.start, to: opening.end, bottom: base, top: base + DOOR_HEIGHT }
+            : {
+                from: opening.start,
+                to: opening.end,
+                bottom: base + WINDOW_SILL,
+                top: base + WINDOW_SILL + WINDOW_HEIGHT,
+              }
+
+        const hole = boxFor(`${wall.id}-unit-${opening.id}-L${level}`, holeSpan)
+        if (hole) {
+          openings.push({
+            id: hole.id,
+            kind: opening.kind,
+            x: hole.x,
+            y: hole.y,
+            z: hole.z,
+            angle,
+            width: hole.length,
+            height: hole.height,
+            wallThickness: thickness,
+          })
+        }
+
+        cursor = Math.max(cursor, opening.end)
+      }
+
+      if (cursor < length) {
+        push(`${wall.id}-solid-end`, { from: cursor, to: length, bottom: base, top })
+      }
+
+      // The floor band between storeys both fills the structural gap above
+      // this wall and is what makes a two-storey house read as two storeys.
+      if (level < storeys - 1) {
+        trim.push({
+          id: `${wall.id}-band-L${level}`,
+          x: midX,
+          y: top + SLAB_THICKNESS / 2,
+          z: midZ,
+          length,
+          height: SLAB_THICKNESS,
+          thickness: thickness + (exterior ? 0.08 : 0),
+          angle,
         })
       }
-
-      const panelSpan: Span =
-        opening.kind === 'door'
-          ? { from: opening.start, to: opening.end, bottom: 0, top: DOOR_HEIGHT }
-          : {
-              from: opening.start,
-              to: opening.end,
-              bottom: WINDOW_SILL,
-              top: WINDOW_SILL + WINDOW_HEIGHT,
-            }
-
-      const panel = boxFor(`${wall.id}-panel-${opening.id}`, panelSpan)
-      if (panel) {
-        // Thinner than the wall so the reveal still reads as a hole.
-        panels.push({ ...panel, thickness: thickness * 0.35, kind: opening.kind })
-      }
-
-      cursor = Math.max(cursor, opening.end)
     }
 
-    if (cursor < length) {
-      push(`${wall.id}-solid-end`, { from: cursor, to: length, bottom: 0, top: WALL_HEIGHT })
+    // Edge of the floor slab, standing slightly proud of the wall above it.
+    if (exterior) {
+      trim.push({
+        id: `${wall.id}-plinth`,
+        x: midX,
+        y: PLINTH_HEIGHT / 2,
+        z: midZ,
+        length,
+        height: PLINTH_HEIGHT,
+        thickness: thickness + 0.1,
+        angle,
+      })
     }
+  }
+
+  // Columns the customer placed themselves stand free — a carport post, a
+  // porch post. The ones synced to wall junctions are buried inside the wall
+  // they belong to, so drawing them would only cost z-fighting.
+  for (const fixture of state.fixtures) {
+    if (fixture.kind !== 'column' || fixture.nodeId) continue
+    columns.push({
+      id: `column-${fixture.id}`,
+      x: fixture.x,
+      y: eaves / 2,
+      z: fixture.y,
+      length: Math.max(0.05, fixture.width),
+      height: eaves,
+      thickness: Math.max(0.05, fixture.depth),
+      angle: fixture.rotation,
+    })
   }
 
   // The roof spans the shell, so only exterior corners define its extent.
@@ -185,5 +288,5 @@ export function buildBuilding3D(
         }
       : null
 
-  return { walls, panels, bounds }
+  return { walls, openings, trim, columns, bounds, eaves }
 }
