@@ -356,3 +356,29 @@ the round-trip would have silently changed a user-facing string with no sign in 
 **Correct behavior**: after editing a JSON file by parse-and-rewrite, read the whole diff, not
 just the lines you meant to add — a parser normalises away anything it considers redundant.
 Where duplicates might carry different values, compare the occurrences before rewriting.
+
+## `git add -A` in a shared checkout committed another session's half-finished line
+
+**What happened**: an SEO change (#63) was committed with `git add -A`. The obvious foreign
+files were spotted in `git status` and unstaged — but `src/pages/DesignerPage.tsx` was **also
+a file the SEO change legitimately edited**, so it stayed staged, and one line inside it
+belonged to someone else: `scenery: true`, from 3D work in progress in another session that
+adds `scenery` to `Building3DOptions` in the same change. #63 merged. `main` then failed
+`tsc -b`, which is the first step of `pnpm run build`, so a production deploy would have
+failed. It was invisible locally the whole time, because the other session's uncommitted
+`Scene3D.tsx` — the file that declares the field — was sitting in the same working tree and
+made the type check pass.
+
+**Root cause**: two things at once. `git add -A` in a checkout that another session is
+writing to, and then reviewing the staged set by FILE rather than by LINE. Checking file
+names catches a foreign file; it cannot catch a foreign line inside a file you are editing
+anyway. The local pass was false comfort: a working tree holding both halves of someone
+else's change typechecks, while the commit carrying only one half does not.
+
+**Correct behavior**: in a checkout that may be shared, stage by path (`git add <paths>`),
+never `-A`, and **read `git diff --cached` before committing** — the diff is the only thing
+that shows a line you did not write. Verify a branch in a **worktree detached at the commit**
+(`git worktree add --detach <dir> <sha>`), not in the shared tree, so uncommitted files
+cannot mask or invent an error; `ln -s` the repo's `node_modules` to keep it cheap. And when
+`tsc` fails on a symbol you have never heard of, check `git diff`/`git status` for another
+session's work before reading the code.
