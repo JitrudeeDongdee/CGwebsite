@@ -20,6 +20,7 @@ import { findFixtureAt } from '../drawing/fixtures'
 import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
 import { RouteFallback } from '../ui/RouteFallback'
+import { useSeo } from '../seo/useSeo'
 import type { Building3DOptions } from '../scene3d/Scene3D'
 import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
 
@@ -137,6 +138,11 @@ function usePanelOpen(key: string, defaultOpen: boolean) {
 export function DesignerPage() {
   const { t } = useTranslation()
   const { requireAuth } = useAuth()
+  // /design is in the sitemap, so Google is actively invited here — but the page
+  // carried index.html's site-wide title and no canonical, which made it a
+  // duplicate of the home page. It is not prerendered (three.js), so this is the
+  // only place the head gets set.
+  useSeo({ title: t('app.seoTitle'), description: t('app.seoDesc') })
   const theme = useTheme()
   // 232 + 288 of chrome leaves a 1024px screen about 500px for the drawing.
   const roomy = useMediaQuery(theme.breakpoints.up('lg'))

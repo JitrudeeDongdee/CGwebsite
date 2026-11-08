@@ -19,6 +19,7 @@ import ChatIcon from '@mui/icons-material/Chat'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuth } from '../auth/AuthProvider'
+import { useSeo } from '../seo/useSeo'
 
 /**
  * The CUSTOMER sign-in and sign-up, backed by Supabase Auth.
@@ -38,7 +39,9 @@ import { useAuth } from '../auth/AuthProvider'
 
 
 export function LoginPage() {
+  // A sign-in form has nothing to rank — see the note in AdminLayout.
   const { t } = useTranslation()
+  useSeo({ index: false, title: t('auth.signInTitle') })
   const { signIn, signUp, resetPassword, recovery, updatePassword, verifyRecoveryOtp, user } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()

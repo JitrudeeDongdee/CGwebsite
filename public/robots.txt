@@ -3,5 +3,4 @@
 User-agent: *
 Allow: /
 
-Disallow: /admin
-Disallow: /login
+Sitemap: https://thaidongdee.com/sitemap.xml
