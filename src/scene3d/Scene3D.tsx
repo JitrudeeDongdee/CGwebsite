@@ -20,6 +20,8 @@ import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
 import { Planting, SUN_DIRECTION, SkyDome, SkyEnvironment } from './Scenery'
 
+export { warmDefaultPatterns } from './textures'
+
 extend({ OrbitControls })
 
 declare module '@react-three/fiber' {
@@ -43,6 +45,28 @@ export interface Building3DOptions {
   furniture: boolean
   /** Trees and shrubs round the plot. */
   scenery: boolean
+}
+
+/**
+ * Tells the page the house is actually on screen.
+ *
+ * The second frame, not the first: materials compile and textures upload
+ * during the first one, so a loading cover removed on frame 1 uncovers a
+ * canvas that is still blank.
+ */
+function FirstFrame({ onReady }: { onReady?: () => void }) {
+  const seen = useRef(0)
+  const told = useRef(false)
+
+  useFrame(() => {
+    if (told.current) return
+    seen.current += 1
+    if (seen.current < 2) return
+    told.current = true
+    onReady?.()
+  })
+
+  return null
 }
 
 /**
@@ -212,10 +236,13 @@ export function Scene3D({
   state,
   exteriorWallIds,
   options,
+  onReady,
 }: {
   state: DrawingState
   exteriorWallIds: ReadonlySet<string>
   options: Building3DOptions
+  /** Called once the first real frame has been drawn. */
+  onReady?: () => void
 }) {
   const { scene: sceneColors } = useTheme()
   const building = useMemo(
@@ -260,6 +287,8 @@ export function Scene3D({
       }}
       style={{ width: '100%', height: '100%' }}
     >
+      <FirstFrame onReady={onReady} />
+
       {/* Behind the sky, so there is something sane for the first frame. */}
       <color attach="background" args={[sceneColors.background]} />
       <SkyDome />

@@ -936,6 +936,36 @@ The pieces the owner had put off until the house itself was done (PR #62, merged
   warnings-only, `pnpm run build` passes; the `Scene3D` chunk is 922 kB (drei's `Sky` import
   is gone, so this work costs ~17 kB).
 
+### Opening the 3D view was a blank wait — measured, then cut (2026-11-08)
+The owner's report: pressing "3 มิติ" takes a long time, add a loading state or show a rough
+picture first. Measured on the live site before changing anything, because the obvious
+suspect (the chunk) was not the expensive part:
+
+| step | cost |
+|---|---|
+| `Scene3D` chunk | **241 kB gzip / 922 kB parsed**, TTFB 0.31 s on a desktop connection |
+| parse + compile | a few hundred ms, more on a phone |
+| **drawing the surface patterns** | **~1.55 s for the five a scene uses, at 512², blocking the main thread** |
+
+The patterns were the biggest piece *and* the worst-looking one: `<Suspense>` ended when the
+chunk arrived, so the spinner disappeared and the pattern drawing then froze the page with a
+**blank canvas** on screen. Three changes:
+- **Textures are 256², drawn in a 512 coordinate space** (`ctx.scale`) so no line or mortar
+  joint changes width relative to its tile. 1.55 s → **363 ms**, measured the same way. At the
+  sizes these tile to (0.5–3 m) and the distance a house is viewed from, 256 is enough.
+- **The chunk is prefetched and the patterns pre-drawn while the customer is still in the 2D
+  editor** (`requestIdleCallback`, 6 s timeout, one pattern per idle slice so the editor never
+  drops a frame). Verified with a `PerformanceObserver` — `Scene3D.tsx` and `textures.ts` are
+  fetched before the 3D button is ever pressed. ⚠️ `performance.getEntriesByType('resource')`
+  is capped at 250 entries and in dev that buffer is full long before, which made the first
+  check say the prefetch had not run at all.
+- **`Scene3DLoading`** covers the view for the WHOLE wait — download *and* first frame — showing
+  the plan's isometric massing thumbnail (the gallery's `IsoThumbnail`, instant SVG) so there is
+  a rough picture of their own house instead of a blank canvas. It lifts on a signal from
+  `<FirstFrame>` inside the Canvas, which waits for the **second** `useFrame` (materials compile
+  and textures upload during the first), with an 8 s guard so a failed context can never leave
+  the cover up hiding the evidence.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 
