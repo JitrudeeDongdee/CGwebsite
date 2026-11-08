@@ -19,7 +19,7 @@ import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
 import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
-import { RouteFallback } from '../ui/RouteFallback'
+import { Scene3DLoading } from '../ui/Scene3DLoading'
 import { useSeo } from '../seo/useSeo'
 import type { Building3DOptions } from '../scene3d/Scene3D'
 import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
@@ -186,6 +186,8 @@ export function DesignerPage() {
   const [fitToken, setFitToken] = useState(0)
   const [renaming, setRenaming] = useState(false)
   const [view, setView] = useState<'plan' | 'three'>('plan')
+  /** False until the 3D view has drawn a frame; the loading cover reads it. */
+  const [sceneReady, setSceneReady] = useState(false)
   const [building3d, setBuilding3d] = useState<Building3DOptions>({
     roof: 'gable',
     pitch: 'medium',
@@ -200,6 +202,51 @@ export function DesignerPage() {
     scenery: true,
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
+
+  // Never leave the cover up for ever. If the first frame does not arrive —
+  // WebGL refused, the context was lost, the tab was in the background the
+  // whole time — hiding the canvas hides the evidence too.
+  useEffect(() => {
+    if (view !== 'three' || sceneReady) return
+    const timer = window.setTimeout(() => setSceneReady(true), 8000)
+    return () => window.clearTimeout(timer)
+  }, [view, sceneReady])
+
+  // Pull the 3D engine down while the customer is still drawing, and draw its
+  // surface patterns ahead of time. Measured on the live site: 241 kB gzip
+  // (920 kB parsed) plus ~1.5 s of pattern drawing, all of it on the click.
+  // Doing it on idle costs a visit that never opens 3D one background
+  // download, and turns the click itself into roughly nothing.
+  useEffect(() => {
+    let cancelled = false
+
+    const warm = () => {
+      if (cancelled) return
+      void import('../scene3d/Scene3D')
+        .then((module) => {
+          if (!cancelled) module.warmDefaultPatterns()
+        })
+        .catch(() => {
+          /* the view loads normally on click if this never ran */
+        })
+    }
+
+    // Deliberately after the editor has settled, never competing with it.
+    const idle = window.requestIdleCallback
+    if (idle) {
+      const handle = idle(warm, { timeout: 6000 })
+      return () => {
+        cancelled = true
+        window.cancelIdleCallback?.(handle)
+      }
+    }
+
+    const timer = window.setTimeout(warm, 2500)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [])
 
   const priceConfig = useMemo(() => loadPriceConfig(), [])
   const openingCounts = useMemo(
@@ -347,7 +394,13 @@ export function DesignerPage() {
         exclusive
         size="small"
         value={view}
-        onChange={(_, next: 'plan' | 'three' | null) => next && setView(next)}
+        onChange={(_, next: 'plan' | 'three' | null) => {
+          if (!next) return
+          // Scene3D unmounts when the view leaves 3D, so coming back draws
+          // from scratch and the cover has to come back with it.
+          if (next === 'three') setSceneReady(false)
+          setView(next)
+        }}
         sx={{
           position: 'absolute',
           top: 12,
@@ -361,9 +414,20 @@ export function DesignerPage() {
       </ToggleButtonGroup>
 
       {view === 'three' ? (
-        <Suspense fallback={<RouteFallback />}>
-          <Scene3D state={state} exteriorWallIds={exteriorWallIds} options={building3d} />
-        </Suspense>
+        <>
+          <Suspense fallback={null}>
+            <Scene3D
+              state={state}
+              exteriorWallIds={exteriorWallIds}
+              options={building3d}
+              onReady={() => setSceneReady(true)}
+            />
+          </Suspense>
+          {/* One cover for the whole wait — the chunk download AND the first
+              frame. The Suspense fallback alone ended at the download, which
+              is why the canvas sat blank afterwards. */}
+          {!sceneReady && <Scene3DLoading state={state} />}
+        </>
       ) : (
       <>
       <PlanEditor

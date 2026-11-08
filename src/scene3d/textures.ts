@@ -15,7 +15,23 @@ import { PATTERN_SPEC, type SurfacePattern } from '../drawing/materials'
 
 export type { SurfacePattern }
 
-const SIZE = 512
+/**
+ * Pixels per texture, and the coordinate space the patterns are DRAWN in.
+ *
+ * ⚠️ These are deliberately different. Generating one pattern means a
+ * `getImageData` → per-pixel loop → `putImageData` over the whole canvas, and
+ * measured in the browser that cost **1.55 s for the five patterns a scene
+ * actually uses at 512², against 363 ms at 256²** — all of it blocking the
+ * main thread at the moment the customer opens the 3D view. At the sizes
+ * these tile to (0.5–3 m) and the distance the house is viewed from, 256 is
+ * indistinguishable.
+ *
+ * The drawing code keeps working in 512 units and the context is scaled, so
+ * a 5 px mortar joint stays 5/512 of a tile instead of silently doubling in
+ * relative width.
+ */
+const SIZE = 256
+const UNIT = 512
 
 /** Deterministic noise, so a reload never redraws a different wall. */
 function rng(seed: number): () => number {
@@ -32,8 +48,10 @@ function surface(): { el: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
   el.height = SIZE
   const ctx = el.getContext('2d')
   if (!ctx) throw new Error('2d canvas unavailable')
+  // Draw in UNIT space whatever the pixel size.
+  ctx.scale(SIZE / UNIT, SIZE / UNIT)
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, SIZE, SIZE)
+  ctx.fillRect(0, 0, UNIT, UNIT)
   return { el, ctx }
 }
 
@@ -52,7 +70,7 @@ function grain(ctx: CanvasRenderingContext2D, amount: number, seed: number): voi
 }
 
 /**
- * Soft blotches for mottling. Each is drawn nine times, offset by ±SIZE, so
+ * Soft blotches for mottling. Each is drawn nine times, offset by ±UNIT, so
  * one that overlaps an edge continues on the opposite edge and the tile has
  * no visible seam.
  */
@@ -65,12 +83,12 @@ function blotches(
 ): void {
   const rand = rng(seed)
   for (let i = 0; i < count; i++) {
-    const x = rand() * SIZE
-    const y = rand() * SIZE
+    const x = rand() * UNIT
+    const y = rand() * UNIT
     const r = radius * (0.5 + rand())
     const dark = rand() > 0.5
-    for (const ox of [-SIZE, 0, SIZE]) {
-      for (const oy of [-SIZE, 0, SIZE]) {
+    for (const ox of [-UNIT, 0, UNIT]) {
+      for (const oy of [-UNIT, 0, UNIT]) {
         const g = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r)
         const tone = dark ? '0,0,0' : '255,255,255'
         g.addColorStop(0, `rgba(${tone},${alpha})`)
@@ -84,7 +102,7 @@ function blotches(
 
 function fill(ctx: CanvasRenderingContext2D, grey: number): void {
   ctx.fillStyle = `rgb(${grey},${grey},${grey})`
-  ctx.fillRect(0, 0, SIZE, SIZE)
+  ctx.fillRect(0, 0, UNIT, UNIT)
 }
 
 function plaster(): HTMLCanvasElement {
@@ -111,8 +129,8 @@ function brick(): HTMLCanvasElement {
   grain(ctx, 0.05, 23)
 
   const courses = 8
-  const h = SIZE / courses
-  const w = SIZE / 4
+  const h = UNIT / courses
+  const w = UNIT / 4
   const joint = 5
   const rand = rng(41)
 
@@ -135,14 +153,14 @@ function woodLap(): HTMLCanvasElement {
   const { el, ctx } = surface()
   fill(ctx, 242)
   const boards = 4
-  const h = SIZE / boards
+  const h = UNIT / boards
   const rand = rng(97)
 
   for (let i = 0; i < boards; i++) {
     const y = i * h
     const tone = 225 + Math.round(rand() * 25)
     ctx.fillStyle = `rgb(${tone},${tone},${tone})`
-    ctx.fillRect(0, y, SIZE, h)
+    ctx.fillRect(0, y, UNIT, h)
     // Grain: long streaks along the board.
     for (let g = 0; g < 26; g++) {
       const gy = y + rand() * h
@@ -150,7 +168,7 @@ function woodLap(): HTMLCanvasElement {
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(0, gy)
-      ctx.bezierCurveTo(SIZE / 3, gy + 2, (SIZE / 3) * 2, gy - 2, SIZE, gy)
+      ctx.bezierCurveTo(UNIT / 3, gy + 2, (UNIT / 3) * 2, gy - 2, UNIT, gy)
       ctx.stroke()
     }
     // The lap casts a shadow on the board below it.
@@ -158,7 +176,7 @@ function woodLap(): HTMLCanvasElement {
     shade.addColorStop(0, 'rgba(0,0,0,0.45)')
     shade.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = shade
-    ctx.fillRect(0, y, SIZE, 10)
+    ctx.fillRect(0, y, UNIT, 10)
   }
   grain(ctx, 0.04, 131)
   return el
@@ -169,13 +187,13 @@ function fibre(): HTMLCanvasElement {
   const { el, ctx } = surface()
   fill(ctx, 246)
   const planks = 3
-  const w = SIZE / planks
+  const w = UNIT / planks
   for (let i = 0; i < planks; i++) {
     const x = i * w
     ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.fillRect(x, 0, 4, SIZE)
+    ctx.fillRect(x, 0, 4, UNIT)
     ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    ctx.fillRect(x + 4, 0, 3, SIZE)
+    ctx.fillRect(x + 4, 0, 3, UNIT)
   }
   blotches(ctx, 14, 60, 0.03, 211)
   grain(ctx, 0.05, 29)
@@ -187,13 +205,13 @@ function stone(): HTMLCanvasElement {
   const { el, ctx } = surface()
   fill(ctx, 205)
   const courses = 6
-  const h = SIZE / courses
+  const h = UNIT / courses
   const rand = rng(313)
 
   for (let row = 0; row < courses; row++) {
     let x = -rand() * 80
     const y = row * h
-    while (x < SIZE) {
+    while (x < UNIT) {
       const w = 60 + rand() * 90
       const tone = 215 + Math.round(rand() * 40)
       ctx.fillStyle = `rgb(${tone},${tone},${tone})`
@@ -226,12 +244,12 @@ function concrete(): HTMLCanvasElement {
   blotches(ctx, 30, 90, 0.045, 613)
   const rand = rng(673)
   for (let i = 0; i < 4; i++) {
-    const y = (i * SIZE) / 4
+    const y = (i * UNIT) / 4
     ctx.fillStyle = 'rgba(0,0,0,0.12)'
-    ctx.fillRect(0, y, SIZE, 2)
+    ctx.fillRect(0, y, UNIT, 2)
     // Form-tie holes sit on the board joints.
     for (let h = 0; h < 2; h++) {
-      const x = 40 + rand() * (SIZE - 80)
+      const x = 40 + rand() * (UNIT - 80)
       ctx.fillStyle = 'rgba(0,0,0,0.25)'
       ctx.beginPath()
       ctx.arc(x, y + 1, 4, 0, Math.PI * 2)
@@ -251,7 +269,7 @@ function roofTile(): HTMLCanvasElement {
   const { el, ctx } = surface()
   fill(ctx, 238)
   const waves = 3
-  const w = SIZE / waves
+  const w = UNIT / waves
   for (let i = 0; i < waves; i++) {
     const x = i * w
     const g = ctx.createLinearGradient(x, 0, x + w, 0)
@@ -261,16 +279,16 @@ function roofTile(): HTMLCanvasElement {
     g.addColorStop(0.78, 'rgba(0,0,0,0.05)')
     g.addColorStop(1, 'rgba(0,0,0,0.38)')
     ctx.fillStyle = g
-    ctx.fillRect(x, 0, w, SIZE)
+    ctx.fillRect(x, 0, w, UNIT)
   }
   // Course line: the bottom edge of the tile above, overlapping this one.
   const lap = ctx.createLinearGradient(0, 0, 0, 26)
   lap.addColorStop(0, 'rgba(0,0,0,0.5)')
   lap.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = lap
-  ctx.fillRect(0, 0, SIZE, 26)
+  ctx.fillRect(0, 0, UNIT, 26)
   ctx.fillStyle = 'rgba(0,0,0,0.22)'
-  ctx.fillRect(0, 0, SIZE, 3)
+  ctx.fillRect(0, 0, UNIT, 3)
   grain(ctx, 0.04, 911)
   return el
 }
@@ -280,15 +298,15 @@ function roofMetal(): HTMLCanvasElement {
   const { el, ctx } = surface()
   fill(ctx, 246)
   const ribs = 4
-  const w = SIZE / ribs
+  const w = UNIT / ribs
   for (let i = 0; i < ribs; i++) {
     const x = i * w
     ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.fillRect(x, 0, 7, SIZE)
+    ctx.fillRect(x, 0, 7, UNIT)
     ctx.fillStyle = 'rgba(255,255,255,0.65)'
-    ctx.fillRect(x + 7, 0, 10, SIZE)
+    ctx.fillRect(x + 7, 0, 10, UNIT)
     ctx.fillStyle = 'rgba(0,0,0,0.08)'
-    ctx.fillRect(x + w - 16, 0, 9, SIZE)
+    ctx.fillRect(x + w - 16, 0, 9, UNIT)
   }
   grain(ctx, 0.02, 1013)
   return el
@@ -299,8 +317,8 @@ function roofShingle(): HTMLCanvasElement {
   const { el, ctx } = surface()
   fill(ctx, 232)
   const courses = 4
-  const h = SIZE / courses
-  const w = SIZE / 3
+  const h = UNIT / courses
+  const w = UNIT / 3
   const rand = rng(1217)
   for (let row = 0; row < courses; row++) {
     const y = row * h
@@ -315,7 +333,7 @@ function roofShingle(): HTMLCanvasElement {
     shade.addColorStop(0, 'rgba(0,0,0,0.5)')
     shade.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = shade
-    ctx.fillRect(0, y, SIZE, 12)
+    ctx.fillRect(0, y, UNIT, 12)
   }
   grain(ctx, 0.08, 1319)
   return el
@@ -327,8 +345,8 @@ function roofFlat(): HTMLCanvasElement {
   fill(ctx, 242)
   blotches(ctx, 20, 110, 0.04, 1409)
   ctx.fillStyle = 'rgba(0,0,0,0.16)'
-  ctx.fillRect(0, 0, SIZE, 3)
-  ctx.fillRect(0, 0, 3, SIZE)
+  ctx.fillRect(0, 0, UNIT, 3)
+  ctx.fillRect(0, 0, 3, UNIT)
   grain(ctx, 0.04, 1511)
   return el
 }
@@ -340,8 +358,8 @@ function grass(): HTMLCanvasElement {
   blotches(ctx, 40, 60, 0.07, 1601)
   const rand = rng(1709)
   for (let i = 0; i < 1800; i++) {
-    const x = rand() * SIZE
-    const y = rand() * SIZE
+    const x = rand() * UNIT
+    const y = rand() * UNIT
     ctx.strokeStyle = `rgba(${rand() > 0.5 ? '255,255,255' : '0,0,0'},${0.05 + rand() * 0.12})`
     ctx.lineWidth = 1
     ctx.beginPath()
@@ -359,11 +377,11 @@ function paving(): HTMLCanvasElement {
   fill(ctx, 244)
   blotches(ctx, 16, 80, 0.035, 1901)
   ctx.fillStyle = 'rgba(0,0,0,0.18)'
-  ctx.fillRect(0, 0, SIZE, 6)
-  ctx.fillRect(0, 0, 6, SIZE)
+  ctx.fillRect(0, 0, UNIT, 6)
+  ctx.fillRect(0, 0, 6, UNIT)
   ctx.fillStyle = 'rgba(255,255,255,0.4)'
-  ctx.fillRect(0, 6, SIZE, 3)
-  ctx.fillRect(6, 0, 3, SIZE)
+  ctx.fillRect(0, 6, UNIT, 3)
+  ctx.fillRect(6, 0, 3, UNIT)
   grain(ctx, 0.05, 2003)
   return el
 }
@@ -532,4 +550,43 @@ export function disposeTiled(material: THREE.MeshStandardMaterial): void {
   material.map?.dispose()
   material.bumpMap?.dispose()
   material.dispose()
+}
+
+/** Patterns a freshly-opened 3D view needs, in the order it needs them. */
+const DEFAULT_PATTERNS: SurfacePattern[] = ['plaster', 'roofTile', 'grass', 'paving']
+
+/**
+ * Draws the default patterns BEFORE the customer opens the 3D view.
+ *
+ * Generating them is the single longest thing between the click and the
+ * house appearing, and it is plain CPU work with no dependency on the plan —
+ * so it can happen while they are still drawing. One pattern per idle slice,
+ * because doing all of them in one callback would drop frames in the 2D
+ * editor, which is the thing they are actually using at that moment.
+ */
+export function warmDefaultPatterns(): void {
+  if (typeof document === 'undefined') return
+
+  const queue: Array<() => void> = [
+    ...DEFAULT_PATTERNS.map((pattern) => () => patternTextures(pattern)),
+    () => skyEquirect(),
+    () => skyDomeMap(),
+  ]
+
+  const idle =
+    window.requestIdleCallback?.bind(window) ??
+    ((cb: IdleRequestCallback) => window.setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 0 }), 120))
+
+  const step = () => {
+    const job = queue.shift()
+    if (!job) return
+    try {
+      job()
+    } catch {
+      /* a texture that cannot be drawn is not worth failing the page for */
+    }
+    idle(step)
+  }
+
+  idle(step)
 }
