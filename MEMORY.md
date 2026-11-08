@@ -318,6 +318,71 @@ walls, not the roof: for each of the four wall lines, ask what the roof height i
 the gap. Catching this needed every roof shape tried in the browser — the default (gable) looked
 fine, because its slot was hidden behind the overhang.
 
+## `Disallow` in robots.txt is not `noindex`, and it blocks the fix
+
+**What happened**: `/admin` and `/login` were listed as `Disallow` in robots.txt and treated as
+"kept out of Google". They were not. Both answered **HTTP 200** with the SPA shell, carried no
+`robots` meta and no `X-Robots-Tag`, and the only instruction Google had was one that says
+"do not fetch this" — not "do not list this".
+
+**Root cause**: the two directives were conflated. `Disallow` controls **crawling**; `noindex`
+controls **indexing**. A disallowed URL that is linked from anywhere can still be indexed
+URL-only, and the trap is what happens next: because the page may not be fetched, Google can
+never see a `noindex` placed on it, so the listing cannot be removed. Blocking crawling makes
+the remedy unreachable. It read as safe because the robots.txt line was *there* and nobody asked
+what it actually promised.
+
+**Correct behavior**: to keep a page out of the index, let it be crawled and serve
+`X-Robots-Tag: noindex` (`public/_headers` on Cloudflare Pages) or a `robots` meta — never
+`Disallow` alone. Use `Disallow` for crawl budget, not for privacy, and never as a substitute
+for access control: on a static host the page is public either way, and the real gate is auth.
+Belt-and-braces is worth it here, because the header cannot be checked from inside the app and
+depends on the host reading `_headers`: `useSeo({ index: false })` in the layout covers every
+guarded screen even if the header never arrives. And verify the header off the deployed site
+with a GET (`curl -s -o /dev/null -D - <url>`) — `pnpm run serve:dist` does not model `_headers`,
+so a local run proves nothing about it.
+
+## A JSON round-trip silently dropped a duplicate i18n key
+
+**What happened**: adding two keys to `src/i18n/locales/{th,en}.json` with a Python
+`json.load` → `json.dumps` round-trip produced a diff that ALSO deleted a `forgotPassword` line
+from each file.
+
+**Root cause**: both files contained `"forgotPassword"` twice in the `auth` group. JSON parsers
+keep the last occurrence, so the duplicate had been dead weight all along and re-serialising
+collapsed it. Harmless here only because the two values were byte-identical — had they differed,
+the round-trip would have silently changed a user-facing string with no sign in review.
+
+**Correct behavior**: after editing a JSON file by parse-and-rewrite, read the whole diff, not
+just the lines you meant to add — a parser normalises away anything it considers redundant.
+Where duplicates might carry different values, compare the occurrences before rewriting.
+
+## `git add -A` in a shared checkout committed another session's half-finished line
+
+**What happened**: an SEO change (#63) was committed with `git add -A`. The obvious foreign
+files were spotted in `git status` and unstaged — but `src/pages/DesignerPage.tsx` was **also
+a file the SEO change legitimately edited**, so it stayed staged, and one line inside it
+belonged to someone else: `scenery: true`, from 3D work in progress in another session that
+adds `scenery` to `Building3DOptions` in the same change. #63 merged. `main` then failed
+`tsc -b`, which is the first step of `pnpm run build`, so a production deploy would have
+failed. It was invisible locally the whole time, because the other session's uncommitted
+`Scene3D.tsx` — the file that declares the field — was sitting in the same working tree and
+made the type check pass.
+
+**Root cause**: two things at once. `git add -A` in a checkout that another session is
+writing to, and then reviewing the staged set by FILE rather than by LINE. Checking file
+names catches a foreign file; it cannot catch a foreign line inside a file you are editing
+anyway. The local pass was false comfort: a working tree holding both halves of someone
+else's change typechecks, while the commit carrying only one half does not.
+
+**Correct behavior**: in a checkout that may be shared, stage by path (`git add <paths>`),
+never `-A`, and **read `git diff --cached` before committing** — the diff is the only thing
+that shows a line you did not write. Verify a branch in a **worktree detached at the commit**
+(`git worktree add --detach <dir> <sha>`), not in the shared tree, so uncommitted files
+cannot mask or invent an error; `ln -s` the repo's `node_modules` to keep it cheap. And when
+`tsc` fails on a symbol you have never heard of, check `git diff`/`git status` for another
+session's work before reading the code.
+
 ## A sky that renders white, then a sky that renders nothing, then a sky nobody can see
 
 **What happened**: adding a sky to the 3D view took three wrong versions, each of which

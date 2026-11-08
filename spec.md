@@ -48,7 +48,7 @@ Own perspective `<Canvas shadows>` (fov 45), free orbit (`maxPolarAngle ≈ π/2
 `ToolSidebar` (templates + opening presets + fixture catalog palette), `BottomToolbar` (select/draw + undo/redo/fit), `Building3DPanel` (roof shape + roof/wall/frame materials), `RoofPreview` / `ItemPreview` (inline SVG thumbnails), `AreaSummary`, `EstimatePanel` (grade toggle + price breakdown + disclaimer), `CanvasContextMenu`, `RoomNameDialog`, `LeadFormDialog`, `LanguageSwitcher`, `SettingsMenu` (theme preference).
 
 ### `src/pages/`
-- `DesignerPage.tsx` — main composition: `useDrawingState()` + local state for `tool`, `grade`, `view: 'plan' | 'three'`, `building3d` options, context menu, lead form, `fitToken`. Layout: `ToolSidebar` | canvas (2D `DrawingCanvas` or 3D `Scene3D`) | right panel (`Building3DPanel` in 3D, `AreaSummary`, `EstimatePanel`). Computes `estimate` via `estimatePrice`, persists leads via `leadRepository`. Global keydown: Escape (cancel), Cmd/Ctrl+Z / Shift undo-redo.
+- `DesignerPage.tsx` — main composition: `useDrawingState()` + local state for `tool`, `grade`, `view: 'plan' | 'three'`, `building3d` options, context menu, lead form, `fitToken`. Layout: `ToolSidebar` | canvas (2D `DrawingCanvas` or 3D `Scene3D`) | right panel (`Building3DPanel` in 3D, `AreaSummary`, `EstimatePanel`). Computes `estimate` via `estimatePrice`, persists leads via `leadRepository`. Global keydown: Escape (cancel), Cmd/Ctrl+Z / Shift undo-redo. **Both side panels collapse (2026-11-08)**: `ToolSidebar` (232px) and the area/price column (288px) cost 520px of a fixed-height layout, which is most of a small laptop — so each has a chevron handle pinned to the canvas edge (`PanelHandle`), vertically centred because the top-left corner is the plan/3D toggle and the bottom holds the hint text and `BottomToolbar`. State is per visitor in `cg:designer-tools-panel` / `cg:designer-info-panel` (try/catch — blocked site data throws), and the default when nothing is stored is **closed below the `lg` breakpoint, open at or above it**. Read in the `useState` initialiser, not an effect: starting open and snapping shut after mount would reflow the canvas and re-fit the plan on every load. ⚠️ With the right panel shut in 3D view, `Building3DPanel` (roof/material controls) is behind the handle — that is the trade, and the handle stays visible.
 - `AdminPage.tsx` — leads back-office: MUI `Table` of leads from `leadRepository.list()`, inline status `Select` (`LEAD_STATUSES`) persisted via `updateStatus`, localStorage notice.
 
 ### `src/pricing/`
@@ -98,7 +98,7 @@ Own perspective `<Canvas shadows>` (fov 45), free orbit (`maxPolarAngle ≈ π/2
 - **`contact.json` — the ONE place to edit contact channels.** An array of `{ kind: 'phone'|'line'|'email'|'facebook'|'address', value, url? }` where `value` is one string (phone/email/LINE id) or a `{ th, en }` pair for text that must be translated (the address); `contact.ts` types it and derives the link (`tel:` for a phone with ≥6 digits, `mailto:` for an email, and line/address only when the entry carries an explicit `url` — we never invent a LINE or map URL) plus the i18n label key `mkt.contact.<kind>Label`. Values of `-` / `—` / empty count as "not filled in yet": never linked, and hidden from the footer. A channel may also carry an optional `label: {th,en}` that overrides the kind's default — needed as soon as a kind repeats, because two rows both reading "โทร" tell a visitor nothing about which number to try first (the backup phone and backup e-mail added 2026-10-03 use it). ⚠️ Both renderers used the **label as the React key**, which silently collides once a kind appears twice; the contact page now keys on `${kind}-${index}`. Read by the marketing **footer** and the **contact page** (icons + clickable values). Changing a number/email here updates both. On the **contact page** the icon tiles are the site's primary red, except **LINE (`#06C755` green)** and **Facebook (`#1877F2` blue)**, which carry their own brand colour (icon stays white); LINE uses an inline brand glyph since MUI has no LINE icon.
 
 ### SEO files
-- **`scripts/generate-seo-files.mjs`** (runs as npm `prebuild`, also `pnpm run seo`) writes `public/robots.txt` + `public/sitemap.xml`. Routes come from the app + **the live catalogue in Supabase**: the `/home/:service` pages (canonical — `/` and `/home` only redirect, so they're deliberately not listed), `/products` + every published product, `/portfolio` + every published project, `/community`, `/about`, `/contact`, `/design`. robots disallows `/admin` and `/login`.
+- **`scripts/generate-seo-files.mjs`** (runs as npm `prebuild`, also `pnpm run seo`) writes `public/robots.txt` + `public/sitemap.xml`. Routes come from the app + **the live catalogue in Supabase**: the `/home/:service` pages (canonical — `/` and `/home` only redirect, so they're deliberately not listed), `/products` + every published product, `/portfolio` + every published project, `/community`, `/about`, `/contact`, `/design`. It no longer Disallows anything on a production build — the private screens are kept out by `X-Robots-Tag: noindex` instead (see "Private screens" below).
 - ⚠️ **It used to regex the seed arrays in `src/catalog/*.ts`, and rotted silently.** Those stopped being the catalogue when content moved into Supabase; measured 2026-10-06 the sitemap advertised **7 project URLs that 404** and omitted **all 20 real projects** (25 URLs total, now 54). Reading the live data is the only version of this that stays true.
 - Reads with the **anon key**, never the service key: RLS then returns exactly the published rows a visitor can see, so an unpublished draft cannot reach the index through a `.eq('published', true)` that someone forgets. The build env already carries both `VITE_SUPABASE_*` vars for the bundle.
 - `lastmod` is each row's own `updated_at` (kept current by the `touch_updated_at` trigger), emitted as a **full W3C datetime** — truncating to a bare date would shift a row edited in the Thai evening back a day, since the column is UTC and local time is +07. Listing pages (`/products`, `/portfolio`, `/community`) take the newest `updated_at` of what they list; static pages take the build date.
@@ -107,6 +107,33 @@ Own perspective `<Canvas shadows>` (fov 45), free orbit (`maxPolarAngle ≈ π/2
 - `tsconfig.node.json` uses `module: esnext` + `moduleResolution: bundler` so `vite.config.ts` can import from `src/` (Vite bundles the config itself).
 - **Open Graph / Twitter cards** — the `tdd-site-meta` plugin in `vite.config.ts` injects them into `index.html` at build: `og:type/site_name/locale(+alternate)/title/description`, `twitter:card=summary_large_image` + title/description always; `og:url`, `og:image` (+`width/height/alt`) and `twitter:image` only when `SITE_URL` is set. Title/description are **read back out of `index.html`** so the card and the search result can't drift apart. The share image is `public/brand/og-card.png` (1200×630, blueprint-grid card with the shield + Thai tagline) — regenerate with `pnpm run og` (`scripts/make-og-card.py`, Pillow; not part of the build, output committed).
 - ~~Because this is a client-rendered SPA, these tags are site-wide~~ — **superseded 2026-10-06 by prerendering** (below). `index.html` is still the fallback for routes that are not prerendered.
+
+### Private screens: noindex, not Disallow — `public/_headers` (2026-11-08)
+`/admin`, `/admin/*`, `/login` and `/account` answer **HTTP 200 with the SPA shell** (a static host
+cannot 401 them), carried no `robots` meta and no `X-Robots-Tag`, and were listed in robots.txt as
+`Disallow`. That is the wrong tool and quietly the worse outcome: **Disallow stops crawling, not
+indexing.** A disallowed URL that is linked anywhere can still be listed URL-only, and because Google
+may not fetch it, it can never read a noindex — so the entry cannot be removed afterwards.
+- **`public/_headers`** (new; Cloudflare Pages serves it from the deploy root like `_redirects`) sends
+  `X-Robots-Tag: noindex` for those paths, and the `Disallow` lines are **gone** from
+  `generate-seo-files.mjs` so Google is allowed to fetch the page and read it. Nothing there is secret —
+  a login form and an empty shell; the real gate is Supabase Auth + RLS. ⚠️ `/admin/*` does not match
+  `/admin` itself, so both need a rule.
+- **A second, independent signal in the app**: `useSeo({ index: false })` in `AdminLayout` (covers every
+  guarded screen at once), `AdminLoginPage` (outside the guard) and `LoginPage`. The header depends on
+  the host reading `_headers` — the assets-only `wrangler.jsonc` Worker flow is the known caveat — and a
+  header cannot be checked from inside the app, so the meta covers the case where it does not arrive.
+- ⚠️ **The header itself is NOT verified yet.** `pnpm run serve:dist` does not model `_headers`, so it
+  can only be read off the deployed site: `curl -s -o /dev/null -D - https://thaidongdee.com/admin | grep -i x-robots`.
+  Per MEMORY.md, a header is only true once read back **with a GET**.
+
+### `/design` had the home page's title (fixed 2026-11-08)
+`/design` is **in the sitemap** — we actively invite Google — but it is not prerendered (three.js) and
+`DesignerPage` never called `useSeo`, so it served `index.html`'s site-wide title and description with
+**no canonical**: a duplicate of the home page at a URL we advertise ourselves. It now sets
+`app.seoTitle` / `app.seoDesc` (th + en), which also gives it the canonical `useSeo` writes. Verified in
+the browser: title, description, `canonical=/design`, `robots=index, follow`.
+(Found while auditing `/admin`; `/design` turned out to be the one actually costing anything.)
 
 ### Contracting local search — "รับเหมา เพชรบูรณ์" (2026-10-07)
 Goal stated by the owner: someone searching **รับเหมา เพชรบูรณ์** should find us. The page already had
@@ -530,7 +557,7 @@ three.js, and GA is inert (no `VITE_GA_ID` set yet).
 - **Every form is a dead end.** `/contact` and `LeadFormDialog` write to the *visitor's own* localStorage and
   then say "ส่งเรียบร้อย ทีมงานจะติดต่อกลับ". Nothing reaches the team. Phase 3's backend is the fix.
 - **`/admin` is public and unguarded** (no auth check in `AdminPage`), and the header links to it for
-  everyone; `/login` is a non-functional mock. robots.txt disallows both, which stops indexing, not access.
+  everyone; `/login` is a non-functional mock. (Both are now guarded, and kept out of the index by `X-Robots-Tag: noindex` rather than Disallow — see "Private screens".)
 
 **Code-splitting — DONE (2026-09-06).** Routes are `React.lazy` (only `HomePage` stays eager, since `/`
 redirects to it), each layout wraps its `<Outlet/>` in `<Suspense fallback={<RouteFallback/>}>`, and
