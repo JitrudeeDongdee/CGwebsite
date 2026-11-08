@@ -153,8 +153,11 @@ export const DOOR_SURFACE: Record<FrameMaterial, Surface> = {
 
 /** Glazing is shared by every frame option. */
 export const GLASS_SURFACE = {
-  color: '#BFD8E6',
-  roughness: 0.05,
-  metalness: 0.1,
-  opacity: 0.38,
+  color: '#A8C4D6',
+  roughness: 0.03,
+  metalness: 0,
+  // Daylight glazing reads as a reflection, not as a view of the room: at
+  // 0.38 the dark interior showed straight through and every window was a
+  // flat dark hole.
+  opacity: 0.6,
 }

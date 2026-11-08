@@ -18,6 +18,7 @@ import {
 import { PatternedBox, useRoofGeometry, useSolid, useTiled } from './Surfaces'
 import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
+import { Planting, SUN_DIRECTION, SkyDome, SkyEnvironment } from './Scenery'
 
 extend({ OrbitControls })
 
@@ -40,6 +41,8 @@ export interface Building3DOptions {
   /** Lift the roof off, to look inside at the rooms. */
   showRoof: boolean
   furniture: boolean
+  /** Trees and shrubs round the plot. */
+  scenery: boolean
 }
 
 /**
@@ -56,7 +59,12 @@ export interface Building3DOptions {
 function cameraFor(span: number, eaves: number, cutaway: boolean): [number, number, number] {
   return cutaway
     ? [span * 0.6, eaves + span * 1.9, span * 0.8]
-    : [span * 1.2, eaves + span * 0.85, span * 1.5]
+    : // About 15 degrees above the horizon for the outside view, so the
+      // horizon and some sky sit in the top of the frame. Steeper than about
+      // 22 degrees and the top edge of a 45-degree frame falls BELOW the
+      // horizon — the sky is then rendered and never seen, which is exactly
+      // what the first attempt at this did.
+      [span * 1.25, eaves + span * 0.35, span * 1.6]
 }
 
 /** Free orbit here — unlike the locked top-down plan view. */
@@ -149,7 +157,8 @@ function Ground({
   span: number
   storeys: number
 }) {
-  const grass = useTiled('grass', '#8FA86B', span * 8, span * 8)
+  const ground = span * 30
+  const grass = useTiled('grass', '#8FA86B', ground, ground)
   const paving = useTiled('paving', '#CFCAC2', 1, 1)
   const floor = useTiled('paving', '#D8D3CA', 1, 1)
 
@@ -167,7 +176,7 @@ function Ground({
         material={grass}
         receiveShadow
       >
-        <planeGeometry args={[span * 8, span * 8]} />
+        <planeGeometry args={[ground, ground]} />
       </mesh>
 
       {bounds && (
@@ -251,12 +260,28 @@ export function Scene3D({
       }}
       style={{ width: '100%', height: '100%' }}
     >
+      {/* Behind the sky, so there is something sane for the first frame. */}
       <color attach="background" args={[sceneColors.background]} />
+      <SkyDome />
+      <SkyEnvironment />
 
-      <hemisphereLight intensity={0.6} color="#dceaf5" groundColor="#8a8275" />
+      {/* The sky carries most of the ambient, so the hemisphere only tops it
+          up — left at its old strength everything washed out. With the roof
+          off it does more of the work: hard sun across an open plan drops
+          each room into a black triangle, and the point of that view is to
+          see the rooms. */}
+      <hemisphereLight
+        intensity={options.showRoof ? 0.3 : 0.8}
+        color="#dceaf5"
+        groundColor="#8a8275"
+      />
       <directionalLight
-        position={[sun * 0.8, sun * 1.5, sun * 0.6]}
-        intensity={2.1}
+        position={[
+          SUN_DIRECTION.x * sun,
+          SUN_DIRECTION.y * sun,
+          SUN_DIRECTION.z * sun,
+        ]}
+        intensity={options.showRoof ? 2 : 1.25}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
@@ -268,10 +293,12 @@ export function Scene3D({
         shadow-camera-bottom={-shadowExtent}
       />
       {/* Fill from the shaded side, so a north wall is not a black slab. */}
-      <directionalLight position={[-sun, sun * 0.7, -sun * 0.8]} intensity={0.45} />
+      <directionalLight position={[-sun, sun * 0.7, -sun * 0.8]} intensity={0.35} />
 
       <Orbit
-        target={[0, eaves * 0.4, 0]}
+        // Aimed above the middle of the walls, which drops the house in the
+        // frame and lets the sky in behind it.
+        target={[0, eaves * 0.75, 0]}
         span={span}
         eaves={eaves}
         cutaway={!options.showRoof}
@@ -281,6 +308,8 @@ export function Scene3D({
           target all work from one place whatever the plan's coordinates. */}
       <group position={[-centre[0], 0, -centre[2]]}>
         <Ground bounds={building.bounds} span={span} storeys={options.storeys} />
+
+        {options.scenery && <Planting bounds={building.bounds} span={span} />}
 
         {building.walls.map((box) => (
           <PatternedBox

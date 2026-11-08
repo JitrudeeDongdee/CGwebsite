@@ -96,6 +96,7 @@ export function DesignerPage() {
     roofColor: ROOF_FINISH.tile.defaultColor,
     showRoof: true,
     furniture: true,
+    scenery: true,
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 

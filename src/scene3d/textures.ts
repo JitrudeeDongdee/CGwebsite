@@ -418,6 +418,75 @@ export function patternTextures(pattern: SurfacePattern): {
 }
 
 /**
+ * The sky, drawn once as a vertical gradient: zenith blue down through a pale
+ * horizon to the warm ground bounce below it.
+ *
+ * ONE drawing serves two jobs — the dome you see behind the house, and the
+ * environment map that glass and metal reflect — so the reflection in a
+ * window is literally the sky above it. Without an environment a reflective
+ * material reflects nothing and a window is a flat tinted panel.
+ */
+function skyCanvas(): HTMLCanvasElement {
+  if (skyEl) return skyEl
+
+  const el = document.createElement('canvas')
+  el.width = 16
+  el.height = 256
+  const ctx = el.getContext('2d')
+  if (!ctx) throw new Error('2d canvas unavailable')
+
+  // ⚠️ The blue is deliberately pulled DOWN towards the horizon. A sphere's
+  // V is linear in polar angle, so v = 0.5 - elevation/180: a view looking
+  // 15 degrees down only ever shows the top ~7 degrees of sky, which on a
+  // true gradient is its palest part — the first version was physically
+  // right and looked like there was no sky at all.
+  const g = ctx.createLinearGradient(0, 0, 0, 256)
+  g.addColorStop(0, '#2F6FB8')
+  g.addColorStop(0.3, '#4E8CC9')
+  g.addColorStop(0.42, '#8FC0E6')
+  g.addColorStop(0.475, '#C9E0F2')
+  g.addColorStop(0.497, '#E9F1F6')
+  // Below the horizon: the ground bounces warm light back up.
+  g.addColorStop(0.505, '#D8CDB4')
+  g.addColorStop(0.6, '#9A8E76')
+  g.addColorStop(1, '#6A6252')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 16, 256)
+
+  skyEl = el
+  return el
+}
+
+let skyEl: HTMLCanvasElement | null = null
+let skyEnvTexture: THREE.Texture | null = null
+let skyDomeTexture: THREE.Texture | null = null
+
+/** Equirectangular, for `PMREMGenerator` → `scene.environment`. */
+export function skyEquirect(): THREE.Texture {
+  if (skyEnvTexture) return skyEnvTexture
+  const texture = new THREE.CanvasTexture(skyCanvas())
+  texture.mapping = THREE.EquirectangularReflectionMapping
+  texture.colorSpace = THREE.SRGBColorSpace
+  skyEnvTexture = texture
+  return texture
+}
+
+/**
+ * The same gradient as a plain map for the sky dome. A sphere's V runs 0 at
+ * the top pole to 1 at the bottom, which is exactly how the gradient is
+ * drawn, so it needs no other handling.
+ */
+export function skyDomeMap(): THREE.Texture {
+  if (skyDomeTexture) return skyDomeTexture
+  const texture = new THREE.CanvasTexture(skyCanvas())
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.RepeatWrapping
+  skyDomeTexture = texture
+  return texture
+}
+
+
+/**
  * A material tiled to a surface's real size in metres.
  *
  * The repeat has to be per-surface — a box's UVs run 0..1 whatever its size,
