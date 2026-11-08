@@ -4,7 +4,11 @@
     "navDesigner": "Design",
     "navAdmin": "Admin",
     "seoTitle": "Design your house online — draw a plan, see it in 3D",
-    "seoDesc": "Draw your own floor plan in the browser, add doors and windows, view it in 3D and see a ballpark price straight away. Free, nothing to install."
+    "seoDesc": "Draw your own floor plan in the browser, add doors and windows, view it in 3D and see a ballpark price straight away. Free, nothing to install.",
+    "panelToolsShow": "Show tools",
+    "panelToolsHide": "Hide tools",
+    "panelInfoShow": "Show area & price",
+    "panelInfoHide": "Hide area & price"
   },
   "canvas": {
     "hint": "Click to start a wall · move, then click again to place it · Esc or right-click to cancel",
