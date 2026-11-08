@@ -382,3 +382,51 @@ that shows a line you did not write. Verify a branch in a **worktree detached at
 cannot mask or invent an error; `ln -s` the repo's `node_modules` to keep it cheap. And when
 `tsc` fails on a symbol you have never heard of, check `git diff`/`git status` for another
 session's work before reading the code.
+
+## A sky that renders white, then a sky that renders nothing, then a sky nobody can see
+
+**What happened**: adding a sky to the 3D view took three wrong versions, each of which
+looked like a different kind of failure. drei's `<Sky>` turned the entire viewport **white**,
+house included. Replacing it with a gradient dome rendered **nothing at all** — the view
+looked exactly as it had before, as if the component had never been added. Fixing that gave a
+sky that was present, correct and **still invisible**: the top of the frame was ground.
+
+**Root cause**: three unrelated causes that happened to stack.
+1. drei's `<Sky>` is the Preetham atmospheric shader. Its output is scene-referred radiance
+   meant to be paired with a low `toneMappingExposure` (three's own example uses 0.5); at the
+   renderer's default it blows out and swamps the frame.
+2. The replacement dome had `side: BackSide` **and** `scale={[-1, 1, 1]}`. Each one flips the
+   winding; both together flip it back, so every face was culled. A culled mesh and an absent
+   mesh are indistinguishable on screen.
+3. A sphere's V is linear in polar angle, so `v = 0.5 − elevation/180`. The camera sat ~29°
+   above the horizon, and the top edge of a 45° frame is then 6° **below** the horizon — the
+   sky was rendered every frame and could never appear. Lowering the camera to ~15° showed
+   only the top ~7° of sky, which on a physically-faithful gradient is its palest part, so it
+   still read as "no sky".
+
+**Correct behavior**: for a backdrop, prefer a gradient dome you control over an atmospheric
+shader whose exposure requirements fight the rest of the scene — and make it serve as the
+environment map too, so the reflection in a window cannot drift from the sky above it. Use
+`BackSide` alone, never with a mirror scale. And before debugging why something is not
+visible, work out whether it *can* be: the frame's top edge sits at `pitch + fov/2` above the
+horizon, and the arithmetic takes a few seconds. This is the same lesson as the furniture
+entry above — twice now, the bug was the camera, not the thing being rendered.
+
+## Another session edited the same working tree, and quietly took part of this work with it
+
+**What happened**: two i18n lines added here vanished within a minute, with no error. Later
+the whole checkout turned out to be on a different branch than the one this work started on,
+and the missing lines had been swept into someone else's commit on it.
+
+**Root cause**: a second Claude session was working in the same folder. It saved
+`src/i18n/locales/*.json` from its own copy, which had been read before these lines existed,
+and committed the result. Nothing in git warns about this — the second write just wins, and a
+`git checkout` in one session moves the branch under the other.
+
+**Correct behavior**: in a shared checkout, treat `git status` and the current branch as
+things that can change under you, not as facts established at session start — re-check them
+before committing. Back the work up (`git diff > …` in the scratchpad plus a copy of any
+untracked file) before stash/branch surgery, and move the work to its own branch with
+`git stash push -u` + `checkout` + `pop` rather than committing onto whatever branch happens
+to be checked out. When a file edit silently reverts, suspect another writer before suspecting
+the edit.

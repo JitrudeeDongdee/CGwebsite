@@ -162,7 +162,14 @@ export function OpeningsView({
         roughness: GLASS_SURFACE.roughness,
         metalness: GLASS_SURFACE.metalness,
       },
-      { transparent: true, opacity: GLASS_SURFACE.opacity },
+      {
+        transparent: true,
+        opacity: GLASS_SURFACE.opacity,
+        // Glazing is mostly its reflection. A transparent material's
+        // specular highlight is scaled by its alpha, so at this opacity the
+        // sky barely registers without pushing the environment back up.
+        envMapIntensity: 2.4,
+      },
     ),
   }
 

@@ -891,13 +891,50 @@ then **furniture**. Sky and planting were explicitly deferred.
 - Lighting is a hemisphere + a sun with a shadow camera fitted to the plan + a fill from the
   shaded side. `shadows="percentage"`: three 0.185 deprecated `PCFSoftShadowMap`, which both
   `shadows` and `shadows="soft"` ask for.
-- **Deferred, by the owner's call:** sky shader, planting, camera presets, a download-image
-  button, and any AI photoreal render. An environment map for glass reflections went with the sky.
+- **Deferred, by the owner's call:** camera presets, a download-image button, and any AI
+  photoreal render. (Sky, the environment map and planting were deferred too, and landed the
+  next day — see below.)
 - Verified in the browser on the `two-bed-8x6` template: all four roof shapes, both pitches
   either side of normal, 1 and 2 storeys, brick + colour swatches, and the cutaway with every
   piece of furniture visible. `tsc -b` clean, `oxlint` warnings-only (the pre-existing
   fast-refresh class), `pnpm run build` passes.
 
+
+### Sky, reflections and planting (2026-11-08)
+The pieces the owner had put off until the house itself was done (PR #62, merged).
+
+- **The sky is a gradient dome drawn in code**, not drei's `<Sky>`. ⚠️ The Preetham
+  atmospheric shader rendered the whole viewport **white** here, the house with it: its output
+  is scene-referred radiance meant to be paired with a low tone-mapping exposure, and bending
+  the exposure of an entire architectural view around one backdrop is the wrong trade. The
+  same gradient canvas is PMREM'd into `scene.environment`, so what a window reflects IS the
+  sky above it — one drawing, both jobs, and they cannot drift apart.
+- ⚠️ **A dome needs `side: BackSide` and nothing else.** Adding the usual `scale={[-1,1,1]}`
+  mirror as well flips the winding back, so every face is culled and the sky renders *nothing*
+  — which looks exactly like "the sky is not implemented", not like a bug.
+- ⚠️ **The blue is pulled down towards the horizon on purpose.** A sphere's V is linear in
+  polar angle (`v = 0.5 − elevation/180`), so a view looking 15° down only ever shows the top
+  ~7° of sky — the palest part of a true gradient. The physically-correct first version looked
+  like there was no sky at all.
+- **The exterior camera dropped from ~29° to ~15°** above the horizon and its pivot moved up to
+  `eaves * 0.75`. Steeper than about 22° and the top edge of a 45° frame falls BELOW the
+  horizon: the sky is rendered and never seen. The ground now runs to `span * 30`, so its edge
+  never shows as a disc against the dome.
+- **Glazing** gained `envMapIntensity: 2.4`, and its opacity went 0.38 → 0.6: a transparent
+  material's specular highlight is scaled by its alpha, so at the old value the sky barely
+  registered and every window was a flat dark hole.
+- **Planting** (`src/scene3d/Scenery.tsx`): low-poly trees and shrubs at FIXED offsets in
+  multiples of the house's half-extent — fixed rather than random so the garden does not
+  rearrange itself on every plan edit — and deliberately off the `+x/+z` corner, which is where
+  the camera starts: a tree across the front elevation hides what the customer came to see.
+  Behind a "แสดงต้นไม้รอบบ้าน" switch, on by default.
+- With the roof off the sun drops to 1.25 and the hemisphere rises to 0.8. Hard sun across an
+  open plan drops each room into a black triangle, and seeing the rooms is the whole point of
+  that view.
+- Verified in the browser on `two-bed-8x6`: sky and horizon above the roof, planting on and
+  off, and the cutaway with every piece of furniture readable. `tsc -b` clean, `oxlint`
+  warnings-only, `pnpm run build` passes; the `Scene3D` chunk is 922 kB (drei's `Sky` import
+  is gone, so this work costs ~17 kB).
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).

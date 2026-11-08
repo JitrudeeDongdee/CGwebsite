@@ -165,6 +165,18 @@ export function Building3DPanel({ options, onChange }: Building3DPanelProps) {
             label={
               <Typography variant="body2">{t('building3d.furniture')}</Typography>
             }
+            sx={{ mr: 0 }}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={options.scenery}
+                onChange={(event) => onChange({ ...options, scenery: event.target.checked })}
+              />
+            }
+            label={<Typography variant="body2">{t('building3d.scenery')}</Typography>}
+            sx={{ mr: 0 }}
           />
         </Field>
 
