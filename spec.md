@@ -959,6 +959,16 @@ chunk arrived, so the spinner disappeared and the pattern drawing then froze the
   fetched before the 3D button is ever pressed. ⚠️ `performance.getEntriesByType('resource')`
   is capped at 250 entries and in dev that buffer is full long before, which made the first
   check say the prefetch had not run at all.
+- **One material per finish, not per surface (2026-11-12).** The pattern-drawing fix above cut
+  1.2 s, and the view still took ~22 s to open in dev. Profiling with `PerformanceObserver` found a
+  **single 12-second blocking task** and 90 `tiledMaterial` calls: the previous design cloned the
+  texture per surface so each box could carry its own `repeat`, which meant **a material per box —
+  and three.js compiles a shader program per material, twice over, because shadows need their own
+  depth variant.** The tiling moved onto each geometry's UVs (`scaleUv` / `tilesAcross` in
+  `Surfaces.tsx`): a box's 0..1 UVs are multiplied by `size / tile`, the roof's metre UVs are
+  divided by the tile, and `sharedMaterial()` hands out one material per pattern × colour × side.
+  Same picture, ~6 materials instead of ~90. ⚠️ Shared materials are deliberately NOT disposed per
+  surface; the geometries are.
 - **`Scene3DLoading`** covers the view for the WHOLE wait — download *and* first frame — showing
   the plan's isometric massing thumbnail (the gallery's `IsoThumbnail`, instant SVG) so there is
   a rough picture of their own house instead of a blank canvas. It lifts on a signal from

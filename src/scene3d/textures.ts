@@ -505,51 +505,56 @@ export function skyDomeMap(): THREE.Texture {
 
 
 /**
- * A material tiled to a surface's real size in metres.
+ * ONE material per finish, shared by every surface wearing it.
  *
- * The repeat has to be per-surface — a box's UVs run 0..1 whatever its size,
- * so one shared material would stretch the same brick over a 1 m pier and an
- * 8 m wall. The texture clones share the one uploaded canvas, so the extra
- * cost is a handful of small objects, not more image memory.
+ * ⚠️ This used to be a material per surface, with the texture cloned and its
+ * `repeat` set to that surface's size — because a box's UVs run 0..1 whatever
+ * it measures, so a shared texture would stretch one brick over a 1 m pier
+ * and an 8 m wall. That reasoning was right about the UVs and wrong about
+ * where to fix it. A house is ~90 wall, trim and column boxes, so it made ~90
+ * materials, and **three.js compiles a shader program per material — twice,
+ * since shadows need their own depth variant.** Measured in the browser: one
+ * 12-SECOND blocking task on opening the 3D view, against 1.6 s for drawing
+ * all the patterns. The tiling now lives on each geometry's UVs instead (see
+ * `scaleUv` in `Surfaces.tsx`), which is per-surface data where it belongs
+ * and costs nothing to compile.
  *
- * The caller owns the result and must dispose it.
+ * Shared, so NOT disposed per surface: the cache is bounded by the handful of
+ * pattern × colour pairs a scene can use, and the textures underneath are
+ * shared already.
  */
-export function tiledMaterial(
+const materials = new Map<string, THREE.MeshStandardMaterial>()
+
+export function sharedMaterial(
   pattern: SurfacePattern,
   color: string,
-  width: number,
-  height: number,
-  extra?: THREE.MeshStandardMaterialParameters,
+  side?: THREE.Side,
 ): THREE.MeshStandardMaterial {
+  const key = `${pattern}|${color}|${side ?? 'front'}`
+  const hit = materials.get(key)
+  if (hit) return hit
+
   const spec = PATTERN_SPEC[pattern]
   const { map, bump } = patternTextures(pattern)
 
-  const colourMap = map.clone()
-  colourMap.needsUpdate = true
-  const bumpMap = bump.clone()
-  bumpMap.needsUpdate = true
-
-  const u = Math.max(0.05, width / spec.tileU)
-  const v = Math.max(0.05, height / spec.tileV)
-  colourMap.repeat.set(u, v)
-  bumpMap.repeat.set(u, v)
-
-  return new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color,
-    map: colourMap,
-    bumpMap,
+    map,
+    bumpMap: bump,
     bumpScale: spec.bump,
     roughness: spec.roughness,
     metalness: spec.metalness,
-    ...extra,
+    ...(side ? { side } : {}),
   })
+
+  materials.set(key, material)
+  return material
 }
 
-/** Frees a material built by `tiledMaterial`, including its texture clones. */
-export function disposeTiled(material: THREE.MeshStandardMaterial): void {
-  material.map?.dispose()
-  material.bumpMap?.dispose()
-  material.dispose()
+/** How many tiles of a pattern fit across a given size in metres. */
+export function tilesAcross(pattern: SurfacePattern, width: number, height: number): [number, number] {
+  const spec = PATTERN_SPEC[pattern]
+  return [Math.max(0.05, width / spec.tileU), Math.max(0.05, height / spec.tileV)]
 }
 
 /** Patterns a freshly-opened 3D view needs, in the order it needs them. */
