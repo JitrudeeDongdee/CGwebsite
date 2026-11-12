@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
@@ -8,7 +9,15 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import { ROOF_PITCHES, ROOF_SHAPES, type RoofPitch, type RoofShape } from '../drawing/roof'
+import {
+  EAVES_DEPTHS,
+  ROOF_PITCHES,
+  ROOF_SHAPES,
+  type EavesDepth,
+  type RoofPitch,
+  type RoofShape,
+} from '../drawing/roof'
+import { HOUSE_STYLES } from '../drawing/houseStyle'
 import {
   FRAME_MATERIALS,
   ROOF_COLORS,
@@ -138,6 +147,26 @@ export function Building3DPanel({ options, onChange }: Building3DPanelProps) {
       </Typography>
 
       <Stack spacing={2} sx={{ mt: 1 }}>
+        {/* The style leads: it sets the roof's shape, pitch and eaves as well
+            as the finishes, which is what actually makes a house Nordic
+            rather than a default roof in darker paint. Every control below
+            stays live, so a style is a starting point, not a lock. */}
+        <Field label={t('building3d.style')}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+            {HOUSE_STYLES.map((style) => (
+              <Button
+                key={style.id}
+                size="small"
+                variant="outlined"
+                onClick={() => onChange({ ...options, ...style.finish })}
+                sx={{ flex: '1 0 auto', px: 1, textTransform: 'none' }}
+              >
+                {t(style.labelKey)}
+              </Button>
+            ))}
+          </Box>
+        </Field>
+
         <Field label={t('building3d.view')}>
           <ToggleButtonGroup
             exclusive
@@ -226,6 +255,14 @@ export function Building3DPanel({ options, onChange }: Building3DPanelProps) {
             onChange={(pitch) => onChange({ ...options, pitch })}
           />
         )}
+
+        <Choice<EavesDepth>
+          label={t('building3d.eaves')}
+          value={options.eaves}
+          values={EAVES_DEPTHS}
+          labelPrefix="building3d.eavesOpt"
+          onChange={(eaves) => onChange({ ...options, eaves })}
+        />
 
         <Choice<RoofMaterial>
           label={t('building3d.roofMaterial')}

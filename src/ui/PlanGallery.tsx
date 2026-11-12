@@ -10,7 +10,8 @@ import Alert from '@mui/material/Alert'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import DownloadIcon from '@mui/icons-material/Download'
 import LockIcon from '@mui/icons-material/Lock'
-import { PLAN_TEMPLATES, type TemplateFinish } from '../drawing/templates'
+import { PLAN_TEMPLATES } from '../drawing/templates'
+import type { HouseFinish } from '../drawing/houseStyle'
 import type { DrawingState } from '../drawing/types'
 import { PlanFileError, parsePlanFile, parsePlanJson, planFileToJson } from '../drawing/planFile'
 import { IsoThumbnail } from './ItemPreview'
@@ -25,12 +26,12 @@ interface GalleryPlan {
   depth?: number
   state: DrawingState
   /** Built-in plans can also carry the finishes they are meant to wear. */
-  finish?: TemplateFinish
+  finish?: HouseFinish
 }
 
 interface PlanGalleryProps {
   currentState: DrawingState
-  onLoadPlan: (state: DrawingState, finish?: TemplateFinish) => void
+  onLoadPlan: (state: DrawingState, finish?: HouseFinish) => void
 }
 
 function downloadJson(filename: string, text: string) {

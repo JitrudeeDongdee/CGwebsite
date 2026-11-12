@@ -9,25 +9,8 @@ import type {
   OpeningKind,
 } from './types'
 import { fixtureSpec } from './fixtures'
-import type { FrameMaterial, RoofMaterial, WallMaterial } from './materials'
-import type { RoofPitch, RoofShape } from './roof'
+import { HOUSE_STYLES, type HouseFinish } from './houseStyle'
 import { distanceToSegment } from './geometry'
-
-/**
- * The finishes a plan is meant to be seen in.
- *
- * Only the primitives, all of which live in `drawing/` — the 3D options type
- * itself is in `scene3d/`, and `drawing/` does not import from there.
- */
-export interface TemplateFinish {
-  roof?: RoofShape
-  pitch?: RoofPitch
-  roofMaterial?: RoofMaterial
-  roofColor?: string
-  wall?: WallMaterial
-  wallColor?: string
-  frame?: FrameMaterial
-}
 
 export interface PlanTemplate {
   id: string
@@ -41,7 +24,7 @@ export interface PlanTemplate {
   /** Doors + windows the layout should place — asserted by the tests too. */
   expectedOpenings: number
   /** Applied to the 3D view when this plan is loaded, where it has one. */
-  finish?: TemplateFinish
+  finish?: HouseFinish
   build: () => DrawingState
 }
 
@@ -255,6 +238,64 @@ function buildFromSpec({
  * drawing from nothing.
  */
 export const PLAN_TEMPLATES: PlanTemplate[] = [
+  {
+    /**
+     * A Nordic barn house: one steep gable running the length of the plan,
+     * stopping dead at the wall face. The gable end is the front, which is
+     * why the glazing goes there — it is the elevation the shape is for.
+     */
+    id: 'nordic-barn-7x9',
+    nameKey: 'templates.nordicBarn',
+    width: 7,
+    depth: 9,
+    expectedRooms: 4,
+    expectedOpenings: 9,
+    finish: HOUSE_STYLES[0].finish,
+    build: () =>
+      buildFromSpec({
+        width: 7,
+        depth: 9,
+        partitions: [
+          [0, 5.2, 7, 5.2], // living from the sleeping half
+          [3, 5.2, 3, 9], // bedroom 1 from the bathroom
+          [4.6, 5.2, 4.6, 9], // bathroom from bedroom 2
+        ],
+        openings: [
+          { x: 3.5, y: 0, width: 0.9, kind: 'door' }, // entrance, in the gable end
+          { x: 1.4, y: 0, width: 2, kind: 'window' }, // gable glazing
+          { x: 0, y: 2.5, width: 1.5, kind: 'window' },
+          { x: 7, y: 2.5, width: 1.5, kind: 'window' },
+          { x: 1.5, y: 5.2, width: 0.8, kind: 'door' }, // bedroom 1
+          { x: 5.8, y: 5.2, width: 0.8, kind: 'door' }, // bedroom 2
+          { x: 3.8, y: 5.2, width: 0.7, kind: 'door' }, // bathroom
+          { x: 1.5, y: 9, width: 1.2, kind: 'window' },
+          { x: 5.8, y: 9, width: 1.2, kind: 'window' },
+        ],
+        furniture: [
+          { kind: 'sofaL', x: 1.7, y: 1.3 },
+          { kind: 'coffeeTable', x: 3.3, y: 1.6 },
+          { kind: 'diningRound', x: 5.3, y: 1.4 },
+          { kind: 'kitchen', x: 3.5, y: 4.6, width: 2.4, depth: 0.6, rotation: Math.PI },
+          { kind: 'fridge', x: 5.3, y: 4.6, rotation: Math.PI },
+          { kind: 'bedDouble', x: 1.5, y: 6.4 },
+          { kind: 'nightstand', x: 0.4, y: 5.7 },
+          { kind: 'wardrobe', x: 1.5, y: 8.6, rotation: Math.PI },
+          { kind: 'toilet', x: 3.4, y: 5.7 },
+          { kind: 'sink', x: 4.2, y: 5.6 },
+          { kind: 'shower', x: 3.8, y: 8.3, rotation: Math.PI },
+          { kind: 'bedDouble', x: 5.8, y: 6.4 },
+          { kind: 'nightstand', x: 6.7, y: 5.7 },
+          { kind: 'wardrobe', x: 5.8, y: 8.6, rotation: Math.PI },
+        ],
+        labels: [
+          { x: 3.5, y: 2.6, nameKey: 'rooms.living' },
+          { x: 1.5, y: 7.2, nameKey: 'rooms.bedroom1' },
+          { x: 3.8, y: 7, nameKey: 'rooms.bathroom' },
+          { x: 5.8, y: 7.2, nameKey: 'rooms.bedroom2' },
+        ],
+      }),
+  },
+
   {
     /**
      * Traced from a 12 m modular cabin the owner asked to have on the site as

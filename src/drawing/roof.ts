@@ -8,14 +8,47 @@ export const ROOF_RISE = 1.3
 /** Depth of the fascia / barge board that trims every roof edge. */
 export const FASCIA_DEPTH = 0.2
 
-export const ROOF_PITCHES = ['low', 'medium', 'steep'] as const
+export const ROOF_PITCHES = ['low', 'medium', 'steep', 'alpine'] as const
 export type RoofPitch = (typeof ROOF_PITCHES)[number]
 
-/** Rise of the ridge above the eaves, per pitch. */
-export const PITCH_RISE: Record<RoofPitch, number> = {
-  low: 0.7,
-  medium: ROOF_RISE,
-  steep: 2.3,
+/**
+ * Pitch in DEGREES, not in metres of rise.
+ *
+ * ⚠️ This used to be a fixed rise — 2.3 m for "steep" whatever the house was
+ * under it. A roof's pitch is an angle, and holding the rise instead meant
+ * the same setting gave 53° on a 3.4 m wide cabin and 21° on a 12 m one: two
+ * different roofs under one name. Every style that is defined by its
+ * silhouette — a Nordic gable above all — is unbuildable that way.
+ */
+export const PITCH_DEGREES: Record<RoofPitch, number> = {
+  low: 15,
+  medium: 25,
+  steep: 38,
+  alpine: 48,
+}
+
+/**
+ * How far the roof runs past the walls.
+ *
+ * `flush` is the Nordic archetype: the roof stops dead at the wall face, with
+ * no fascia and no barge board, so the house reads as one extruded shape.
+ * It is a hair above zero only so the two surfaces do not z-fight.
+ */
+export const EAVES_DEPTHS = ['flush', 'normal', 'deep'] as const
+export type EavesDepth = (typeof EAVES_DEPTHS)[number]
+
+export const EAVES_OVERHANG: Record<EavesDepth, number> = {
+  flush: 0.02,
+  normal: ROOF_OVERHANG,
+  deep: 0.8,
+}
+
+/** Below this an overhang is not trimmed — there is nothing to trim. */
+const TRIMMED_ABOVE = 0.05
+
+/** The rise a pitch gives over a half-span, in metres. */
+export function riseFor(pitch: RoofPitch, halfSpan: number): number {
+  return Math.tan((PITCH_DEGREES[pitch] * Math.PI) / 180) * halfSpan
 }
 
 export interface RoofBounds {
@@ -28,7 +61,8 @@ export interface RoofBounds {
 export interface RoofOptions {
   /** Height of the wall top the roof sits on. */
   eaves: number
-  rise?: number
+  /** The angle; the rise is worked out from the span it has to cover. */
+  pitch?: RoofPitch
   overhang?: number
 }
 
@@ -102,8 +136,9 @@ function emitBand(positions: number[], uvs: number[], a: V3, b: V3, depth: numbe
  */
 export function buildRoof(bounds: RoofBounds, shape: RoofShape, options: RoofOptions): RoofMesh {
   const { eaves } = options
-  const rise = options.rise ?? ROOF_RISE
+  const pitch = options.pitch ?? 'medium'
   const overhang = options.overhang ?? ROOF_OVERHANG
+  const trimmed = overhang > TRIMMED_ABOVE
 
   const minX = bounds.minX - overhang
   const maxX = bounds.maxX + overhang
@@ -125,7 +160,12 @@ export function buildRoof(bounds: RoofBounds, shape: RoofShape, options: RoofOpt
   // V down the slope: for a ridge along X the slope runs in Z, and vice versa.
   const uv: UV = ridgeAlongX ? (p) => [p[0], p[2]] : (p) => [p[2], p[0]]
 
-  const band = (a: V3, b: V3) => emitBand(fascia, fasciaUvs, a, b, FASCIA_DEPTH)
+  // A flush roof has no fascia and no barge board: there is no overhang to
+  // trim, and a band hanging off the wall face is exactly what the style is
+  // defined by not having.
+  const band = (a: V3, b: V3) => {
+    if (trimmed) emitBand(fascia, fasciaUvs, a, b, FASCIA_DEPTH)
+  }
 
   /** A piece of wall closing the gap between the wall top and the roof. */
   const closeWall = (poly: V3[], along: 'x' | 'z') =>
@@ -157,6 +197,13 @@ export function buildRoof(bounds: RoofBounds, shape: RoofShape, options: RoofOpt
   // wall all the way round, and you can see daylight through the slot.
   const halfWallX = (bounds.maxX - bounds.minX) / 2
   const halfWallZ = (bounds.maxZ - bounds.minZ) / 2
+
+  // The rise follows from the angle and the span the slope has to cross: a
+  // shed climbs the whole depth, everything else climbs half of it.
+  const rise =
+    shape === 'shed'
+      ? riseFor(pitch, halfWallZ * 2)
+      : riseFor(pitch, ridgeAlongX ? halfWallZ : halfWallX)
   const ridgeY = eaves + rise
 
   if (shape === 'shed') {

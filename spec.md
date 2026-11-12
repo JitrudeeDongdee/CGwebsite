@@ -1009,6 +1009,34 @@ missing.
   13 walls, 9 openings, 15 pieces of furniture, 3 rooms, 36.2 m² — then in the browser in 2D and
   3D, including the porch reading as a roofed open bay.
 
+## House styles — a shape you pick, not a colour you approximate (2026-11-12)
+Asked for Nordic houses **as a choice**, explicitly not "take what exists and make it look
+similar". Two things in the roof made the real thing impossible, and both are fixed here.
+
+- ⚠️ **Pitch was a rise in metres, not an angle.** `PITCH_RISE` held 2.3 m for "steep" whatever
+  was under it, so one setting gave 53° on a 3.4 m wide cabin and 21° on a 12 m one — two
+  different roofs under one name, and no silhouette-defined style is buildable that way. It is
+  now `PITCH_DEGREES` (15 / 25 / 38 / 48°) and `riseFor(pitch, halfSpan)`, worked out inside
+  `buildRoof` from the span each shape's slope actually crosses (a shed crosses the whole depth,
+  the rest half of it). Checked: 48° gives 3.89 m over a 3.5 m half-span and 6.66 m over 6 m.
+- ⚠️ **The overhang was a constant 0.4 m.** `EAVES_DEPTHS` = flush (0.02) / normal (0.4) / deep
+  (0.8), picked in the panel. **Flush skips the fascia and barge boards entirely** — there is no
+  overhang to trim, and a band hanging off the wall face is the exact thing the Nordic archetype
+  is defined by not having.
+- **A gable end can take its own finish** (`gableWall` / `gableColor`): the timber gable above
+  dark walls that reads as Nordic at a glance. The roof already built its gables as a separate
+  mesh with the wall finish, so this is one material, not new geometry.
+- **`src/drawing/houseStyle.ts`** holds `HouseFinish` (roof shape, pitch, eaves, finishes — only
+  primitives from `drawing/`, never `Building3DOptions`, which lives in `scene3d/`) and
+  `HOUSE_STYLES`: nordic, nordicLight, modernBox, thaiContemporary, cabin. The 3D panel leads
+  with them, and every control below stays live, so a style is a starting point rather than a
+  lock. `PlanTemplate.finish` is the same type, so a plan can carry the style it is meant to be
+  seen in.
+- **`nordic-barn-7x9`** is the first plan that is a style rather than a layout: one steep gable
+  down the length, glazing in the gable end because that is the elevation the shape is for.
+  Verified headlessly — 4 rooms, 63.0 m² = 7 × 9 exactly, 9 openings — and in the browser, where
+  switching the same plan to Thai contemporary turns it into a hipped, tiled, deep-eaved house.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

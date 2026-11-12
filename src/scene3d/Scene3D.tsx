@@ -6,7 +6,13 @@ import { extend, useFrame, useThree, type ThreeElement } from '@react-three/fibe
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { DrawingState } from '../drawing/types'
 import { LEVEL_HEIGHT, buildBuilding3D, type Building3D } from '../drawing/building3d'
-import { PITCH_RISE, buildRoof, type RoofPitch, type RoofShape } from '../drawing/roof'
+import {
+  EAVES_OVERHANG,
+  buildRoof,
+  type EavesDepth,
+  type RoofPitch,
+  type RoofShape,
+} from '../drawing/roof'
 import {
   ROOF_FINISH,
   TRIM_SURFACE,
@@ -51,6 +57,11 @@ export interface Building3DOptions {
   furniture: boolean
   /** Trees and shrubs round the plot. */
   scenery: boolean
+  /** How far the roof runs past the walls; `flush` is the Nordic archetype. */
+  eaves: EavesDepth
+  /** A gable in a different finish from the walls — a timber gable end. */
+  gableWall?: WallMaterial
+  gableColor?: string
 }
 
 /**
@@ -144,6 +155,7 @@ function Roof({
   color,
   wall,
   wallColor,
+  overhang,
 }: {
   bounds: NonNullable<Building3D['bounds']>
   shape: RoofShape
@@ -153,10 +165,11 @@ function Roof({
   color: string
   wall: WallMaterial
   wallColor: string
+  overhang: number
 }) {
   const mesh = useMemo(
-    () => buildRoof(bounds, shape, { eaves, rise: PITCH_RISE[pitch] }),
-    [bounds, shape, pitch, eaves],
+    () => buildRoof(bounds, shape, { eaves, pitch, overhang }),
+    [bounds, shape, pitch, eaves, overhang],
   )
 
   const roofPattern = ROOF_FINISH[material].pattern
@@ -384,8 +397,9 @@ export function Scene3D({
             eaves={eaves}
             material={options.roofMaterial}
             color={options.roofColor}
-            wall={options.wall}
-            wallColor={options.wallColor}
+            wall={options.gableWall ?? options.wall}
+            wallColor={options.gableColor ?? options.wallColor}
+            overhang={EAVES_OVERHANG[options.eaves]}
           />
         )}
       </group>
