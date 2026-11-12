@@ -34,7 +34,11 @@ function WindowUnit({ unit, mats }: { unit: OpeningUnit; mats: UnitMaterials }) 
   const innerH = height - MEMBER * 2
 
   return (
-    <group position={[unit.x, unit.y, unit.z]} rotation={[0, -unit.angle, 0]}>
+    <group
+      position={[unit.x, unit.y, unit.z]}
+      rotation={[0, -unit.angle, 0]}
+      userData={unit.exterior && unit.outward ? { outward: unit.outward } : undefined}
+    >
       {/* Jambs. */}
       {[-1, 1].map((side) => (
         <mesh
@@ -89,7 +93,11 @@ function DoorUnit({ unit, mats }: { unit: OpeningUnit; mats: UnitMaterials }) {
   const panelOffset = leafThickness / 2 + 0.007
 
   return (
-    <group position={[unit.x, unit.y, unit.z]} rotation={[0, -unit.angle, 0]}>
+    <group
+      position={[unit.x, unit.y, unit.z]}
+      rotation={[0, -unit.angle, 0]}
+      userData={unit.exterior && unit.outward ? { outward: unit.outward } : undefined}
+    >
       {[-1, 1].map((side) => (
         <mesh
           key={`jamb${side}`}

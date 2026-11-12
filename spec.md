@@ -1037,6 +1037,31 @@ similar". Two things in the roof made the real thing impossible, and both are fi
   Verified headlessly — 4 rooms, 63.0 m² = 7 × 9 exactly, 9 openings — and in the browser, where
   switching the same plan to Thai contemporary turns it into a hipped, tiled, deep-eaved house.
 
+## Cutaway walls, and furniture that looks like furniture (2026-11-12)
+Three things asked for together: hide the walls in the way as the view turns, show the palette
+in 3D while the 3D view is up, and stop the plan reading as "a lot of rectangles".
+
+- **`Cutaway` (`Scene3D.tsx`)** takes away the shell walls standing between the camera and the
+  rooms, live as you orbit. Every shell piece carries the direction it faces (`WallBox.outward`,
+  set in `building3d.ts` by flipping the wall's perpendicular away from the plan's centroid) and
+  one `useFrame` over the group hides anything whose outward face is turned towards the camera
+  (`facing < 0.35`, so a wall seen edge-wise stays). One frame loop, not a hook per mesh —
+  there are about ninety and they all answer the same question. Interior walls and the **floor
+  plinth stay up**: the plinth draws the outline of the room the wall was taken from, which is
+  what makes it read as a cutaway rather than a demolition. Visibility is hierarchical in
+  three.js, so a door or window only needs the tag on its own group.
+- **`src/sheet/fixtureSymbols.tsx`** is one plan symbol per fixture — beds with pillows and a
+  turned-down sheet, a sofa with its back and arms, a round table with four chairs, a kitchen
+  run with burners and a sink, a crossed box for a wardrobe, an oval pan for a WC, a swept
+  screen for a shower. Drawn in the fixture's own metres with the back at `-y`, the same
+  convention the 3D models use. ⚠️ Used by BOTH the drawing sheet and the tool palette, so a
+  piece cannot look like one thing to place and another once placed. The sheet passes
+  `nonScaling` for its constant pen weight (see the `vector-effect` note above).
+- **The palette follows the view**: plan symbols while the plan is up, a small isometric of the
+  same piece once the 3D view is (`FIXTURE_HEIGHT` + the 2:1 projection the plan thumbnails
+  already use, with the plan symbol laid on the top face by an SVG `matrix`). A 3D view with
+  flat symbols beside it reads as two different tools.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

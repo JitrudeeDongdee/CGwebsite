@@ -370,6 +370,7 @@ export function DesignerPage() {
         }
         activeWallTypeId={tool.type === 'draw' ? tool.wallTypeId : null}
         onSelectWallType={handleSelectWallType}
+        view={view === 'three' ? '3d' : '2d'}
         activeFixture={tool.type === 'fixture' ? tool.kind : null}
         onSelectFixture={(kind) =>
           setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)

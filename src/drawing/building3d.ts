@@ -26,6 +26,14 @@ export interface WallBox {
   thickness: number
   /** Rotation about the vertical axis. */
   angle: number
+  /**
+   * Unit vector pointing OUT of the building, in plan. What a cutaway needs
+   * to know: a wall whose outward face is turned towards the camera is the
+   * one standing between the camera and the room.
+   */
+  outward?: { x: number; z: number }
+  /** Interior walls stay up in a cutaway; only the shell is taken away. */
+  exterior?: boolean
 }
 
 /**
@@ -44,6 +52,8 @@ export interface OpeningUnit {
   width: number
   height: number
   wallThickness: number
+  outward?: { x: number; z: number }
+  exterior?: boolean
 }
 
 export interface Building3D {
@@ -98,6 +108,15 @@ export function buildBuilding3D(
   const columns: WallBox[] = []
   const eaves = (storeys - 1) * LEVEL_HEIGHT + WALL_HEIGHT
 
+  // Which way is "out" is decided against the middle of the plan.
+  const nodeList = Object.values(state.nodes)
+  const centre = nodeList.length
+    ? {
+        x: nodeList.reduce((sum, n) => sum + n.x, 0) / nodeList.length,
+        z: nodeList.reduce((sum, n) => sum + n.y, 0) / nodeList.length,
+      }
+    : { x: 0, z: 0 }
+
   for (const wall of state.walls) {
     const a = state.nodes[wall.a]
     const b = state.nodes[wall.b]
@@ -116,6 +135,11 @@ export function buildBuilding3D(
     const midX = (a.x + b.x) / 2
     const midZ = (a.y + b.y) / 2
 
+    // Perpendicular to the wall, flipped to point away from the centre.
+    const away = (midX - centre.x) * dirZ - (midZ - centre.z) * dirX
+    const sign = away >= 0 ? 1 : -1
+    const outward = { x: dirZ * sign, z: -dirX * sign }
+
     /** Places a span of this wall as a box in world space. */
     const boxFor = (id: string, span: Span): WallBox | null => {
       const spanLength = span.to - span.from
@@ -132,6 +156,8 @@ export function buildBuilding3D(
         height: spanHeight,
         thickness,
         angle,
+        outward,
+        exterior,
       }
     }
 
@@ -208,6 +234,8 @@ export function buildBuilding3D(
             width: hole.length,
             height: hole.height,
             wallThickness: thickness,
+            outward,
+            exterior,
           })
         }
 
@@ -230,6 +258,8 @@ export function buildBuilding3D(
           height: SLAB_THICKNESS,
           thickness: thickness + (exterior ? 0.08 : 0),
           angle,
+          outward,
+          exterior,
         })
       }
     }
@@ -245,6 +275,9 @@ export function buildBuilding3D(
         height: PLINTH_HEIGHT,
         thickness: thickness + 0.1,
         angle,
+        // The plinth stays: it is the floor edge, not the wall, and keeping
+        // it draws the outline of the room the wall was taken from.
+        exterior: false,
       })
     }
   }

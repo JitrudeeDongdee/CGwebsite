@@ -257,6 +257,48 @@ function Ground({
   )
 }
 
+
+/**
+ * Takes away the walls standing between the camera and the rooms.
+ *
+ * With the roof off you are looking into a box, and from any angle two of
+ * its sides are in the way. Each shell piece carries the direction it faces;
+ * if that is turned towards the camera, it goes. Interior walls and the floor
+ * plinth stay, so the plan still reads — it is a cutaway, not a demolition.
+ *
+ * One `useFrame` over the group rather than a hook per mesh: there are about
+ * ninety of them and they all answer the same question.
+ */
+function Cutaway({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const group = useRef<THREE.Group>(null)
+  const camera = useThree((three) => three.camera)
+  const here = useMemo(() => new THREE.Vector3(), [])
+
+  useFrame(() => {
+    const root = group.current
+    if (!root) return
+
+    root.traverse((object) => {
+      const outward = (object.userData as { outward?: { x: number; z: number } }).outward
+      if (!outward) return
+      if (!active) {
+        object.visible = true
+        return
+      }
+
+      object.getWorldPosition(here)
+      const toCameraX = camera.position.x - here.x
+      const toCameraZ = camera.position.z - here.z
+      const distance = Math.hypot(toCameraX, toCameraZ) || 1
+      const facing = (outward.x * toCameraX + outward.z * toCameraZ) / distance
+      // A little past square-on, so a wall seen edge-wise is left standing.
+      object.visible = facing < 0.35
+    })
+  })
+
+  return <group ref={group}>{children}</group>
+}
+
 export function Scene3D({
   state,
   exteriorWallIds,
@@ -365,24 +407,26 @@ export function Scene3D({
 
         {options.scenery && <Planting bounds={building.bounds} span={span} />}
 
-        {building.walls.map((box) => (
-          <PatternedBox
-            key={box.id}
-            box={box}
-            pattern={wallPattern}
-            color={options.wallColor}
-          />
-        ))}
+        <Cutaway active={!options.showRoof}>
+          {building.walls.map((box) => (
+            <PatternedBox
+              key={box.id}
+              box={box}
+              pattern={wallPattern}
+              color={options.wallColor}
+            />
+          ))}
 
-        {building.trim.map((box) => (
-          <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
-        ))}
+          {building.trim.map((box) => (
+            <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
+          ))}
 
-        {building.columns.map((box) => (
-          <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
-        ))}
+          {building.columns.map((box) => (
+            <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
+          ))}
 
-        <OpeningsView units={building.openings} frame={options.frame} />
+          <OpeningsView units={building.openings} frame={options.frame} />
+        </Cutaway>
 
         {options.furniture &&
           Array.from({ length: options.storeys }, (_, level) => (

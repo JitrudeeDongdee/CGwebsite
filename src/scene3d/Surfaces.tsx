@@ -46,6 +46,7 @@ export function PatternedBox({
   cast?: boolean
   receive?: boolean
 }) {
+  const outward = box.exterior ? box.outward : undefined
   const material = useShared(pattern, color)
 
   const geometry = useMemo(() => {
@@ -66,6 +67,7 @@ export function PatternedBox({
       material={material}
       castShadow={cast}
       receiveShadow={receive}
+      userData={outward ? { outward } : undefined}
     />
   )
 }
