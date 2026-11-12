@@ -15,7 +15,13 @@ import {
   type RoofMaterial,
   type WallMaterial,
 } from '../drawing/materials'
-import { PatternedBox, useRoofGeometry, useSolid, useTiled } from './Surfaces'
+import {
+  PatternedBox,
+  usePlaneGeometry,
+  useRoofGeometry,
+  useShared,
+  useSolid,
+} from './Surfaces'
 import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
 import { Planting, SUN_DIRECTION, SkyDome, SkyEnvironment } from './Scenery'
@@ -153,13 +159,17 @@ function Roof({
     [bounds, shape, pitch, eaves],
   )
 
-  const surface = useRoofGeometry(mesh.positions, mesh.uvs)
-  const fascia = useRoofGeometry(mesh.fascia, mesh.fasciaUvs)
-  const gables = useRoofGeometry(mesh.gables, mesh.gableUvs)
+  const roofPattern = ROOF_FINISH[material].pattern
+  const wallPattern = WALL_FINISH[wall].pattern
 
-  // The roof's UVs are already in metres, so the pattern is scaled 1:1.
-  const roofing = useTiled(ROOF_FINISH[material].pattern, color, 1, 1, THREE.DoubleSide)
-  const gableSkin = useTiled(WALL_FINISH[wall].pattern, wallColor, 1, 1, THREE.DoubleSide)
+  const surface = useRoofGeometry(mesh.positions, mesh.uvs, roofPattern)
+  // The fascia takes the painted trim, which carries no pattern, so its UVs
+  // are scaled against 'paint' only to keep one code path.
+  const fascia = useRoofGeometry(mesh.fascia, mesh.fasciaUvs, 'paint')
+  const gables = useRoofGeometry(mesh.gables, mesh.gableUvs, wallPattern)
+
+  const roofing = useShared(roofPattern, color, THREE.DoubleSide)
+  const gableSkin = useShared(wallPattern, wallColor, THREE.DoubleSide)
   const trim = useSolid(TRIM_SURFACE, { side: THREE.DoubleSide })
 
   return (
@@ -182,9 +192,12 @@ function Ground({
   storeys: number
 }) {
   const ground = span * 30
-  const grass = useTiled('grass', '#8FA86B', ground, ground)
-  const paving = useTiled('paving', '#CFCAC2', 1, 1)
-  const floor = useTiled('paving', '#D8D3CA', 1, 1)
+  const grass = useShared('grass', '#8FA86B')
+  const paving = useShared('paving', '#CFCAC2')
+  const floor = useShared('paving', '#D8D3CA')
+  // Only the field is tiled to its size; the apron and the floor slab show
+  // one tile across the whole slab, as they always have.
+  const field = usePlaneGeometry(ground, ground, 'grass')
 
   const apron = 1.2
   const width = bounds ? bounds.maxX - bounds.minX : 0
@@ -198,10 +211,9 @@ function Ground({
         rotation={[-Math.PI / 2, 0, 0]}
         position={[centreX, -0.02, centreZ]}
         material={grass}
+        geometry={field}
         receiveShadow
-      >
-        <planeGeometry args={[ground, ground]} />
-      </mesh>
+      />
 
       {bounds && (
         <>
