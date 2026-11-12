@@ -22,6 +22,7 @@ import { RoomNameDialog } from '../ui/RoomNameDialog'
 import { Scene3DLoading } from '../ui/Scene3DLoading'
 import { useSeo } from '../seo/useSeo'
 import type { Building3DOptions } from '../scene3d/Scene3D'
+import type { TemplateFinish } from '../drawing/templates'
 import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
 
 /**
@@ -333,8 +334,10 @@ export function DesignerPage() {
 
   // A plan arrives either as a template id (sidebar) or a full state (gallery
   // card / uploaded file); both funnel through here so loading behaves the same.
-  const handleLoadPlanState = (next: DrawingState) => {
+  const handleLoadPlanState = (next: DrawingState, finish?: TemplateFinish) => {
     applyTemplate(next)
+    // A sample plan carries the finishes it is meant to be seen in.
+    if (finish) setBuilding3d((current) => ({ ...current, ...finish }))
     setTool(SELECT_TOOL)
     cancelDrawingRef.current?.()
     setFitToken((n) => n + 1)

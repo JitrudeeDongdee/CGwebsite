@@ -9,7 +9,25 @@ import type {
   OpeningKind,
 } from './types'
 import { fixtureSpec } from './fixtures'
+import type { FrameMaterial, RoofMaterial, WallMaterial } from './materials'
+import type { RoofPitch, RoofShape } from './roof'
 import { distanceToSegment } from './geometry'
+
+/**
+ * The finishes a plan is meant to be seen in.
+ *
+ * Only the primitives, all of which live in `drawing/` — the 3D options type
+ * itself is in `scene3d/`, and `drawing/` does not import from there.
+ */
+export interface TemplateFinish {
+  roof?: RoofShape
+  pitch?: RoofPitch
+  roofMaterial?: RoofMaterial
+  roofColor?: string
+  wall?: WallMaterial
+  wallColor?: string
+  frame?: FrameMaterial
+}
 
 export interface PlanTemplate {
   id: string
@@ -22,6 +40,8 @@ export interface PlanTemplate {
   expectedRooms: number
   /** Doors + windows the layout should place — asserted by the tests too. */
   expectedOpenings: number
+  /** Applied to the 3D view when this plan is loaded, where it has one. */
+  finish?: TemplateFinish
   build: () => DrawingState
 }
 
@@ -40,8 +60,27 @@ interface Spec {
   partitions: [number, number, number, number][]
   /** Doors and windows, positioned in footprint-local metres. */
   openings?: OpeningSpec[]
-  /** Furniture and columns beyond the automatic junction columns. */
-  furniture?: { kind: FixtureKind; x: number; y: number; rotation?: number }[]
+  /**
+   * One end left out of the shell, for a bay that is roofed but not walled —
+   * a covered porch. Leaving the wall out (rather than putting a wide opening
+   * in it) keeps the bay out of the room list, so its floor is not counted as
+   * living area or priced as one; the roof still spans it, because the roof
+   * follows the corner NODES, which are still there.
+   */
+  openEnd?: 'left' | 'right'
+  /**
+   * Furniture and columns beyond the automatic junction columns. `width` and
+   * `depth` override the catalogue size for a piece that is built to fit —
+   * a kitchen run along a short wall, say.
+   */
+  furniture?: {
+    kind: FixtureKind
+    x: number
+    y: number
+    rotation?: number
+    width?: number
+    depth?: number
+  }[]
   /** Room names, stamped at a point inside the room they name. */
   labels?: { x: number; y: number; nameKey: string }[]
 }
@@ -109,6 +148,7 @@ function buildFromSpec({
   width,
   depth,
   partitions,
+  openEnd,
   openings = [],
   furniture = [],
   labels = [],
@@ -123,6 +163,8 @@ function buildFromSpec({
     [halfW, halfD, -halfW, halfD],
     [-halfW, halfD, -halfW, -halfD],
   ]
+  if (openEnd === 'left') shell.splice(3, 1)
+  if (openEnd === 'right') shell.splice(1, 1)
 
   const interior: Segment[] = partitions.map(
     ([x1, y1, x2, y2]) => [x1 - halfW, y1 - halfD, x2 - halfW, y2 - halfD] as Segment,
@@ -190,8 +232,8 @@ function buildFromSpec({
       x: item.x - halfW,
       y: item.y - halfD,
       rotation: item.rotation ?? 0,
-      width: spec.width,
-      depth: spec.depth,
+      width: item.width ?? spec.width,
+      depth: item.depth ?? spec.depth,
     })
   })
 
@@ -213,6 +255,90 @@ function buildFromSpec({
  * drawing from nothing.
  */
 export const PLAN_TEMPLATES: PlanTemplate[] = [
+  {
+    /**
+     * Traced from a 12 m modular cabin the owner asked to have on the site as
+     * a sample: a covered porch at one end, open-plan living / dining /
+     * kitchen, a bathroom on the back wall and a bedroom at the far end.
+     *
+     * The dimensions are MEASURED off the supplied floor plan rather than
+     * guessed: its 12000 dimension line is 963 px, giving 12.46 mm/px, and
+     * every wall, opening and piece below was read off at that scale. The
+     * shell comes out 12.0 x 3.43 m, rounded to 3.4.
+     */
+    id: 'cabin-12x3-4',
+    nameKey: 'templates.cabin12',
+    width: 12,
+    depth: 3.4,
+    // Living (with the corridor it opens onto), bathroom, bedroom. The porch
+    // is open-ended, so it is not a room.
+    expectedRooms: 3,
+    expectedOpenings: 9,
+    // The cabin is charcoal cladding under a dark standing-seam roof; without
+    // this the sample opens in the plaster-and-tile defaults and looks like a
+    // different house.
+    finish: {
+      roof: 'gable',
+      pitch: 'low',
+      roofMaterial: 'metal',
+      roofColor: '#2F3336',
+      wall: 'fibre',
+      wallColor: '#4D5154',
+      frame: 'black',
+    },
+    build: () =>
+      buildFromSpec({
+        width: 12,
+        depth: 3.4,
+        openEnd: 'left',
+        partitions: [
+          [1.35, 0, 1.35, 3.4], // glass wall onto the porch
+          [6.55, 0, 6.55, 1.72], // bathroom, back wall side
+          [6.55, 1.72, 9, 1.72], // bathroom, corridor side
+          [9, 0, 9, 3.4], // bedroom
+        ],
+        openings: [
+          { x: 1.35, y: 1.9, width: 1.6, kind: 'door' }, // sliding door to the porch
+          { x: 3.99, y: 0, width: 3.13, kind: 'window' }, // living glazing
+          { x: 3.01, y: 3.4, width: 1.08, kind: 'window' }, // living, front
+          { x: 6.51, y: 3.4, width: 0.98, kind: 'door' }, // entrance
+          { x: 8, y: 0, width: 0.5, kind: 'window' }, // bathroom
+          { x: 6.9, y: 1.72, width: 0.7, kind: 'door' }, // bathroom
+          { x: 9, y: 2.9, width: 0.8, kind: 'door' }, // bedroom
+          { x: 9.96, y: 3.4, width: 1.26, kind: 'window' }, // bedroom, front
+          { x: 12, y: 1.7, width: 1.6, kind: 'window' }, // bedroom, end
+        ],
+        furniture: [
+          // Porch
+          { kind: 'chair', x: 0.7, y: 1, rotation: Math.PI / 2 },
+          { kind: 'chair', x: 0.7, y: 2.4, rotation: Math.PI / 2 },
+          // Living / dining
+          { kind: 'sofaL', x: 2.55, y: 0.95, width: 2.2, depth: 1.7 },
+          { kind: 'coffeeTable', x: 3.7, y: 1.6 },
+          { kind: 'diningRound', x: 4.88, y: 1 },
+          // Kitchen run against the bathroom wall, so it faces back up the room
+          { kind: 'fridge', x: 6.2, y: 0.4, rotation: Math.PI / 2, width: 0.65, depth: 0.6 },
+          { kind: 'kitchen', x: 6.2, y: 1.25, rotation: Math.PI / 2, width: 1, depth: 0.65 },
+          // Bathroom
+          { kind: 'toilet', x: 6.98, y: 0.45 },
+          { kind: 'sink', x: 7.65, y: 0.35 },
+          { kind: 'shower', x: 8.5, y: 0.52, rotation: Math.PI / 2 },
+          // Corridor and bedroom
+          { kind: 'wardrobe', x: 8.44, y: 2.02, width: 0.94, depth: 0.6 },
+          { kind: 'wardrobe', x: 9.22, y: 0.75, rotation: Math.PI / 2, width: 1.3, depth: 0.44 },
+          { kind: 'nightstand', x: 9.7, y: 0.35 },
+          { kind: 'bedDouble', x: 10.72, y: 1.15 },
+          { kind: 'nightstand', x: 11.74, y: 0.35 },
+        ],
+        labels: [
+          { x: 0.7, y: 1.7, nameKey: 'rooms.porch' },
+          { x: 3.2, y: 2.4, nameKey: 'rooms.living' },
+          { x: 7.8, y: 0.9, nameKey: 'rooms.bathroom' },
+          { x: 10.7, y: 2.7, nameKey: 'rooms.bedroom' },
+        ],
+      }),
+  },
+
   {
     id: 'studio-6x4',
     nameKey: 'templates.studio',

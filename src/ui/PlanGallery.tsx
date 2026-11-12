@@ -10,7 +10,7 @@ import Alert from '@mui/material/Alert'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import DownloadIcon from '@mui/icons-material/Download'
 import LockIcon from '@mui/icons-material/Lock'
-import { PLAN_TEMPLATES } from '../drawing/templates'
+import { PLAN_TEMPLATES, type TemplateFinish } from '../drawing/templates'
 import type { DrawingState } from '../drawing/types'
 import { PlanFileError, parsePlanFile, parsePlanJson, planFileToJson } from '../drawing/planFile'
 import { IsoThumbnail } from './ItemPreview'
@@ -24,11 +24,13 @@ interface GalleryPlan {
   width?: number
   depth?: number
   state: DrawingState
+  /** Built-in plans can also carry the finishes they are meant to wear. */
+  finish?: TemplateFinish
 }
 
 interface PlanGalleryProps {
   currentState: DrawingState
-  onLoadPlan: (state: DrawingState) => void
+  onLoadPlan: (state: DrawingState, finish?: TemplateFinish) => void
 }
 
 function downloadJson(filename: string, text: string) {
@@ -109,6 +111,7 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
         width: template.width,
         depth: template.depth,
         state: template.build(),
+        finish: template.finish,
       })),
     [],
   )
@@ -227,7 +230,7 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
             key={plan.key}
             plan={plan}
             label={plan.translate ? t(plan.name) : plan.name}
-            onClick={() => onLoadPlan(plan.state)}
+            onClick={() => onLoadPlan(plan.state, plan.finish)}
           />
         ))}
       </Stack>

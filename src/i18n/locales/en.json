@@ -23,7 +23,8 @@
     "twoBed": "2 bedrooms",
     "shop": "Shop unit",
     "tiny": "Tiny home",
-    "threeBed": "3 bedrooms"
+    "threeBed": "3 bedrooms",
+    "cabin12": "12 m modular cabin"
   },
   "wallTypes": {
     "title": "Wall types",
@@ -143,6 +144,14 @@
     "kitchen": "Kitchen counter",
     "toilet": "Toilet",
     "sink": "Basin",
+    "sofaL": "Corner sofa",
+    "coffeeTable": "Coffee table",
+    "diningRound": "Round table + chairs",
+    "chair": "Chair",
+    "fridge": "Fridge",
+    "wardrobe": "Wardrobe",
+    "nightstand": "Bedside table",
+    "shower": "Shower",
     "rotate": "Rotate 90°",
     "delete": "Delete this item"
   },
@@ -154,6 +163,7 @@
     "bedroom3": "Bedroom 3",
     "living": "Living",
     "bathroom": "Bathroom",
+    "porch": "Covered porch",
     "shopfront": "Shop floor",
     "store": "Store room",
     "rename": "Rename room",

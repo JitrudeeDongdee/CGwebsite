@@ -44,6 +44,14 @@ export type FixtureKind =
   | 'toilet'
   | 'sink'
   | 'kitchen'
+  | 'sofaL'
+  | 'coffeeTable'
+  | 'diningRound'
+  | 'chair'
+  | 'fridge'
+  | 'wardrobe'
+  | 'nightstand'
+  | 'shower'
 
 /**
  * A free-standing item placed on the plan — a structural column or a piece
