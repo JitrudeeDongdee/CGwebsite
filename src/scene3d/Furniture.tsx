@@ -25,6 +25,7 @@ interface Palette {
   metal: THREE.Material
   worktop: THREE.Material
   recess: THREE.Material
+  glass: THREE.Material
 }
 
 function usePalette(): Palette {
@@ -39,6 +40,13 @@ function usePalette(): Palette {
       metal: make('#A8AEB4', 0.3, 0.8),
       worktop: make('#3C4042', 0.35),
       recess: make('#2E3134', 0.7),
+      glass: new THREE.MeshStandardMaterial({
+        color: '#CFE3EC',
+        roughness: 0.05,
+        metalness: 0,
+        transparent: true,
+        opacity: 0.25,
+      }),
     }
   }, [])
 
@@ -199,6 +207,185 @@ function Sink({ w, d, p }: PieceProps) {
   )
 }
 
+
+function SofaL({ w, d, p }: PieceProps) {
+  const seat = 0.95
+  const armX = w / 2 - 0.09
+  return (
+    <>
+      {/* Main run along the back, return down the left — the way the corner
+          sofa sits in the drawing this plan came from. */}
+      <Box size={[w, 0.34, seat]} at={[0, 0.17, -(d / 2 - seat / 2)]} material={p.fabric} />
+      <Box size={[w, 0.52, 0.18]} at={[0, 0.6, -(d / 2 - 0.09)]} material={p.fabric} />
+      <Box
+        size={[seat, 0.34, d - seat]}
+        at={[-(w / 2 - seat / 2), 0.17, (d - seat) / 2 - (d / 2 - seat)]}
+        material={p.fabric}
+      />
+      <Box
+        size={[0.18, 0.52, d - seat]}
+        at={[-armX, 0.6, (d - seat) / 2 - (d / 2 - seat)]}
+        material={p.fabric}
+      />
+      {[-1, 0, 1].map((slot) => (
+        <Box
+          key={slot}
+          size={[w / 3.4, 0.14, seat - 0.2]}
+          at={[slot * (w / 3.2), 0.42, -(d / 2 - seat / 2)]}
+          material={p.linen}
+        />
+      ))}
+      <Box
+        size={[seat - 0.2, 0.14, d - seat - 0.1]}
+        at={[-(w / 2 - seat / 2), 0.42, (d - seat) / 2 - (d / 2 - seat)]}
+        material={p.linen}
+      />
+    </>
+  )
+}
+
+function CoffeeTable({ w, d, p }: PieceProps) {
+  return (
+    <>
+      <Box size={[w, 0.06, d]} at={[0, 0.38, 0]} material={p.wood} />
+      {[-1, 1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <Box
+            key={`${sx}${sz}`}
+            size={[0.05, 0.35, 0.05]}
+            at={[sx * (w / 2 - 0.07), 0.175, sz * (d / 2 - 0.07)]}
+            material={p.wood}
+          />
+        )),
+      )}
+    </>
+  )
+}
+
+/** A chair on its own: also the one used four times round the dining table. */
+function Chair({ w, d, p }: PieceProps) {
+  return (
+    <>
+      <Box size={[w * 0.9, 0.06, d * 0.9]} at={[0, 0.44, 0]} material={p.wood} />
+      <Box
+        size={[w * 0.9, 0.48, 0.06]}
+        at={[0, 0.71, -(d / 2 - 0.03)]}
+        material={p.wood}
+      />
+      {[-1, 1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <Box
+            key={`${sx}${sz}`}
+            size={[0.05, 0.42, 0.05]}
+            at={[sx * (w / 2 - 0.06), 0.21, sz * (d / 2 - 0.06)]}
+            material={p.wood}
+          />
+        )),
+      )}
+    </>
+  )
+}
+
+/** Round pedestal table with four chairs — one fixture, as it is drawn. */
+function DiningRound({ w, d, p }: PieceProps) {
+  const r = Math.min(w, d) * 0.3
+  const seatOut = Math.min(w, d) / 2 - 0.22
+  return (
+    <>
+      <mesh position={[0, 0.74, 0]} material={p.wood} castShadow receiveShadow>
+        <cylinderGeometry args={[r, r, 0.05, 24]} />
+      </mesh>
+      <mesh position={[0, 0.37, 0]} material={p.wood} castShadow>
+        <cylinderGeometry args={[0.08, 0.08, 0.72, 12]} />
+      </mesh>
+      <mesh position={[0, 0.03, 0]} material={p.wood} castShadow>
+        <cylinderGeometry args={[r * 0.6, r * 0.6, 0.05, 20]} />
+      </mesh>
+      {[0, 1, 2, 3].map((i) => {
+        const angle = (i * Math.PI) / 2
+        return (
+          <group
+            key={i}
+            position={[Math.sin(angle) * seatOut, 0, Math.cos(angle) * seatOut]}
+            rotation={[0, angle + Math.PI, 0]}
+          >
+            <Chair w={0.45} d={0.45} p={p} />
+          </group>
+        )
+      })}
+    </>
+  )
+}
+
+function Fridge({ w, d, p }: PieceProps) {
+  return (
+    <>
+      <Box size={[w, 1.8, d]} at={[0, 0.9, 0]} material={p.linen} />
+      {/* The freezer seam and one long handle, which is all that reads. */}
+      <Box size={[w, 0.02, 0.02]} at={[0, 1.25, d / 2 + 0.005]} material={p.recess} cast={false} />
+      <Box size={[0.03, 0.5, 0.04]} at={[w / 2 - 0.08, 1.55, d / 2 + 0.03]} material={p.metal} />
+      <Box size={[0.03, 0.7, 0.04]} at={[w / 2 - 0.08, 0.8, d / 2 + 0.03]} material={p.metal} />
+    </>
+  )
+}
+
+function Wardrobe({ w, d, p }: PieceProps) {
+  return (
+    <>
+      <Box size={[w, 2.1, d]} at={[0, 1.05, 0]} material={p.linen} />
+      {[-1, 1].map((side) => (
+        <Box
+          key={side}
+          size={[w / 2 - 0.03, 2, 0.02]}
+          at={[side * (w / 4), 1.05, d / 2 + 0.012]}
+          material={p.wood}
+          cast={false}
+        />
+      ))}
+      {[-1, 1].map((side) => (
+        <Box
+          key={`handle${side}`}
+          size={[0.03, 0.3, 0.03]}
+          at={[side * 0.05, 1.1, d / 2 + 0.04]}
+          material={p.metal}
+          cast={false}
+        />
+      ))}
+    </>
+  )
+}
+
+function Nightstand({ w, d, p }: PieceProps) {
+  return (
+    <>
+      <Box size={[w, 0.5, d]} at={[0, 0.25, 0]} material={p.wood} />
+      <Box size={[w - 0.06, 0.02, 0.02]} at={[0, 0.3, d / 2 + 0.005]} material={p.recess} cast={false} />
+      <Box size={[0.12, 0.025, 0.03]} at={[0, 0.17, d / 2 + 0.02]} material={p.metal} cast={false} />
+    </>
+  )
+}
+
+/**
+ * A corner shower: tray, two glass panels and a head on the back wall. The
+ * drawing shows a quarter-round enclosure; two flat panels read the same at
+ * this scale and cost a fraction of the geometry.
+ */
+function Shower({ w, d, p }: PieceProps) {
+  return (
+    <>
+      <Box size={[w, 0.12, d]} at={[0, 0.06, 0]} material={p.ceramic} />
+      <mesh position={[w / 2 - 0.01, 1.07, 0]} material={p.glass} castShadow>
+        <boxGeometry args={[0.02, 1.9, d]} />
+      </mesh>
+      <mesh position={[0, 1.07, d / 2 - 0.01]} material={p.glass} castShadow>
+        <boxGeometry args={[w, 1.9, 0.02]} />
+      </mesh>
+      <Box size={[0.04, 0.04, 0.22]} at={[0, 1.95, -(d / 2 - 0.12)]} material={p.metal} />
+      <Box size={[0.2, 0.03, 0.2]} at={[0, 1.93, -(d / 2 - 0.25)]} material={p.metal} />
+    </>
+  )
+}
+
 function Piece({ fixture, p }: { fixture: DrawFixture; p: Palette }) {
   const w = Math.max(0.1, fixture.width)
   const d = Math.max(0.1, fixture.depth)
@@ -218,6 +405,22 @@ function Piece({ fixture, p }: { fixture: DrawFixture; p: Palette }) {
       return <Toilet w={w} d={d} p={p} />
     case 'sink':
       return <Sink w={w} d={d} p={p} />
+    case 'sofaL':
+      return <SofaL w={w} d={d} p={p} />
+    case 'coffeeTable':
+      return <CoffeeTable w={w} d={d} p={p} />
+    case 'diningRound':
+      return <DiningRound w={w} d={d} p={p} />
+    case 'chair':
+      return <Chair w={w} d={d} p={p} />
+    case 'fridge':
+      return <Fridge w={w} d={d} p={p} />
+    case 'wardrobe':
+      return <Wardrobe w={w} d={d} p={p} />
+    case 'nightstand':
+      return <Nightstand w={w} d={d} p={p} />
+    case 'shower':
+      return <Shower w={w} d={d} p={p} />
     default:
       return null
   }

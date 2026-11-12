@@ -20,6 +20,16 @@ export const FIXTURE_CATALOG: FixtureSpec[] = [
   { kind: 'kitchen', labelKey: 'fixtures.kitchen', width: 2.4, depth: 0.6, solid: false },
   { kind: 'toilet', labelKey: 'fixtures.toilet', width: 0.4, depth: 0.7, solid: false },
   { kind: 'sink', labelKey: 'fixtures.sink', width: 0.5, depth: 0.45, solid: false },
+  // Added 2026-11-12 for the 12 m cabin sample, which needed every one of
+  // these. Sizes are the real article, as above.
+  { kind: 'sofaL', labelKey: 'fixtures.sofaL', width: 2.6, depth: 1.7, solid: false },
+  { kind: 'coffeeTable', labelKey: 'fixtures.coffeeTable', width: 1, depth: 0.6, solid: false },
+  { kind: 'diningRound', labelKey: 'fixtures.diningRound', width: 1.4, depth: 1.4, solid: false },
+  { kind: 'chair', labelKey: 'fixtures.chair', width: 0.5, depth: 0.5, solid: false },
+  { kind: 'fridge', labelKey: 'fixtures.fridge', width: 0.6, depth: 0.65, solid: false },
+  { kind: 'wardrobe', labelKey: 'fixtures.wardrobe', width: 1, depth: 0.6, solid: false },
+  { kind: 'nightstand', labelKey: 'fixtures.nightstand', width: 0.45, depth: 0.4, solid: false },
+  { kind: 'shower', labelKey: 'fixtures.shower', width: 0.9, depth: 0.9, solid: false },
 ]
 
 export function fixtureSpec(kind: FixtureKind): FixtureSpec {

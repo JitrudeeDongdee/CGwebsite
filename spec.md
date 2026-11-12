@@ -976,6 +976,39 @@ chunk arrived, so the spinner disappeared and the pattern drawing then froze the
   and textures upload during the first), with an 8 s guard so a failed context can never leave
   the cover up hiding the evidence.
 
+## The 12 m modular cabin sample — `cabin-12x3-4` (2026-11-12)
+The owner supplied a render + floor plan of a 12 m modular cabin and asked for it on the site as
+a sample, as close to the original as possible, adding whatever furniture or finishes were
+missing.
+
+- **The dimensions are measured, not guessed.** The supplied plan's `12000` dimension line is
+  963 px → **12.46 mm/px**, and every wall, opening and piece of furniture was read off at that
+  scale (`PIL`, column/row darkness profiles, then crops read by eye for what the numbers could
+  not say). Shell: **12.0 × 3.43 m**, rounded to 3.4. Porch 1.35 m, bathroom 6.55–9.0 × 0–1.72,
+  bedroom from 9.0. Enclosed floor area comes out 36.2 m² = (12 − 1.35) × 3.4, which is the
+  arithmetic check that the trace closes.
+- **`Spec.openEnd`** (new) leaves one shell wall out, for the covered porch. Leaving the wall out
+  rather than putting a wide opening in it keeps the bay **out of the room list**, so its 4.6 m²
+  is not counted as living area or priced as one — while the roof still spans it, because the
+  roof follows the corner nodes, which are still there.
+- **`Spec.furniture[].width/depth`** (new) override the catalogue size, for a piece built to fit:
+  here the kitchen run, 1.0 × 0.65 against the bathroom wall rather than the catalogue's 2.4.
+- **Eight new fixtures**, each with a 3D model: `sofaL`, `coffeeTable`, `diningRound` (table and
+  its four chairs as one piece, as the plan draws it), `chair`, `fridge`, `wardrobe`,
+  `nightstand`, `shower`. They appear in the sidebar palette automatically — it iterates
+  `FIXTURE_CATALOG`.
+- **`PlanTemplate.finish`** (new) is the 3D finish a plan is meant to be seen in, applied when it
+  loads: charcoal fibre-cement cladding, dark standing-seam metal roof at the low pitch, black
+  frames. Without it the sample opened in the plaster-and-tile defaults and read as a different
+  house. ⚠️ It is typed from the primitives in `drawing/` (`WallMaterial`, `RoofShape`, …), NOT
+  from `Building3DOptions`, which lives in `scene3d/` — `drawing/` does not import from there.
+- ⚠️ **Known difference from the render: one wall finish per house.** The original is charcoal
+  cladding with warm timber accent panels; the 3D applies a single wall finish to every wall, so
+  the sample is charcoal throughout. Per-wall finishes are a real feature, not a tweak.
+- Verified headlessly against the built plan (`findRooms` in the page, no rendering needed):
+  13 walls, 9 openings, 15 pieces of furniture, 3 rooms, 36.2 m² — then in the browser in 2D and
+  3D, including the porch reading as a roofed open bay.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 
