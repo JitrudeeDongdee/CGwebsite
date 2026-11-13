@@ -99,6 +99,12 @@ export function DesignerPage() {
   const [fitToken, setFitToken] = useState(0)
   const [renaming, setRenaming] = useState(false)
   const [view, setView] = useState<'plan' | 'three'>('plan')
+  /**
+   * 3D only: the top storey to build, or null for the whole house. Separate
+   * from the floor being edited — looking at the ground floor in 3D must not
+   * change which plan the next edit lands on.
+   */
+  const [shownFloor, setShownFloor] = useState<number | null>(null)
   /** False until the 3D view has drawn a frame; the loading cover reads it. */
   const [sceneReady, setSceneReady] = useState(false)
   const [building3d, setBuilding3d] = useState<Building3DOptions>({
@@ -262,6 +268,14 @@ export function DesignerPage() {
   }
 
   // Picking a wall type arms draw mode with that thickness.
+  // Cutting the stack short is all it takes to look at the lower storeys on
+  // their own: the eaves height and the roof footprint are both derived from
+  // the floors handed in, so the roof drops onto whatever is now the top.
+  const shownFloors = useMemo(
+    () => (shownFloor === null ? floorPlans : floorPlans.slice(0, shownFloor + 1)),
+    [floorPlans, shownFloor],
+  )
+
   const handleSelectWallType = (id: string) => {
     setTool({ type: 'draw', wallTypeId: id, thickness: wallTypeById(id).thickness })
   }
@@ -311,13 +325,16 @@ export function DesignerPage() {
         onSelect={selectFloor}
         onAdd={addFloor}
         onRemove={removeFloor}
+        mode={view === 'three' ? '3d' : '2d'}
+        shown={shownFloor}
+        onShow={setShownFloor}
       />
 
       {view === 'three' ? (
         <>
           <Suspense fallback={null}>
             <Scene3D
-              floors={floorPlans}
+              floors={shownFloors}
               options={building3d}
               onReady={() => setSceneReady(true)}
             />

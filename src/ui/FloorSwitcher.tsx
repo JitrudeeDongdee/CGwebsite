@@ -27,16 +27,32 @@ export function FloorSwitcher({
   onSelect,
   onAdd,
   onRemove,
+  mode = '2d',
+  shown,
+  onShow,
 }: {
   count: number
   active: number
   onSelect: (index: number) => void
   onAdd: () => void
   onRemove: () => void
+  /**
+   * In 2D a floor is the one you EDIT; in 3D it is how far up the house is
+   * built, so you can look at the ground floor without the one above it in
+   * the way. They are separate states: picking a floor to look at in 3D
+   * should not silently change which plan a later edit lands on.
+   */
+  mode?: '2d' | '3d'
+  /** 3D only: the top storey shown, or null for the whole house. */
+  shown?: number | null
+  onShow?: (level: number | null) => void
 }) {
   const { t } = useTranslation()
   // Top storey first.
   const levels = Array.from({ length: count }, (_, i) => count - 1 - i)
+  const threeD = mode === '3d'
+  const current = threeD ? shown : active
+  const pick = (level: number) => (threeD ? onShow?.(level) : onSelect(level))
 
   return (
     <Paper
@@ -54,14 +70,45 @@ export function FloorSwitcher({
         alignItems: 'stretch',
       }}
     >
+      {/* 3D only: back to the whole house after looking at one storey. */}
+      {count > 1 && threeD && (
+        <Tooltip title={t('floors.whole')} placement="right">
+          <ButtonBase
+            onClick={() => onShow?.(null)}
+            aria-label={t('floors.whole')}
+            aria-pressed={shown === null}
+            sx={{
+              px: 1,
+              py: 0.5,
+              minWidth: 62,
+              borderRadius: 1.5,
+              border: 1,
+              borderColor: shown === null ? 'primary.main' : 'transparent',
+              bgcolor: shown === null ? 'action.selected' : 'transparent',
+              color: shown === null ? 'primary.main' : 'text.secondary',
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: shown === null ? 700 : 400, lineHeight: 1.2 }}
+            >
+              {t('floors.whole')}
+            </Typography>
+          </ButtonBase>
+        </Tooltip>
+      )}
+
       {count > 1 &&
         levels.map((level) => {
-          const selected = level === active
+          const selected = level === current
+          const title = threeD
+            ? t('floors.upTo', { n: level + 1 })
+            : t('floors.show', { n: level + 1 })
           return (
-            <Tooltip key={level} title={t('floors.show', { n: level + 1 })} placement="right">
+            <Tooltip key={level} title={title} placement="right">
               <ButtonBase
-                onClick={() => onSelect(level)}
-                aria-label={t('floors.show', { n: level + 1 })}
+                onClick={() => pick(level)}
+                aria-label={title}
                 aria-pressed={selected}
                 sx={{
                   px: 1,
@@ -86,7 +133,7 @@ export function FloorSwitcher({
         })}
 
       <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'center' }}>
-        {count < MAX_FLOORS && (
+        {!threeD && count < MAX_FLOORS && (
           <Tooltip title={t('floors.add')} placement="right">
             <ButtonBase
               onClick={onAdd}
@@ -98,7 +145,7 @@ export function FloorSwitcher({
           </Tooltip>
         )}
         {/* The ground floor cannot go: a house has one. */}
-        {count > 1 && active > 0 && (
+        {!threeD && count > 1 && active > 0 && (
           <Tooltip title={t('floors.remove', { n: active + 1 })} placement="right">
             <ButtonBase
               onClick={onRemove}
