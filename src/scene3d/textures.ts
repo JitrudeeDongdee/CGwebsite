@@ -386,6 +386,73 @@ function paving(): HTMLCanvasElement {
   return el
 }
 
+/**
+ * Loose chippings. Drawn as many small overlapping stones rather than noise:
+ * noise reads as dirt at this tile size, while discrete stones with their
+ * own highlight and shadow read as gravel even at a glance.
+ */
+function gravel(): HTMLCanvasElement {
+  const { el, ctx } = surface()
+  fill(ctx, 236)
+  const rand = rng(2111)
+  for (let i = 0; i < 900; i++) {
+    const x = rand() * UNIT
+    const y = rand() * UNIT
+    const r = 3 + rand() * 7
+    const tone = 196 + Math.floor(rand() * 54)
+    ctx.fillStyle = `rgb(${tone},${tone},${tone - 2})`
+    ctx.beginPath()
+    ctx.ellipse(x, y, r, r * (0.6 + rand() * 0.5), rand() * Math.PI, 0, Math.PI * 2)
+    ctx.fill()
+    // One lit edge and one shaded, which is what gives each stone its form.
+    ctx.strokeStyle = `rgba(255,255,255,${0.12 + rand() * 0.18})`
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.arc(x, y, r, Math.PI * 1.1, Math.PI * 1.8)
+    ctx.stroke()
+    ctx.strokeStyle = `rgba(0,0,0,${0.08 + rand() * 0.12})`
+    ctx.beginPath()
+    ctx.arc(x, y, r, Math.PI * 0.1, Math.PI * 0.8)
+    ctx.stroke()
+  }
+  grain(ctx, 0.08, 2131)
+  return el
+}
+
+/**
+ * Herringbone brick paving, as the path to the steps is laid in the render.
+ * The pairs run at right angles to each other, which is the whole point of
+ * the pattern and the thing that makes it read as laid rather than printed.
+ */
+function cobble(): HTMLCanvasElement {
+  const { el, ctx } = surface()
+  fill(ctx, 206)
+  const rand = rng(2221)
+  const B = UNIT / 4           // brick length
+  const W = B / 2              // brick width
+  ctx.lineWidth = 2
+  for (let row = -1; row < 5; row++) {
+    for (let col = -1; col < 5; col++) {
+      const ox = col * B
+      const oy = row * B
+      // Two bricks per cell, at right angles — the herringbone unit.
+      const pairs: [number, number, number, number][] = [
+        [ox, oy, B, W],
+        [ox + B - W, oy + W, W, B],
+      ]
+      for (const [bx, by, bw, bh] of pairs) {
+        const tone = 186 + Math.floor(rand() * 44)
+        ctx.fillStyle = `rgb(${tone},${tone - 4},${tone - 10})`
+        ctx.fillRect(bx + 1.5, by + 1.5, bw - 3, bh - 3)
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)'
+        ctx.strokeRect(bx + 1.5, by + 1.5, bw - 3, bh - 3)
+      }
+    }
+  }
+  grain(ctx, 0.06, 2237)
+  return el
+}
+
 const DRAW: Record<SurfacePattern, () => HTMLCanvasElement> = {
   plaster,
   paint,
@@ -400,6 +467,8 @@ const DRAW: Record<SurfacePattern, () => HTMLCanvasElement> = {
   roofFlat,
   grass,
   paving,
+  gravel,
+  cobble,
 }
 
 const cache = new Map<SurfacePattern, { map: THREE.Texture; bump: THREE.Texture }>()
@@ -558,7 +627,7 @@ export function tilesAcross(pattern: SurfacePattern, width: number, height: numb
 }
 
 /** Patterns a freshly-opened 3D view needs, in the order it needs them. */
-const DEFAULT_PATTERNS: SurfacePattern[] = ['plaster', 'roofTile', 'grass', 'paving']
+const DEFAULT_PATTERNS: SurfacePattern[] = ['plaster', 'roofTile', 'grass', 'gravel']
 
 /**
  * Draws the default patterns BEFORE the customer opens the 3D view.

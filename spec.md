@@ -1321,6 +1321,46 @@ void all survive a save-and-load round trip. `tsc -b` clean, `oxlint` 26 pre-exi
 `pnpm run build` passes.
 
 
+## The porch lining and the yard (2026-11-13)
+The last three things the 3D view did not have from the reference render.
+
+### The soffit finds the porch on its own
+The timber lining under the roof is drawn over exactly the part of the footprint that is roofed
+but is **NOT a room** — which, for a plan with `openEnd`, is precisely the covered bay. **No new
+data was needed**: a porch is already defined as the bay left out of the room list, so the rooms
+are cut out of the sheet as holes, the same way a floor void is cut out of the slab. Measured on
+`cabin-12x3-4` that area is **4.59 m²**, against the 4.6 m² porch this spec recorded when the plan
+was traced — the soffit lands on the porch and nowhere else.
+- `FloorPlan` gained `rooms`, carried from the hook rather than recomputed in the scene.
+- A plan whose footprint is all rooms (`two-bed-8x6`: 0.00 m² un-roomed) draws **nothing**. Without
+  that guard the lining would be a timber sheet across every ceiling — and it would block the
+  cutaway, which is the one view that exists to see down into the rooms.
+- It uses the gable finish, so the timber reveal and a timber gable are one choice. The porch's
+  inner WALLS can be lined with the per-wall paint brush; they are not hard-coded.
+
+### The yard
+- **`gravel` and `cobble` are two new drawn patterns.** Gravel is many small overlapping stones,
+  each with a lit and a shaded edge, rather than noise: noise reads as dirt at this tile size while
+  discrete stones read as chippings. Cobble is herringbone — the pairs at right angles are the
+  whole point of the pattern and what makes it read as laid rather than printed.
+- The flat paved apron is **gravel now, and wider** (2.6 m past the house, was 1.2), so the house
+  stands in a plot instead of on a slab its own size.
+- **One brick path, to the widest exterior door.** Every door gets steps, because you have to get
+  down from each; a path radiating from all four doors of a 12 m cabin is clutter, and the render
+  lays exactly one. `entryPathBoxes` is a pure function returning `WallBox`es in `building3d.ts`,
+  so the caller draws them with the ordinary tiled-surface renderer and the herringbone keeps its
+  real size. It starts past the flight — measured 1.00 m out against a 0.90 m run of steps.
+- **Planting beds** along the far long elevation, against the wall rather than adrift in the yard:
+  a bed against the house is landscaping and hides the join between gravel and plinth. Fixed
+  offsets, so the planting does not rearrange itself on every plan edit.
+
+Verified headlessly: the porch area, the no-porch guard, one path per plan at the widest door
+across three templates, paths starting clear of the steps and sitting on the ground, and no path
+at all for a plan with no exterior door. `tsc -b` clean, `oxlint` 26 warnings — **no new ones**
+(`entryPathBoxes` moved to `building3d.ts` rather than being left in a component file, which is
+what the rule actually asks for). `pnpm run build` passes. **Not seen in a browser.**
+
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

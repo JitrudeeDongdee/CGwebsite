@@ -89,6 +89,12 @@ export interface Building3D {
 export interface FloorPlan {
   state: DrawingState
   exteriorWallIds: ReadonlySet<string>
+  /**
+   * The enclosed rooms of this storey. Carried rather than recomputed in the
+   * scene: the hook already has them, and the soffit needs to know which
+   * part of the footprint is NOT a room.
+   */
+  rooms?: { polygon: { x: number; y: number }[] }[]
 }
 
 interface Span {
@@ -372,4 +378,49 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
   const roofBounds = [...footprints].reverse().find((one) => one !== null) ?? null
 
   return { walls, openings, trim, columns, bounds, roofBounds, eaves }
+}
+
+/**
+ * A brick path from each exterior door out across the yard, as the render
+ * has to its steps.
+ *
+ * A pure function returning BOXES rather than a component: the caller draws
+ * them with the same tiled-surface renderer everything else uses, so the
+ * herringbone keeps its real size instead of being stretched to fit, and
+ * this file needs no knowledge of the texture cache.
+ *
+ * Built from the DOORS, like the steps are, so a path always starts where
+ * you actually walk in and points the way the door faces. It begins past the
+ * flight rather than under it: a path running beneath a stair reads as a
+ * mistake.
+ */
+export function entryPathBoxes(units: OpeningUnit[], raise: number): WallBox[] {
+  const exterior = units.filter((unit) => unit.kind === 'door' && unit.exterior && unit.outward)
+  // ONE path, to the widest exterior door — the main entrance. Every door
+  // gets steps, because you have to get down from each of them, but a brick
+  // path radiating from all four doors of a 12 m cabin is clutter, and the
+  // reference render lays exactly one across its gravel.
+  const main = exterior.reduce<OpeningUnit | null>(
+    (best, door) => (best === null || door.width > best.width ? door : best),
+    null,
+  )
+  const doors = main ? [main] : []
+  // Clear of the flight, which is one tread per ~170 mm of rise.
+  const steps = Math.max(1, Math.round(raise / 0.17)) * 0.3
+  const RUN = 3.2
+
+  return doors.map((door) => {
+    const out = door.outward!
+    const away = steps + 0.1 + RUN / 2
+    return {
+      id: `path-${door.id}`,
+      x: door.x + out.x * away,
+      y: 0.012,
+      z: door.z + out.z * away,
+      length: Math.max(1.1, door.width + 0.6),
+      height: 0.024,
+      thickness: RUN,
+      angle: door.angle,
+    }
+  })
 }

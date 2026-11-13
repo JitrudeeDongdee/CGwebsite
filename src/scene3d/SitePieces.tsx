@@ -258,3 +258,55 @@ export function RaisedSkirt({ bounds, raise }: { bounds: Bounds | null; raise: n
     </mesh>
   )
 }
+
+/**
+ * Low planting beds along the long elevations, as the render has either side
+ * of the entrance.
+ *
+ * Set against the WALL rather than scattered: a bed in the middle of a yard
+ * is a flowerpot, while a bed against the house is landscaping — and it is
+ * what hides the join between the gravel and the plinth. Kept off the
+ * camera's own corner for the same reason the trees are.
+ */
+export function PlantingBeds({ bounds }: { bounds: Bounds | null }) {
+  const soil = useSolid({ color: '#4A4238', roughness: 1, metalness: 0 })
+  const leaf = useSolid({ color: '#6F8A52', roughness: 0.95, metalness: 0 })
+  const flower = useSolid({ color: '#EDEDE6', roughness: 0.9, metalness: 0 })
+
+  const beds = useMemo(() => {
+    if (!bounds) return []
+    const width = bounds.maxX - bounds.minX
+    const z = bounds.minZ - 0.75                 // the far long elevation
+    const run = Math.max(1.6, width * 0.34)
+    return [
+      { x: bounds.minX + width * 0.22, z, run },
+      { x: bounds.minX + width * 0.74, z, run },
+    ]
+  }, [bounds])
+
+  if (beds.length === 0) return null
+
+  return (
+    <>
+      {beds.map((bed, i) => (
+        <group key={i} position={[bed.x, 0, bed.z]}>
+          <mesh position={[0, 0.06, 0]} material={soil} receiveShadow>
+            <boxGeometry args={[bed.run, 0.12, 1.0]} />
+          </mesh>
+          {/* A few shrubs along it, at fixed offsets so the planting does
+              not rearrange itself on every plan edit. */}
+          {[-0.34, -0.1, 0.14, 0.38].map((t, j) => (
+            <group key={j} position={[bed.run * t, 0.12, (j % 2 === 0 ? -0.16 : 0.16)]}>
+              <mesh position={[0, 0.2, 0]} material={leaf} castShadow>
+                <sphereGeometry args={[0.26, 7, 5]} />
+              </mesh>
+              <mesh position={[0.08, 0.33, 0.06]} material={flower} castShadow={false}>
+                <sphereGeometry args={[0.1, 6, 4]} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+      ))}
+    </>
+  )
+}

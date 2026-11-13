@@ -26,6 +26,8 @@ export type SurfacePattern =
   | 'roofFlat'
   | 'grass'
   | 'paving'
+  | 'gravel'
+  | 'cobble'
 
 export interface PatternSpec {
   /** Real size of one tile in metres, so the pattern stays to scale. */
@@ -51,6 +53,10 @@ export const PATTERN_SPEC: Record<SurfacePattern, PatternSpec> = {
   roofFlat: { tileU: 1.5, tileV: 1.5, bump: 0.006, roughness: 0.9, metalness: 0 },
   grass: { tileU: 2.5, tileV: 2.5, bump: 0.01, roughness: 1, metalness: 0 },
   paving: { tileU: 1, tileV: 1, bump: 0.006, roughness: 0.9, metalness: 0 },
+  // The pale chippings the reference render's yard is laid with, and the
+  // herringbone brick path that crosses it to the steps.
+  gravel: { tileU: 1.1, tileV: 1.1, bump: 0.014, roughness: 1, metalness: 0 },
+  cobble: { tileU: 0.9, tileV: 0.9, bump: 0.012, roughness: 0.92, metalness: 0 },
 }
 
 export const WALL_MATERIALS = [
