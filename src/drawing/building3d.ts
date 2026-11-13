@@ -1,4 +1,4 @@
-import type { DrawingState, OpeningKind } from './types'
+import type { DrawingState, OpeningKind, WallFinish } from './types'
 import { distance } from './geometry'
 import { EXTERIOR_WALL_THICKNESS, INTERIOR_WALL_THICKNESS } from './wallOutline'
 
@@ -34,6 +34,8 @@ export interface WallBox {
   outward?: { x: number; z: number }
   /** Interior walls stay up in a cutaway; only the shell is taken away. */
   exterior?: boolean
+  /** This wall's own finish, if it was painted; otherwise the house default. */
+  finish?: WallFinish
 }
 
 /**
@@ -56,6 +58,13 @@ export interface OpeningUnit {
   exterior?: boolean
 }
 
+export interface Bounds {
+  minX: number
+  maxX: number
+  minZ: number
+  maxZ: number
+}
+
 export interface Building3D {
   /** Solid masonry: full-height stretches, plus sills and headers. */
   walls: WallBox[]
@@ -65,15 +74,18 @@ export interface Building3D {
   trim: WallBox[]
   /** Free-standing columns the customer placed, e.g. carport posts. */
   columns: WallBox[]
-  /** Footprint of the exterior walls, for the roof and the floor slab. */
-  bounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null
+  /** Footprint of every storey's exterior walls — the ground and the camera. */
+  bounds: Bounds | null
+  /** The TOP storey's footprint, which is what the roof actually sits on. */
+  roofBounds: Bounds | null
   /** Top of the topmost wall — where the roof sits. */
   eaves: number
 }
 
-export interface Building3DShape {
-  /** 1 or 2. A second storey repeats the same plan above the first. */
-  storeys: number
+/** One storey: its own plan, and which of its walls are the shell. */
+export interface FloorPlan {
+  state: DrawingState
+  exteriorWallIds: ReadonlySet<string>
 }
 
 interface Span {
@@ -96,83 +108,84 @@ interface Span {
  * only one plan to work from, so an upper floor can only be the same plan —
  * the UI says so rather than pretending otherwise.
  */
-export function buildBuilding3D(
-  state: DrawingState,
-  exteriorWallIds: ReadonlySet<string>,
-  shape: Building3DShape = { storeys: 1 },
-): Building3D {
-  const storeys = Math.max(1, Math.round(shape.storeys))
+export function buildBuilding3D(floors: FloorPlan[]): Building3D {
+  const storeys = Math.max(1, floors.length)
   const walls: WallBox[] = []
   const openings: OpeningUnit[] = []
   const trim: WallBox[] = []
   const columns: WallBox[] = []
   const eaves = (storeys - 1) * LEVEL_HEIGHT + WALL_HEIGHT
+  const footprints: Bounds[] = []
 
-  // Which way is "out" is decided against the middle of the plan.
-  const nodeList = Object.values(state.nodes)
-  const centre = nodeList.length
-    ? {
-        x: nodeList.reduce((sum, n) => sum + n.x, 0) / nodeList.length,
-        z: nodeList.reduce((sum, n) => sum + n.y, 0) / nodeList.length,
+  for (let level = 0; level < storeys; level++) {
+    const { state, exteriorWallIds } = floors[level]
+    const base = level * LEVEL_HEIGHT
+    const top = base + WALL_HEIGHT
+
+    // Which way is "out" is decided against the middle of THIS storey: an
+    // upper floor can be set back or shaped differently, so the ground
+    // floor's centre would face some of its walls the wrong way.
+    const nodeList = Object.values(state.nodes)
+    const centre = nodeList.length
+      ? {
+          x: nodeList.reduce((sum, n) => sum + n.x, 0) / nodeList.length,
+          z: nodeList.reduce((sum, n) => sum + n.y, 0) / nodeList.length,
+        }
+      : { x: 0, z: 0 }
+
+    for (const wall of state.walls) {
+      const a = state.nodes[wall.a]
+      const b = state.nodes[wall.b]
+      if (!a || !b) continue
+
+      const length = distance(a, b)
+      if (length === 0) continue
+
+      const angle = Math.atan2(b.y - a.y, b.x - a.x)
+      const exterior = exteriorWallIds.has(wall.id)
+      const thickness =
+        wall.thickness ?? (exterior ? EXTERIOR_WALL_THICKNESS : INTERIOR_WALL_THICKNESS)
+
+      const dirX = (b.x - a.x) / length
+      const dirZ = (b.y - a.y) / length
+      const midX = (a.x + b.x) / 2
+      const midZ = (a.y + b.y) / 2
+
+      // Perpendicular to the wall, flipped to point away from the centre.
+      const away = (midX - centre.x) * dirZ - (midZ - centre.z) * dirX
+      const sign = away >= 0 ? 1 : -1
+      const outward = { x: dirZ * sign, z: -dirX * sign }
+
+      /** Places a span of this wall as a box in world space. */
+      const boxFor = (id: string, span: Span): WallBox | null => {
+        const spanLength = span.to - span.from
+        const spanHeight = span.top - span.bottom
+        if (spanLength <= 1e-6 || spanHeight <= 1e-6) return null
+
+        const centreAlong = (span.from + span.to) / 2
+        return {
+          id,
+          x: a.x + dirX * centreAlong,
+          y: (span.bottom + span.top) / 2,
+          z: a.y + dirZ * centreAlong,
+          length: spanLength,
+          height: spanHeight,
+          thickness,
+          angle,
+          outward,
+          exterior,
+          finish: wall.finish,
+        }
       }
-    : { x: 0, z: 0 }
 
-  for (const wall of state.walls) {
-    const a = state.nodes[wall.a]
-    const b = state.nodes[wall.b]
-    if (!a || !b) continue
-
-    const length = distance(a, b)
-    if (length === 0) continue
-
-    const angle = Math.atan2(b.y - a.y, b.x - a.x)
-    const exterior = exteriorWallIds.has(wall.id)
-    const thickness =
-      wall.thickness ?? (exterior ? EXTERIOR_WALL_THICKNESS : INTERIOR_WALL_THICKNESS)
-
-    const dirX = (b.x - a.x) / length
-    const dirZ = (b.y - a.y) / length
-    const midX = (a.x + b.x) / 2
-    const midZ = (a.y + b.y) / 2
-
-    // Perpendicular to the wall, flipped to point away from the centre.
-    const away = (midX - centre.x) * dirZ - (midZ - centre.z) * dirX
-    const sign = away >= 0 ? 1 : -1
-    const outward = { x: dirZ * sign, z: -dirX * sign }
-
-    /** Places a span of this wall as a box in world space. */
-    const boxFor = (id: string, span: Span): WallBox | null => {
-      const spanLength = span.to - span.from
-      const spanHeight = span.top - span.bottom
-      if (spanLength <= 1e-6 || spanHeight <= 1e-6) return null
-
-      const centreAlong = (span.from + span.to) / 2
-      return {
-        id,
-        x: a.x + dirX * centreAlong,
-        y: (span.bottom + span.top) / 2,
-        z: a.y + dirZ * centreAlong,
-        length: spanLength,
-        height: spanHeight,
-        thickness,
-        angle,
-        outward,
-        exterior,
-      }
-    }
-
-    const wallOpenings = state.openings
-      .filter((opening) => opening.wallId === wall.id)
-      .map((opening) => ({
-        ...opening,
-        start: Math.max(0, opening.offset - opening.width / 2),
-        end: Math.min(length, opening.offset + opening.width / 2),
-      }))
-      .sort((one, two) => one.start - two.start)
-
-    for (let level = 0; level < storeys; level++) {
-      const base = level * LEVEL_HEIGHT
-      const top = base + WALL_HEIGHT
+      const wallOpenings = state.openings
+        .filter((opening) => opening.wallId === wall.id)
+        .map((opening) => ({
+          ...opening,
+          start: Math.max(0, opening.offset - opening.width / 2),
+          end: Math.min(length, opening.offset + opening.width / 2),
+        }))
+        .sort((one, two) => one.start - two.start)
 
       const push = (id: string, span: Span) => {
         const box = boxFor(`${id}-L${level}`, span)
@@ -191,7 +204,12 @@ export function buildBuilding3D(
           })
         }
 
-        const head = base + (opening.kind === 'door' ? DOOR_HEIGHT : WINDOW_SILL + WINDOW_HEIGHT)
+        // A full-height window is glazed from the floor to the door head,
+        // which is what keeps a run of them lining up with the doors beside
+        // them in an elevation.
+        const sill = opening.tall ? 0 : WINDOW_SILL
+        const glazedTop = opening.tall ? DOOR_HEIGHT : WINDOW_SILL + WINDOW_HEIGHT
+        const head = base + (opening.kind === 'door' ? DOOR_HEIGHT : glazedTop)
 
         // Header over the hole.
         push(`${wall.id}-head-${opening.id}`, {
@@ -203,12 +221,12 @@ export function buildBuilding3D(
 
         // Wall under a window; a door goes to the floor. On an upper storey a
         // door opens onto a balcony, so it keeps its full height.
-        if (opening.kind === 'window') {
+        if (opening.kind === 'window' && sill > 0) {
           push(`${wall.id}-sill-${opening.id}`, {
             from: opening.start,
             to: opening.end,
             bottom: base,
-            top: base + WINDOW_SILL,
+            top: base + sill,
           })
         }
 
@@ -218,8 +236,8 @@ export function buildBuilding3D(
             : {
                 from: opening.start,
                 to: opening.end,
-                bottom: base + WINDOW_SILL,
-                top: base + WINDOW_SILL + WINDOW_HEIGHT,
+                bottom: base + sill,
+                top: base + glazedTop,
               }
 
         const hole = boxFor(`${wall.id}-unit-${opening.id}-L${level}`, holeSpan)
@@ -246,8 +264,9 @@ export function buildBuilding3D(
         push(`${wall.id}-solid-end`, { from: cursor, to: length, bottom: base, top })
       }
 
-      // The floor band between storeys both fills the structural gap above
-      // this wall and is what makes a two-storey house read as two storeys.
+      // The floor band above this wall both fills the structural gap and is
+      // what makes a two-storey house read as two storeys. It is drawn from
+      // the wall BELOW, so a set-back upper floor still shows its slab edge.
       if (level < storeys - 1) {
         trim.push({
           id: `${wall.id}-band-L${level}`,
@@ -262,64 +281,83 @@ export function buildBuilding3D(
           exterior,
         })
       }
+
+      // Edge of the ground slab, standing slightly proud of the wall above.
+      if (exterior && level === 0) {
+        trim.push({
+          id: `${wall.id}-plinth`,
+          x: midX,
+          y: PLINTH_HEIGHT / 2,
+          z: midZ,
+          length,
+          height: PLINTH_HEIGHT,
+          thickness: thickness + 0.1,
+          angle,
+          // The plinth stays: it is the floor edge, not the wall, and keeping
+          // it draws the outline of the room the wall was taken from.
+          exterior: false,
+        })
+      }
     }
 
-    // Edge of the floor slab, standing slightly proud of the wall above it.
-    if (exterior) {
-      trim.push({
-        id: `${wall.id}-plinth`,
-        x: midX,
-        y: PLINTH_HEIGHT / 2,
-        z: midZ,
-        length,
-        height: PLINTH_HEIGHT,
-        thickness: thickness + 0.1,
-        angle,
-        // The plinth stays: it is the floor edge, not the wall, and keeping
-        // it draws the outline of the room the wall was taken from.
-        exterior: false,
+    // Columns the customer placed themselves stand free — a carport post, a
+    // porch post — and stand on the storey they were drawn on. The ones
+    // synced to wall junctions are buried inside the wall they belong to, so
+    // drawing them would only cost z-fighting.
+    for (const fixture of state.fixtures) {
+      if (fixture.kind !== 'column' || fixture.nodeId) continue
+      columns.push({
+        id: `column-${fixture.id}-L${level}`,
+        x: fixture.x,
+        y: base + WALL_HEIGHT / 2,
+        z: fixture.y,
+        length: Math.max(0.05, fixture.width),
+        height: WALL_HEIGHT,
+        thickness: Math.max(0.05, fixture.depth),
+        angle: fixture.rotation,
       })
     }
+
+    // The roof spans the shell, so only exterior corners define the extent.
+    const exteriorNodeIds = new Set<string>()
+    for (const wall of state.walls) {
+      if (!exteriorWallIds.has(wall.id)) continue
+      exteriorNodeIds.add(wall.a)
+      exteriorNodeIds.add(wall.b)
+    }
+
+    const corners = [...exteriorNodeIds]
+      .map((id) => state.nodes[id])
+      .filter((node): node is NonNullable<typeof node> => node !== undefined)
+
+    if (corners.length > 0) {
+      footprints.push({
+        minX: Math.min(...corners.map((n) => n.x)),
+        maxX: Math.max(...corners.map((n) => n.x)),
+        minZ: Math.min(...corners.map((n) => n.y)),
+        maxZ: Math.max(...corners.map((n) => n.y)),
+      })
+    } else {
+      // A storey with no shell contributes nothing to either extent, but the
+      // slot has to be kept so `roofBounds` still means "the top storey".
+      footprints.push(null as unknown as Bounds)
+    }
   }
 
-  // Columns the customer placed themselves stand free — a carport post, a
-  // porch post. The ones synced to wall junctions are buried inside the wall
-  // they belong to, so drawing them would only cost z-fighting.
-  for (const fixture of state.fixtures) {
-    if (fixture.kind !== 'column' || fixture.nodeId) continue
-    columns.push({
-      id: `column-${fixture.id}`,
-      x: fixture.x,
-      y: eaves / 2,
-      z: fixture.y,
-      length: Math.max(0.05, fixture.width),
-      height: eaves,
-      thickness: Math.max(0.05, fixture.depth),
-      angle: fixture.rotation,
-    })
-  }
-
-  // The roof spans the shell, so only exterior corners define its extent.
-  const exteriorNodeIds = new Set<string>()
-  for (const wall of state.walls) {
-    if (!exteriorWallIds.has(wall.id)) continue
-    exteriorNodeIds.add(wall.a)
-    exteriorNodeIds.add(wall.b)
-  }
-
-  const corners = [...exteriorNodeIds]
-    .map((id) => state.nodes[id])
-    .filter((node): node is NonNullable<typeof node> => node !== undefined)
-
+  const real = footprints.filter((one): one is Bounds => one !== null)
   const bounds =
-    corners.length > 0
+    real.length > 0
       ? {
-          minX: Math.min(...corners.map((n) => n.x)),
-          maxX: Math.max(...corners.map((n) => n.x)),
-          minZ: Math.min(...corners.map((n) => n.y)),
-          maxZ: Math.max(...corners.map((n) => n.y)),
+          minX: Math.min(...real.map((one) => one.minX)),
+          maxX: Math.max(...real.map((one) => one.maxX)),
+          minZ: Math.min(...real.map((one) => one.minZ)),
+          maxZ: Math.max(...real.map((one) => one.maxZ)),
         }
       : null
 
-  return { walls, openings, trim, columns, bounds, eaves }
+  // The roof rests on the topmost storey that HAS a shell. A blank top floor
+  // would otherwise take the roof off the house entirely.
+  const roofBounds = [...footprints].reverse().find((one) => one !== null) ?? null
+
+  return { walls, openings, trim, columns, bounds, roofBounds, eaves }
 }

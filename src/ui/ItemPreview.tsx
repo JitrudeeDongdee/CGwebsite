@@ -1,4 +1,6 @@
 import { useTheme } from '@mui/material/styles'
+import type { HouseFinish } from '../drawing/houseStyle'
+import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
 import type { DrawingState, FixtureKind, OpeningKind } from '../drawing/types'
 import { fixtureSpec } from '../drawing/fixtures'
 import { FixtureSymbol } from '../sheet/fixtureSymbols'
@@ -68,8 +70,25 @@ export function TemplatePreview({ template }: { template: PlanTemplate }) {
  * building as a little 3D model rather than a flat plan. Pure SVG — no WebGL,
  * so it's cheap to render one per card.
  */
-export function IsoThumbnail({ state, size = 80 }: { state: DrawingState; size?: number }) {
-  const theme = useTheme()
+/**
+ * A small isometric of a plan, with its roof on.
+ *
+ * The gallery cards used to show bare grey wall blocks, which read as a
+ * diagram rather than as the house you would get. Given the plan's finish —
+ * every built-in sample carries one — the walls take its colour and a roof of
+ * the right shape is capped over the footprint, so the card previews the
+ * house the 3D view will build. Without a finish it falls back to the old
+ * neutral massing, which is still right for a plan someone just drew.
+ */
+export function IsoThumbnail({
+  state,
+  size = 80,
+  finish,
+}: {
+  state: DrawingState
+  size?: number
+  finish?: HouseFinish
+}) {
   const { nodes, walls } = state
 
   const usable = walls.filter((w) => nodes[w.a] && nodes[w.b])
@@ -86,11 +105,63 @@ export function IsoThumbnail({ state, size = 80 }: { state: DrawingState; size?:
     Y: (x + y) * SIN - z,
   })
 
+  // Footprint, for the roof that caps it.
+  const ends = usable.flatMap((w) => [nodes[w.a], nodes[w.b]])
+  // Small on purpose. Seen from above at this angle a generous overhang
+  // covers the walls, and a card that is all roof says nothing about the
+  // house under it.
+  const O = 0.18
+  const x0 = Math.min(...ends.map((n) => n.x)) - O
+  const x1 = Math.max(...ends.map((n) => n.x)) + O
+  const y0 = Math.min(...ends.map((n) => n.y)) - O
+  const y1 = Math.max(...ends.map((n) => n.y)) + O
+  const shape = finish?.roof ?? 'gable'
+  // Enough rise to read as a pitch at 80px, without turning a small plan
+  // into a spire.
+  const rise = shape === 'flat' ? 0 : Math.min(1.8, Math.min(x1 - x0, y1 - y0) * 0.26)
+  const ridgeAlongX = x1 - x0 >= y1 - y0
+  const xm = (x0 + x1) / 2
+  const ym = (y0 + y1) / 2
+
+  type Face = { pts: [number, number, number][]; shade: number }
+  const roof: Face[] = []
+  {
+    if (shape === 'flat') {
+      roof.push({ pts: [[x0, y0, H], [x1, y0, H], [x1, y1, H], [x0, y1, H]], shade: 1 })
+    } else if (shape === 'shed') {
+      roof.push({ pts: [[x0, y0, H + rise], [x1, y0, H + rise], [x1, y1, H], [x0, y1, H]], shade: 1 })
+    } else if (shape === 'hip') {
+      // Ridge pulled in from both ends, so all four sides slope.
+      const inset = Math.min(x1 - x0, y1 - y0) / 4
+      const [r0, r1] = ridgeAlongX
+        ? ([[x0 + inset, ym], [x1 - inset, ym]] as const)
+        : ([[xm, y0 + inset], [xm, y1 - inset]] as const)
+      roof.push(
+        { pts: [[x0, y0, H], [x1, y0, H], [r1[0], r1[1], H + rise], [r0[0], r0[1], H + rise]], shade: 1 },
+        { pts: [[x1, y1, H], [x0, y1, H], [r0[0], r0[1], H + rise], [r1[0], r1[1], H + rise]], shade: 0.72 },
+        { pts: [[x0, y1, H], [x0, y0, H], [r0[0], r0[1], H + rise]], shade: 0.86 },
+        { pts: [[x1, y0, H], [x1, y1, H], [r1[0], r1[1], H + rise]], shade: 0.6 },
+      )
+    } else if (ridgeAlongX) {
+      roof.push(
+        { pts: [[x0, y0, H], [x1, y0, H], [x1, ym, H + rise], [x0, ym, H + rise]], shade: 1 },
+        { pts: [[x0, y1, H], [x1, y1, H], [x1, ym, H + rise], [x0, ym, H + rise]], shade: 0.68 },
+      )
+    } else {
+      roof.push(
+        { pts: [[x0, y0, H], [x0, y1, H], [xm, y1, H + rise], [xm, y0, H + rise]], shade: 0.68 },
+        { pts: [[x1, y0, H], [x1, y1, H], [xm, y1, H + rise], [xm, y0, H + rise]], shade: 1 },
+      )
+    }
+  }
+
   const pts = usable.flatMap((w) => {
     const a = nodes[w.a]
     const b = nodes[w.b]
     return [project(a.x, a.y, 0), project(b.x, b.y, 0), project(a.x, a.y, H), project(b.x, b.y, H)]
   })
+  // The roof is part of the silhouette, so it has to be inside the fit.
+  for (const face of roof) for (const [x, y, z] of face.pts) pts.push(project(x, y, z))
   const minX = Math.min(...pts.map((p) => p.X))
   const maxX = Math.max(...pts.map((p) => p.X))
   const minY = Math.min(...pts.map((p) => p.Y))
@@ -105,7 +176,17 @@ export function IsoThumbnail({ state, size = 80 }: { state: DrawingState; size?:
     nodes[w.a].x + nodes[w.a].y + nodes[w.b].x + nodes[w.b].y
   const ordered = [...usable].sort((a, b) => depth(a) - depth(b))
 
-  const base = theme.scene.wall
+  // A plan with no finish of its own opens in the designer's defaults, so
+  // the card shows those rather than a neutral grey block — what you see on
+  // the card is what the 3D view will build.
+  const base = finish?.wallColor ?? WALL_FINISH.plaster.defaultColor
+  const roofColor = finish?.roofColor ?? ROOF_FINISH.tile.defaultColor
+  // Nearer faces are lower on screen, so paint by increasing x+y.
+  const roofOrdered = [...roof].sort(
+    (one, two) =>
+      one.pts.reduce((s, [x, y]) => s + x + y, 0) / one.pts.length -
+      two.pts.reduce((s, [x, y]) => s + x + y, 0) / two.pts.length,
+  )
 
   return (
     <svg width={size} height={size} style={{ flexShrink: 0 }} aria-hidden>
@@ -132,6 +213,18 @@ export function IsoThumbnail({ state, size = 80 }: { state: DrawingState; size?:
           />
         )
       })}
+      {/* Drawn last: the roof is over everything, whatever the wall order. */}
+      {roofOrdered.map((face, i) => (
+        <polygon
+          key={`roof-${i}`}
+          points={face.pts.map(([x, y, z]) => at(project(x, y, z))).join(' ')}
+          fill={roofColor}
+          fillOpacity={face.shade}
+          stroke={roofColor}
+          strokeWidth={0.75}
+          strokeLinejoin="round"
+        />
+      ))}
     </svg>
   )
 }
@@ -231,6 +324,8 @@ const FIXTURE_HEIGHT: Partial<Record<FixtureKind, number>> = {
   sink: 0.85,
   shower: 1.2,
   tv: 1.2,
+  campChair: 0.8,
+  firePit: 0.4,
 }
 
 /** The same 2:1 isometric the plan thumbnails use. */

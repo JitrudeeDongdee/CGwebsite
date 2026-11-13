@@ -1124,6 +1124,128 @@ the cutaway); the gallery stepped full→row→hidden→(clamped)→row under re
 each step persisted. `tsc -b` clean, `oxlint` 25 warnings (all the pre-existing
 `only-export-components` class), `pnpm run build` passes.
 
+## Each storey is its own plan — `src/drawing/floors.ts` (2026-11-13)
+The owner's report: floor 1 and floor 2 are rarely the same, so there must be a way to pick a
+storey and see that storey's plan. Until now a second storey in 3D was literally the ground floor
+drawn again a level up — there was one `DrawingState`, and the panel said so rather than
+pretending otherwise.
+
+- **`DrawingState` is UNCHANGED, deliberately.** It is the shape every consumer in `sheet/`,
+  `scene3d/` and the lead snapshot reads, so the stack sits ABOVE it: one floor is exactly a
+  `DrawingState`, `useDrawingState().state` is still the floor being edited, and everything that
+  works on a single floor needed no change at all. `floors.ts` holds the stack plus
+  add/remove/clamp; `MAX_FLOORS = 2` is the only thing a third storey would need to change.
+- **A new storey is a deep COPY of the one below.** The outer walls line up because they carry the
+  load, so a copy is a few edits from right where a blank sheet is a redraw. Deep, or dragging a
+  corner upstairs would move the one beneath it.
+- **History holds the whole stack**, so undo spans the house; the active floor is kept OUT of it,
+  because switching floors is looking at the plan, not changing it — and undo must not teleport the
+  editor to another storey. ⚠️ One consequence, accepted: undo pressed while standing on floor 1
+  can revert an edit made on floor 2. It is one document with one undo stack.
+- **`buildBuilding3D(FloorPlan[])`** builds each storey from its own walls and openings. "Out" is
+  decided per storey — a set-back upper floor would face some of its walls the wrong way off the
+  ground floor's centroid. `roofBounds` is the TOP storey's footprint (the roof rests on what is
+  actually under it) while `bounds` stays the union, for the ground plane and the camera. Columns
+  stand on the storey they were drawn on rather than running the full height.
+- `Building3DOptions.storeys` is **gone**: a two-storey house now means two plans, not a number in
+  a panel, so the dock's storeys row went with it.
+- **`FloorSwitcher`** (on the canvas, not in the dock — it decides what the canvas IS) stacks top
+  storey first, the way a building is drawn in section. With one floor it shows only the add
+  button. **In 3D it means something different**: it cuts the stack short (`floors.slice(0, n+1)`)
+  so you can look at the ground floor with the one above it out of the way, plus a "ทั้งหลัง" chip
+  to go back. Eaves height and roof footprint both derive from the floors handed in, so the roof
+  simply drops onto whatever is now the top. The two selections are separate state — looking at a
+  storey in 3D must not change which plan the next edit lands on — and add/remove are 2D-only.
+- **The upper floor is drawn over a faint trace of the one below** (`PlanSheet` `underlay`), or its
+  outer walls would have to be lined up from memory. Wall bands only: another floor's dimensions,
+  labels and furniture would read as part of this one.
+- **Area and price are the WHOLE house.** The summary lists each storey and the total; openings are
+  counted across every floor. Quoting the floor you happened to be looking at would under-price a
+  two-storey house by exactly the storey you were not.
+- **File format v2.** `floors` is added and `state` STAYS at the top level as the ground floor, so a
+  v1 reader opens a two-storey plan and sees its ground floor instead of failing. v1 files and bare
+  `DrawingState` exports both still load. `Lead.plan` likewise stays the ground floor, with
+  `floors` added alongside.
+- Verified in the browser: added a storey to `nordic-barn-7x9`, deleted an interior wall upstairs
+  (bedroom 11.40 → 17.48 m²), switched down and found floor 1 untouched; 3D built two real storeys
+  with the missing wall visible in the cutaway; the summary read 63.00 + 63.00 = 126.00 m² and
+  priced 8 doors / 10 windows across both floors; undo restored the upstairs wall; picking ชั้น 1
+  in 3D built the ground floor alone with the roof on it. File format round-tripped in the page:
+  v2 keeps two distinct floors, v1 and a bare state still load.
+
+### A plain wheel scrolls the page again (2026-11-13)
+The editor is a full viewport tall and swallowed every wheel event to zoom, so **nothing below it
+could be reached by scrolling** — including the sample plans, which is how people get to another
+house. Zoom is now **ctrl/⌘ + wheel**, the usual convention; a trackpad pinch already arrives as a
+wheel event with `ctrlKey` set, so pinch-to-zoom keeps working with no extra handling. Measured: a
+plain wheel over the canvas scrolled the page 278px with the viewBox unchanged, ctrl+wheel and
+⌘+wheel both zoomed. ⚠️ `touchAction: 'none'` stays, so on a touch screen a drag over the canvas
+still draws rather than scrolling — drawing matters more there, and that path is untested anyway.
+
+### Gallery cards preview the house, not a block of walls (2026-11-13)
+`IsoThumbnail` caps the footprint with a roof of the right shape (gable / hip / shed / flat) and
+takes the plan's colours. A plan with no `finish` of its own falls back to the designer's defaults
+(plaster walls, tile roof) — which is exactly what the 3D view would build for it, so the card
+previews what you actually get. The overhang is small (0.18) and the pitch modest: seen from above
+at this angle a generous overhang covers the walls, and a card that is all roof says nothing about
+the house under it.
+
+
+## Per-wall finishes, and the site around the house (2026-11-13)
+From the owner's reference render of the 12 m cabin: add the steps, the house standing clear of
+the ground, full-height glazing, curtains, wall lights, a fence and camping chairs — and **let the
+wall material be chosen per wall, with each interior face its own colour.** That last one closes
+the gap this spec has carried since the cabin landed ("one wall finish per house … per-wall
+finishes are a real feature, not a tweak").
+
+### Painting one wall at a time
+- **`DrawWall.finish?: WallFinish`** — `{ material?, color?, insideColor? }`. Inside and outside
+  are separate fields because they always are in practice: the render is charcoal cladding outside
+  with timber accent panels, and a room is painted on its own. Any field left out falls back to
+  the house default, so a plan that sets nothing behaves exactly as before.
+- **A brush, not a property panel.** There is no "selected wall" in this editor, so `ToolMode`
+  gains `paint`: pick a material and colour in the dock's ทาสีผนัง tab, then click the walls you
+  want it on — the same shape as placing a door or a sofa. `setWallFinish` patches rather than
+  replaces, so brushing the outside does not wipe the colour behind it; `clearWallFinishes` takes
+  the whole house back to default.
+- ⚠️ **Two faces on one box.** A `BoxGeometry`'s groups are +x, −x, +y, −y, +z, −z, and a wall box
+  runs along local x with its thickness on z — so the two faces that matter are groups 4 and 5.
+  `PatternedBox` rotates local +z by the box's own angle and compares it with `outward` to decide
+  which is which, rather than re-deriving the sign the builder used. The inner face is always
+  `paint`, never the cladding: a brick elevation does not mean a brick living room.
+- `Building3DOptions.insideColor` is the house-wide room colour a painted wall overrides.
+
+### The site — `src/scene3d/SitePieces.tsx`
+All of it is in the render, all of it is switched from the 3D panel, and none of it touches the plan.
+- **`raise`** (none / 45 cm / 90 cm) lifts the house onto **piers** — on a grid down the long
+  sides, because a 12 m cabin on four posts reads as a table — with a skirt at the slab edge so it
+  does not float.
+- **Steps are built from the doors**, not placed by hand: a raised house with a door you cannot
+  reach is worse than no steps, and the door already knows where it is and which way it faces.
+  ~170 mm a rise, which is what a stair actually is.
+- **Wall lights** flank each exterior door. A small emissive face, not a real light: a point light
+  per door would cost a shadow map each and buy nothing in daylight, while the glow is the part
+  you see.
+- **Fence** — dark slats with gaps, set back from the house and only on the two FAR sides: the
+  camera starts off the +x/+z corner, and a fence across the elevation the customer came to look
+  at is a wall in front of the house.
+- **Curtains** hang inside the glazing (`OpeningsView curtains`), sheer and drawn back to the
+  jambs. They are what stops a big pane reading as a hole.
+- **Full-height windows**: `DrawOpening.tall` drops the sill to the floor and takes the head up to
+  the door height, so a run of glazing lines up with the doors beside it. New preset
+  `openings.windowFull`, and the `cabin-12x3-4` sample's long elevations now use it.
+- **`campChair` and `firePit`** fixtures, in a new `outdoor` group, with plan symbols and 3D models.
+
+Verified in the browser on `cabin-12x3-4`: raised on piers with the skirt and steps, full-height
+glazing with curtains behind it, and painting the long south elevation in timber left the rest of
+the house charcoal — the render's accent-panel look. `tsc -b` clean, `oxlint` 26 warnings (all the
+pre-existing `only-export-components` class), `pnpm run build` passes.
+
+⚠️ **Not matched to the render yet:** the wrap-around porch soffit lining, the gravel/paving
+pattern of the yard, and the planter beds. The fence is off by default, since most plans are not
+walled.
+
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

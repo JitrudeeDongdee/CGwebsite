@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useTheme } from '@mui/material/styles'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import type { DrawingState, Point } from '../drawing/types'
+import type { DrawingState, Point, WallFinish } from '../drawing/types'
 import { useInteraction } from './useInteraction'
 import { CameraControls } from './CameraControls'
 import { GroundPlane } from './GroundPlane'
@@ -38,6 +38,7 @@ interface DrawingCanvasProps {
   finalizeFixtureMove: (fixtureId: string, point: Point) => void
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
+  paintWall: (wallId: string, patch: WallFinish) => void
   /** Lets the page cancel an in-progress wall from a keyboard handler. */
   cancelRef: React.RefObject<(() => void) | null>
 }
@@ -60,6 +61,7 @@ export function DrawingCanvas({
   finalizeFixtureMove,
   dragWallBy,
   finalizeWallMove,
+  paintWall,
 }: DrawingCanvasProps) {
   const { draft, moveSnap, cursor, onDown, onMove, onUp, cancelDrawing } = useInteraction({
     state,
@@ -74,6 +76,7 @@ export function DrawingCanvas({
     finalizeFixtureMove,
     dragWallBy,
     finalizeWallMove,
+    paintWall,
   })
   const controlsRef = useRef<OrbitControls>(null)
   const { scene } = useTheme()

@@ -262,6 +262,30 @@ export function FixtureSymbol({ kind, width, depth, ink, stroke = 1, nonScaling 
         </>
       )
 
+    case 'campChair':
+      return (
+        <>
+          {/* A folding chair: seat, sling back at -y, and the crossed legs. */}
+          <rect x={x + w * 0.1} y={y + d * 0.28} width={w * 0.8} height={d * 0.62} rx={w * 0.08} {...body} />
+          <path d={`M ${x + w * 0.1} ${y + d * 0.3} Q ${0} ${y + d * 0.02} ${x + w * 0.9} ${y + d * 0.3}`} {...body} />
+          <line x1={x + w * 0.14} y1={y + d * 0.34} x2={x + w * 0.86} y2={y + d * 0.86} {...thin} />
+          <line x1={x + w * 0.86} y1={y + d * 0.34} x2={x + w * 0.14} y2={y + d * 0.86} {...thin} />
+        </>
+      )
+
+    case 'firePit':
+      return (
+        <>
+          <circle cx={0} cy={0} r={Math.min(w, d) / 2} {...body} />
+          <circle cx={0} cy={0} r={Math.min(w, d) * 0.3} {...thin} />
+          {/* Flame, so it is not just two circles. */}
+          <path
+            d={`M 0 ${-d * 0.16} Q ${w * 0.1} ${-d * 0.02} 0 ${d * 0.14} Q ${-w * 0.1} ${-d * 0.02} 0 ${-d * 0.16}`}
+            {...thin}
+          />
+        </>
+      )
+
     default:
       return <rect x={x} y={y} width={w} height={d} {...body} />
   }

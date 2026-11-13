@@ -10,6 +10,8 @@ import Edit from '@mui/icons-material/Edit'
 import Undo from '@mui/icons-material/Undo'
 import Redo from '@mui/icons-material/Redo'
 import CenterFocusStrong from '@mui/icons-material/CenterFocusStrong'
+import ZoomIn from '@mui/icons-material/ZoomIn'
+import ZoomOut from '@mui/icons-material/ZoomOut'
 import type { ToolMode } from '../drawing/tools'
 
 interface BottomToolbarProps {
@@ -18,6 +20,8 @@ interface BottomToolbarProps {
   onUndo: () => void
   onRedo: () => void
   onFit: () => void
+  /** Scales the plan view about its centre. */
+  onZoom: (factor: number) => void
   canUndo: boolean
   canRedo: boolean
 }
@@ -34,6 +38,7 @@ export function BottomToolbar({
   onUndo,
   onRedo,
   onFit,
+  onZoom,
   canUndo,
   canRedo,
 }: BottomToolbarProps) {
@@ -45,8 +50,9 @@ export function BottomToolbar({
       sx={{
         position: 'absolute',
         bottom: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        // Left, not centred: the catalogue dock owns the bottom-right corner,
+        // and a centred bar drifts under it as the dock widens.
+        left: 16,
         display: 'flex',
         alignItems: 'center',
         gap: 0.5,
@@ -93,6 +99,22 @@ export function BottomToolbar({
       <Tooltip title={t('tools.fit')}>
         <IconButton size="small" onClick={onFit}>
           <CenterFocusStrong fontSize="small" />
+        </IconButton>
+      </Tooltip>
+
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+      {/* Zoom has to be here now: a plain wheel scrolls the page so the
+          sample plans below can be reached, which left the pointer with no
+          way to zoom but ctrl/⌘ + wheel. */}
+      <Tooltip title={t('tools.zoomOut')}>
+        <IconButton size="small" onClick={() => onZoom(1.25)}>
+          <ZoomOut fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title={t('tools.zoomIn')}>
+        <IconButton size="small" onClick={() => onZoom(1 / 1.25)}>
+          <ZoomIn fontSize="small" />
         </IconButton>
       </Tooltip>
     </Paper>

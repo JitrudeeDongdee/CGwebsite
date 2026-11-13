@@ -8,6 +8,7 @@ import type {
   FixtureKind,
   OpeningKind,
   Point,
+  WallFinish,
 } from './types'
 import { fixtureSpec } from './fixtures'
 import { GRID_SIZE, distance, findSnapTarget, snapToGrid } from './geometry'
@@ -249,6 +250,7 @@ export function addOpening(
   offsetAlongWall: number,
   width: number,
   kind: OpeningKind,
+  tall?: boolean,
 ): DrawingState {
   const wall = state.walls.find((w) => w.id === wallId)
   if (!wall) return state
@@ -264,7 +266,7 @@ export function addOpening(
   const half = width / 2
   const offset = Math.min(Math.max(offsetAlongWall, half), wallLength - half)
 
-  const opening: DrawOpening = { id: nextId('opening'), wallId, offset, width, kind }
+  const opening: DrawOpening = { id: nextId('opening'), wallId, offset, width, kind, ...(tall ? { tall } : {}) }
   return { ...state, openings: [...state.openings, opening] }
 }
 
@@ -273,6 +275,31 @@ export function deleteOpening(state: DrawingState, openingId: string): DrawingSt
 }
 
 /** Replaces the whole plan, e.g. when loading a starter template. */
+/**
+ * Paints one wall. A patch, not a replacement, so brushing the outside does
+ * not wipe the colour someone chose for the room behind it.
+ */
+export function setWallFinish(
+  state: DrawingState,
+  wallId: string,
+  patch: WallFinish,
+): DrawingState {
+  return {
+    ...state,
+    walls: state.walls.map((wall) =>
+      wall.id === wallId ? { ...wall, finish: { ...wall.finish, ...patch } } : wall,
+    ),
+  }
+}
+
+/** Takes every wall back to the house default. */
+export function clearWallFinishes(state: DrawingState): DrawingState {
+  return {
+    ...state,
+    walls: state.walls.map(({ finish: _dropped, ...wall }) => wall),
+  }
+}
+
 export function loadPlan(plan: DrawingState): DrawingState {
   return syncStructuralColumns({
     nodes: { ...plan.nodes },

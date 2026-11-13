@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@mui/material/styles'
-import type { DrawingState, FixtureKind, OpeningKind, Point } from '../drawing/types'
+import type { DrawingState, FixtureKind, OpeningKind, Point, WallFinish } from '../drawing/types'
 import type { ToolMode } from '../drawing/tools'
 import type { Room } from '../drawing/rooms'
 import { useInteraction } from '../scene/useInteraction'
@@ -15,6 +15,8 @@ interface PlanEditorProps {
   state: DrawingState
   rooms: Room[]
   exteriorWallIds: ReadonlySet<string>
+  /** The storey below, traced faintly under this one. */
+  underlay?: DrawingState | null
   addWall: (start: Point, end: Point, thickness?: number) => void
   beginNodeDrag: () => void
   updateNodePosition: (nodeId: string, point: Point) => void
@@ -28,7 +30,14 @@ interface PlanEditorProps {
   finalizeFixtureMove: (fixtureId: string, point: Point) => void
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
+  paintWall: (wallId: string, patch: WallFinish) => void
   cancelRef: React.RefObject<(() => void) | null>
+  /**
+   * Filled in by the editor with a zoom-by-factor function, the same way
+   * `cancelRef` works. The viewBox lives in here, so the toolbar outside
+   * cannot drive it without a handle back in.
+   */
+  zoomRef?: React.RefObject<((factor: number) => void) | null>
 }
 
 const MIN_VIEW_WIDTH = 2
@@ -37,7 +46,7 @@ const MAX_VIEW_WIDTH = 400
 /**
  * The 2D floor-plan editor, drawn as vector SVG. It renders the same
  * `PlanSheet` used for the PDF, and layers interaction on top: pan (middle
- * button / Space-drag), wheel-zoom to the cursor, and — reusing the shared,
+ * button / Space-drag), ctrl/⌘-wheel zoom to the cursor, and — reusing the shared,
  * framework-agnostic `useInteraction` state machine — click-to-draw walls plus
  * drag-to-move for corners, walls and fixtures. Pointer positions are turned
  * into world metres through the SVG's own CTM, so one code path serves mouse
@@ -47,6 +56,7 @@ export function PlanEditor({
   state,
   rooms,
   exteriorWallIds,
+  underlay,
   addWall,
   beginNodeDrag,
   updateNodePosition,
@@ -60,7 +70,9 @@ export function PlanEditor({
   finalizeFixtureMove,
   dragWallBy,
   finalizeWallMove,
+  paintWall,
   cancelRef,
+  zoomRef,
 }: PlanEditorProps) {
   const { scene } = useTheme()
   const svgRef = useRef<SVGSVGElement>(null)
@@ -78,10 +90,28 @@ export function PlanEditor({
     finalizeFixtureMove,
     dragWallBy,
     finalizeWallMove,
+    paintWall,
   })
   cancelRef.current = cancelDrawing
 
   const [view, setView] = useState<SheetView>(() => fitView(sheetBounds(state)))
+
+  // Zoom about the middle of what is on screen, which is what a button does;
+  // the wheel zooms to the cursor instead, because it has one.
+  const zoomBy = useCallback((factor: number) => {
+    setView((v) => {
+      const width = Math.min(MAX_VIEW_WIDTH, Math.max(MIN_VIEW_WIDTH, v.width * factor))
+      const scale = width / v.width
+      const height = v.height * scale
+      return {
+        width,
+        height,
+        minX: v.minX + (v.width - width) / 2,
+        minY: v.minY + (v.height - height) / 2,
+      }
+    })
+  }, [])
+  if (zoomRef) zoomRef.current = zoomBy
 
   // Re-frame the plan on demand (fit button / template load), never mid-edit.
   const lastFit = useRef(fitToken)
@@ -185,6 +215,15 @@ export function PlanEditor({
     const svg = svgRef.current
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
+      // A plain wheel scrolls the PAGE, so the sample plans below the editor
+      // can be reached. The editor is a full viewport tall, so swallowing the
+      // wheel to zoom made everything under it unreachable by scrolling —
+      // which is how people actually get to the rest of the page.
+      //
+      // Zoom is ctrl/⌘ + wheel, the usual convention. A trackpad pinch
+      // already arrives as a wheel event with ctrlKey set, so pinch-to-zoom
+      // keeps working with no extra handling.
+      if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       const world = toWorld(e.clientX, e.clientY)
       if (!world) return
@@ -210,6 +249,7 @@ export function PlanEditor({
   return (
     <PlanSheet
       state={state}
+      underlay={underlay}
       rooms={rooms}
       exteriorWallIds={exteriorWallIds}
       svgRef={svgRef}

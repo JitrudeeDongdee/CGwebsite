@@ -1,4 +1,4 @@
-import type * as THREE from 'three'
+import * as THREE from 'three'
 import type { OpeningUnit } from '../drawing/building3d'
 import {
   DOOR_SURFACE,
@@ -20,6 +20,7 @@ interface UnitMaterials {
   glass: THREE.Material
   leaf: THREE.Material
   trim: THREE.Material
+  curtain: THREE.Material
 }
 
 /**
@@ -27,7 +28,15 @@ interface UnitMaterials {
  * rather than one translucent slab filling the hole. At any distance a
  * customer would actually look from, the frame is most of what says "window".
  */
-function WindowUnit({ unit, mats }: { unit: OpeningUnit; mats: UnitMaterials }) {
+function WindowUnit({
+  unit,
+  mats,
+  curtains,
+}: {
+  unit: OpeningUnit
+  mats: UnitMaterials
+  curtains?: boolean
+}) {
   const { width, height, wallThickness } = unit
   const depth = wallThickness * 0.8
   const innerW = width - MEMBER * 2
@@ -73,6 +82,31 @@ function WindowUnit({ unit, mats }: { unit: OpeningUnit; mats: UnitMaterials }) 
       <mesh material={mats.glass}>
         <boxGeometry args={[innerW, innerH, 0.018]} />
       </mesh>
+
+      {/* Sheer curtains, drawn back to the jambs and hung INSIDE: they are
+          what stops a big pane reading as a hole, and in the render they are
+          most of what you see of the rooms. Slightly narrower than the
+          opening so the glass still shows between them. */}
+      {curtains && (
+        <>
+          {[-1, 1].map((side) => (
+            <mesh
+              key={`curtain${side}`}
+              position={[side * (innerW * 0.29), -MEMBER / 2, -(depth / 2 + 0.05)]}
+              material={mats.curtain}
+            >
+              <boxGeometry args={[innerW * 0.38, innerH - MEMBER, 0.03]} />
+            </mesh>
+          ))}
+          {/* The rail they hang from. */}
+          <mesh
+            position={[0, height / 2 - MEMBER * 0.6, -(depth / 2 + 0.05)]}
+            material={mats.frame}
+          >
+            <boxGeometry args={[width, 0.03, 0.03]} />
+          </mesh>
+        </>
+      )}
 
       {/* The sill projects past the wall, and throws the shadow that makes a
           window read as set into the wall rather than printed on it. */}
@@ -156,14 +190,22 @@ function DoorUnit({ unit, mats }: { unit: OpeningUnit; mats: UnitMaterials }) {
 export function OpeningsView({
   units,
   frame,
+  curtains,
 }: {
   units: OpeningUnit[]
   frame: FrameMaterial
+  curtains?: boolean
 }) {
   const mats: UnitMaterials = {
     frame: useSolid(FRAME_SURFACE[frame]),
     leaf: useSolid(DOOR_SURFACE[frame]),
     trim: useSolid(TRIM_SURFACE),
+    // Sheer: lit from both sides and seen against the glass, so it needs
+    // some transparency or it reads as a painted board.
+    curtain: useSolid(
+      { color: '#F3EFE6', roughness: 0.95, metalness: 0 },
+      { transparent: true, opacity: 0.78, side: THREE.DoubleSide },
+    ),
     glass: useSolid(
       {
         color: GLASS_SURFACE.color,
@@ -185,7 +227,7 @@ export function OpeningsView({
     <>
       {units.map((unit) =>
         unit.kind === 'window' ? (
-          <WindowUnit key={unit.id} unit={unit} mats={mats} />
+          <WindowUnit key={unit.id} unit={unit} mats={mats} curtains={curtains} />
         ) : (
           <DoorUnit key={unit.id} unit={unit} mats={mats} />
         ),

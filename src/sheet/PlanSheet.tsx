@@ -67,6 +67,33 @@ function ptsToPath(points: Point[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
 }
 
+/**
+ * The storey below, traced faintly under the one being drawn.
+ *
+ * Without it an upper floor is drawn on a blank sheet, and the outer walls —
+ * which carry the load and so must sit on top of the ones below — have to be
+ * lined up from memory. Only the wall bands are drawn: dimensions, labels and
+ * furniture from another floor would read as part of this one.
+ */
+function Underlay({ state }: { state: DrawingState }) {
+  const outlines = useMemo(() => computeWallOutlines(state, new Set<string>()), [state])
+  const palette = usePalette()
+
+  return (
+    <g fill={palette.ink} stroke="none" opacity={0.14} pointerEvents="none">
+      {outlines.map((outline) => {
+        const [c0, c1, c2, c3] = outline.corners
+        return (
+          <path
+            key={outline.wallId}
+            d={`M ${c0.x} ${c0.y} L ${c1.x} ${c1.y} L ${c2.x} ${c2.y} L ${c3.x} ${c3.y} Z`}
+          />
+        )
+      })}
+    </g>
+  )
+}
+
 /** Hollow double-line walls with mitered corners and square free ends. */
 function Walls({
   state,
@@ -353,6 +380,8 @@ export interface PlanSheetProps {
   state: DrawingState
   rooms: Room[]
   exteriorWallIds: ReadonlySet<string>
+  /** The storey below, traced faintly underneath so walls can be aligned. */
+  underlay?: DrawingState | null
   /** Extra SVG (interaction overlays) drawn on top, in plan coordinates. */
   overlay?: React.ReactNode
   /** Ref to the underlying <svg>, for pointer→world mapping and PDF export. */
@@ -404,6 +433,7 @@ export function PlanSheet({
   state,
   rooms,
   exteriorWallIds,
+  underlay,
   overlay,
   svgRef,
   palette,
@@ -430,6 +460,7 @@ export function PlanSheet({
         {...svgProps}
         style={{ width: '100%', height: '100%', background: active.paper, display: 'block', ...style, ...svgProps?.style }}
       >
+        {underlay && <Underlay state={underlay} />}
         {bounds && (
           <>
             <Grid state={state} bounds={bounds} />
