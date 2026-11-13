@@ -38,6 +38,9 @@ interface PlanEditorProps {
    * cannot drive it without a handle back in.
    */
   zoomRef?: React.RefObject<((factor: number) => void) | null>
+  /** The fixture the Delete key would remove. */
+  selectedFixtureId?: string | null
+  onPick?: (fixtureId: string | null) => void
 }
 
 const MIN_VIEW_WIDTH = 2
@@ -73,11 +76,13 @@ export function PlanEditor({
   paintWall,
   cancelRef,
   zoomRef,
+  selectedFixtureId,
+  onPick,
 }: PlanEditorProps) {
   const { scene } = useTheme()
   const svgRef = useRef<SVGSVGElement>(null)
 
-  const { draft, moveSnap, cursor, onDown, onMove, onUp, cancelDrawing } = useInteraction({
+  const { draft, moveSnap, cursor, hover, onDown, onMove, onUp, cancelDrawing } = useInteraction({
     state,
     addWall,
     beginNodeDrag,
@@ -91,6 +96,7 @@ export function PlanEditor({
     dragWallBy,
     finalizeWallMove,
     paintWall,
+    onPick,
   })
   cancelRef.current = cancelDrawing
 
@@ -250,6 +256,9 @@ export function PlanEditor({
     <PlanSheet
       state={state}
       underlay={underlay}
+      selectedFixtureId={selectedFixtureId}
+      hoverFixtureId={hover.fixtureId}
+      hoverWallId={hover.wallId}
       rooms={rooms}
       exteriorWallIds={exteriorWallIds}
       svgRef={svgRef}

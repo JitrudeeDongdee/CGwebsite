@@ -1241,6 +1241,25 @@ glazing with curtains behind it, and painting the long south elevation in timber
 the house charcoal — the render's accent-panel look. `tsc -b` clean, `oxlint` 26 warnings (all the
 pre-existing `only-export-components` class), `pnpm run build` passes.
 
+### Selecting, deleting and hover feedback (2026-11-13)
+Furniture could always be dragged and right-click-deleted, but nothing on the sheet said a thing
+was clickable and there was no keyboard delete.
+- **Selection** is new: a plain click in select mode picks the fixture under the cursor (`onPick`
+  from `useInteraction`), drawn with a dashed accent box behind its symbol. Clicking empty ground
+  or pressing Escape clears it; deleting from the context menu clears it too, or the outline
+  survives the thing it was round.
+- **Delete / Backspace** removes the selected piece. Both, because half of everyone reaches for
+  Backspace; the existing guard already stops either firing while a field has focus.
+- **Hover** colours whatever the cursor is over in `palette.accent` (new on `SheetPalette`,
+  mapped to `scene.node`) — fixtures in select mode, WALLS while the paint or opening tool is
+  armed, since those are what a click would act on. A hovered wall also thickens: at the width a
+  wall line is drawn, a colour change alone is easy to miss on a dense plan.
+- The hover target is computed in `onMove` and compared before writing, so a move across empty
+  ground does not re-render the sheet on every pointer event.
+- Verified in the browser: hovering a bed turned it `#C1663F` and moving away returned it to
+  `#123449`; clicking drew the dashed box; Delete took the plan from 22 fixture groups to 21;
+  undo put it back.
+
 ⚠️ **Not matched to the render yet:** the wrap-around porch soffit lining, the gravel/paving
 pattern of the yard, and the planter beds. The fence is off by default, since most plans are not
 walled.

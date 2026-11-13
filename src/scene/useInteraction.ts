@@ -58,6 +58,12 @@ interface UseInteractionOptions {
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
   paintWall: (wallId: string, patch: WallFinish) => void
+  /**
+   * A plain click in select mode: the fixture under the cursor, or null for
+   * empty ground. The editor has no selection of its own — this is where one
+   * comes from, so the Delete key has something to act on.
+   */
+  onPick?: (fixtureId: string | null) => void
 }
 
 /**
@@ -85,6 +91,7 @@ export function useInteraction({
   placeOpening,
   placeFixture,
   paintWall,
+  onPick,
   updateFixturePosition,
   finalizeFixtureMove,
   dragWallBy,
@@ -96,6 +103,14 @@ export function useInteraction({
 
   const [draft, setDraft] = useState<DraftWall | null>(null)
   const [moveSnap, setMoveSnap] = useState<SnapTarget | null>(null)
+  const [hover, setHover] = useState<{ fixtureId: string | null; wallId: string | null }>({
+    fixtureId: null,
+    wallId: null,
+  })
+  // Read inside the move handler to skip a pointless state write; a state
+  // read there would be from the closure of the previous render.
+  const hoverRef = useRef(hover)
+  hoverRef.current = hover
   /** Latest cursor position, for the ghost preview of a pending item. */
   const [cursor, setCursor] = useState<Point | null>(null)
 
@@ -145,6 +160,28 @@ export function useInteraction({
   const onMove = useCallback(
     (point: Point) => {
       setCursor(point)
+
+      // What the cursor is over, so the sheet can say "this is clickable"
+      // before anyone clicks. Which kind depends on what the tool acts on:
+      // select moves furniture, paint and openings act on walls.
+      if (tool.type === 'select') {
+        const over = findFixtureAt(state.fixtures, point)
+        setHover((current) =>
+          current.fixtureId === (over?.id ?? null) && current.wallId === null
+            ? current
+            : { fixtureId: over?.id ?? null, wallId: null },
+        )
+      } else if (tool.type === 'paint' || tool.type === 'opening') {
+        const over = findWallAt(state, point)
+        setHover((current) =>
+          current.wallId === (over?.id ?? null) && current.fixtureId === null
+            ? current
+            : { fixtureId: null, wallId: over?.id ?? null },
+        )
+      } else if (hoverRef.current.fixtureId || hoverRef.current.wallId) {
+        setHover({ fixtureId: null, wallId: null })
+      }
+
       const press = pressRef.current
 
       if (press && !press.moved) {
@@ -207,6 +244,11 @@ export function useInteraction({
         return
       }
 
+      if (tool.type === 'select') {
+        onPick?.(press?.fixtureId ?? null)
+        return
+      }
+
       if (tool.type === 'fixture') {
         placeFixture(tool.kind, snapToGrid(point))
         return
@@ -265,6 +307,7 @@ export function useInteraction({
       finalizeFixtureMove,
       placeFixture,
       paintWall,
+      onPick,
       resolve,
       state,
       tool,
@@ -273,5 +316,15 @@ export function useInteraction({
     ],
   )
 
-  return { draft, moveSnap, cursor, isDrawing: draft !== null, onDown, onMove, onUp, cancelDrawing }
+  return {
+    draft,
+    moveSnap,
+    cursor,
+    hover,
+    isDrawing: draft !== null,
+    onDown,
+    onMove,
+    onUp,
+    cancelDrawing,
+  }
 }
