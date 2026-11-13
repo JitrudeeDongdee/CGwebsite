@@ -131,7 +131,9 @@
   "tools": {
     "select": "Move (creates nothing)",
     "draw": "Draw walls",
-    "fit": "Fit to view"
+    "fit": "Fit to view",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
   },
   "fixtures": {
     "title": "Columns / furniture",

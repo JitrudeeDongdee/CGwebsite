@@ -131,6 +131,8 @@ export function DesignerPage() {
     fence: false,
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
+  /** Filled in by PlanEditor, so the toolbar's zoom buttons can drive it. */
+  const zoomRef = useRef<((factor: number) => void) | null>(null)
 
   // Never leave the cover up for ever. If the first frame does not arrive —
   // WebGL refused, the context was lost, the tab was in the background the
@@ -367,6 +369,7 @@ export function DesignerPage() {
         finalizeNodeMove={finalizeNodeMove}
         onContextMenu={handleContextMenu}
         cancelRef={cancelDrawingRef}
+        zoomRef={zoomRef}
         tool={tool}
         fitToken={fitToken}
         placeOpening={placeOpening}
@@ -381,7 +384,8 @@ export function DesignerPage() {
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={{ position: 'absolute', bottom: 12, left: 12, maxWidth: '70%', pointerEvents: 'none' }}
+        // Above the toolbar, which now sits in this corner too.
+        sx={{ position: 'absolute', bottom: 72, left: 16, maxWidth: '55%', pointerEvents: 'none' }}
       >
         {t('canvas.hint')}
         <br />
@@ -395,6 +399,7 @@ export function DesignerPage() {
         onUndo={undo}
         onRedo={redo}
         onFit={() => setFitToken((n) => n + 1)}
+        onZoom={(factor) => zoomRef.current?.(factor)}
         canUndo={canUndo}
         canRedo={canRedo}
       />
