@@ -38,6 +38,8 @@ export interface SheetPalette {
   ink: string
   dim: string
   grid: string
+  /** Selection and hover. The one colour on the sheet that is not drafting. */
+  accent: string
 }
 
 /** Fixed black-on-white, for print/PDF where the sheet must read as paper. */
@@ -46,6 +48,8 @@ export const PRINT_SHEET_PALETTE: SheetPalette = {
   ink: '#111111',
   dim: '#444444',
   grid: '#c9c9c9',
+  // Print has no hover and nothing is selected, but the field is required.
+  accent: '#111111',
 }
 
 const PaletteContext = createContext<SheetPalette>(PRINT_SHEET_PALETTE)
@@ -98,9 +102,12 @@ function Underlay({ state }: { state: DrawingState }) {
 function Walls({
   state,
   exteriorWallIds,
+  hoverId,
 }: {
   state: DrawingState
   exteriorWallIds: ReadonlySet<string>
+  /** Under the cursor while a wall tool is armed — paint, or a door. */
+  hoverId?: string | null
 }) {
   const outlines = useMemo(
     () => computeWallOutlines(state, exteriorWallIds),
@@ -127,8 +134,17 @@ function Walls({
         // reads as continuous.
         if (wall && (degrees.get(wall.a) ?? 0) <= 1) edges.push(`M ${c3.x} ${c3.y} L ${c0.x} ${c0.y}`)
         if (wall && (degrees.get(wall.b) ?? 0) <= 1) edges.push(`M ${c1.x} ${c1.y} L ${c2.x} ${c2.y}`)
+        const hovered = outline.wallId === hoverId
         return (
-          <path key={outline.wallId} d={edges.join(' ')} strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
+          <path
+            key={outline.wallId}
+            d={edges.join(' ')}
+            // Thicker as well as coloured: on a dense plan a colour change
+            // alone is easy to miss at the width a wall line is drawn.
+            strokeWidth={hovered ? 2.6 : 1.4}
+            stroke={hovered ? palette.accent : undefined}
+            vectorEffect="non-scaling-stroke"
+          />
         )
       })}
     </g>
@@ -201,19 +217,46 @@ function Openings({
 }
 
 /** Columns (solid) and furniture (outline), in each fixture's rotated frame. */
-function Fixtures({ state }: { state: DrawingState }) {
+function Fixtures({
+  state,
+  selectedId,
+  hoverId,
+}: {
+  state: DrawingState
+  selectedId?: string | null
+  /** Under the cursor right now — says "this is clickable" before you click. */
+  hoverId?: string | null
+}) {
   const palette = usePalette()
   return (
     <g>
       {state.fixtures.map((fixture) => {
         const deg = (fixture.rotation * 180) / Math.PI
+        const selected = fixture.id === selectedId
+        const hovered = !selected && fixture.id === hoverId
         return (
           <g key={fixture.id} transform={`translate(${fixture.x} ${fixture.y}) rotate(${deg})`}>
+            {/* A box round the selected piece, drawn behind its symbol: the
+                Delete key needs you to be sure what it is about to remove. */}
+            {selected && (
+              <rect
+                x={-fixture.width / 2 - 0.08}
+                y={-fixture.depth / 2 - 0.08}
+                width={fixture.width + 0.16}
+                height={fixture.depth + 0.16}
+                fill={palette.accent}
+                fillOpacity={0.14}
+                stroke={palette.accent}
+                strokeWidth={1.6}
+                strokeDasharray="5 3"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             <FixtureSymbol
               kind={fixture.kind}
               width={fixture.width}
               depth={fixture.depth}
-              ink={palette.ink}
+              ink={selected || hovered ? palette.accent : palette.ink}
               nonScaling
             />
           </g>
@@ -382,6 +425,12 @@ export interface PlanSheetProps {
   exteriorWallIds: ReadonlySet<string>
   /** The storey below, traced faintly underneath so walls can be aligned. */
   underlay?: DrawingState | null
+  /** The fixture the Delete key would remove. */
+  selectedFixtureId?: string | null
+  /** The fixture under the cursor. */
+  hoverFixtureId?: string | null
+  /** The wall under the cursor, when the tool acts on walls. */
+  hoverWallId?: string | null
   /** Extra SVG (interaction overlays) drawn on top, in plan coordinates. */
   overlay?: React.ReactNode
   /** Ref to the underlying <svg>, for pointer→world mapping and PDF export. */
@@ -420,8 +469,9 @@ function useThemeSheetPalette(): SheetPalette {
       ink: scene.wall,
       dim: scene.dimension,
       grid: scene.gridMajor,
+      accent: scene.node,
     }),
-    [scene.background, scene.wall, scene.dimension, scene.gridMajor],
+    [scene.background, scene.wall, scene.dimension, scene.gridMajor, scene.node],
   )
 }
 
@@ -434,6 +484,9 @@ export function PlanSheet({
   rooms,
   exteriorWallIds,
   underlay,
+  selectedFixtureId,
+  hoverFixtureId,
+  hoverWallId,
   overlay,
   svgRef,
   palette,
@@ -464,9 +517,9 @@ export function PlanSheet({
         {bounds && (
           <>
             <Grid state={state} bounds={bounds} />
-            <Walls state={state} exteriorWallIds={exteriorWallIds} />
+            <Walls state={state} exteriorWallIds={exteriorWallIds} hoverId={hoverWallId} />
             <Openings state={state} exteriorWallIds={exteriorWallIds} />
-            <Fixtures state={state} />
+            <Fixtures state={state} selectedId={selectedFixtureId} hoverId={hoverFixtureId} />
             <RoomLabels state={state} rooms={rooms} />
             <DimensionRun coords={xs} fixed={bounds.minY - DIM_OFFSET} axis="x" side={-1} />
             <DimensionRun coords={ys} fixed={bounds.minX - DIM_OFFSET} axis="y" side={-1} />
