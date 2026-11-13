@@ -289,7 +289,12 @@ export function useDrawingState() {
   }, [perFloor])
   /** Each storey's plan paired with its own exterior walls, for the 3D view. */
   const floorPlans = useMemo(
-    () => floors.map((floor, i) => ({ state: floor, exteriorWallIds: perFloor[i].exteriorWallIds })),
+    () =>
+      floors.map((floor, i) => ({
+        state: floor,
+        exteriorWallIds: perFloor[i].exteriorWallIds,
+        rooms: perFloor[i].rooms,
+      })),
     [floors, perFloor],
   )
 

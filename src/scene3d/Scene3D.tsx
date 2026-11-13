@@ -5,9 +5,11 @@ import { useTheme } from '@mui/material/styles'
 import { extend, useFrame, useThree, type ThreeElement } from '@react-three/fiber'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { DrawFixture } from '../drawing/types'
+import type { SurfacePattern } from '../drawing/materials'
 import {
   LEVEL_HEIGHT,
   buildBuilding3D,
+  entryPathBoxes,
   type Building3D,
   type FloorPlan,
 } from '../drawing/building3d'
@@ -43,6 +45,7 @@ import {
   Fence,
   Piers,
   RAISE_HEIGHTS,
+  PlantingBeds,
   RaisedSkirt,
   WallLights,
   type RaiseHeight,
@@ -282,6 +285,101 @@ function useFloorGeometry(
   return geometry
 }
 
+/**
+ * The timber lining under the roof over the porch.
+ *
+ * It is drawn over exactly the part of the footprint that is roofed but is
+ * NOT a room — which, for a plan with `openEnd`, is precisely the covered
+ * bay. No new data was needed to find it: a porch is already defined as the
+ * bay left out of the room list, and the rooms are cut out of the sheet as
+ * holes, the same way a floor void is cut out of the slab.
+ *
+ * That warm lit reveal is most of what the reference render's entrance is,
+ * and it only shows where you can actually see up into the roof.
+ */
+function PorchSoffit({
+  bounds,
+  rooms,
+  y,
+  pattern,
+  color,
+}: {
+  bounds: Building3D['bounds']
+  rooms: { polygon: { x: number; y: number }[] }[]
+  y: number
+  pattern: SurfacePattern
+  color: string
+}) {
+  const material = useShared(pattern, color, THREE.DoubleSide)
+
+  const geometry = useMemo(() => {
+    if (!bounds) return null
+    const width = bounds.maxX - bounds.minX
+    const depth = bounds.maxZ - bounds.minZ
+    const centreX = (bounds.minX + bounds.maxX) / 2
+    const centreZ = (bounds.minZ + bounds.maxZ) / 2
+
+    const shape = new THREE.Shape()
+    shape.moveTo(-width / 2, -depth / 2)
+    shape.lineTo(width / 2, -depth / 2)
+    shape.lineTo(width / 2, depth / 2)
+    shape.lineTo(-width / 2, depth / 2)
+    shape.closePath()
+
+    let cut = 0
+    for (const room of rooms) {
+      if (room.polygon.length < 3) continue
+      const path = new THREE.Path()
+      room.polygon.forEach((point, i) => {
+        const x = point.x - centreX
+        const z = point.y - centreZ
+        if (i === 0) path.moveTo(x, z)
+        else path.lineTo(x, z)
+      })
+      path.closePath()
+      shape.holes.push(path)
+      cut++
+    }
+    // Every bit of the footprint is a room: there is no porch, so there is
+    // nothing to line. Drawing it anyway would put a timber sheet across
+    // every ceiling and block the cutaway.
+    if (cut > 0 && shape.holes.length === rooms.length && rooms.length > 0) {
+      const area = width * depth
+      const roomArea = rooms.reduce((sum, room) => sum + Math.abs(shoelace(room.polygon)), 0)
+      if (area - roomArea < 0.25) return null
+    }
+    return new THREE.ShapeGeometry(shape)
+  }, [bounds, rooms])
+
+  useEffect(() => () => geometry?.dispose(), [geometry])
+  if (!geometry || !bounds) return null
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[
+        (bounds.minX + bounds.maxX) / 2,
+        y,
+        (bounds.minZ + bounds.maxZ) / 2,
+      ]}
+      geometry={geometry}
+      material={material}
+      receiveShadow
+    />
+  )
+}
+
+/** Twice the signed area of a polygon — the shoelace sum. */
+function shoelace(polygon: { x: number; y: number }[]): number {
+  let total = 0
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i]
+    const b = polygon[(i + 1) % polygon.length]
+    total += a.x * b.y - b.x * a.y
+  }
+  return total / 2
+}
+
 /** One storey's slab, with its voids cut out. */
 function FloorSlab({
   width,
@@ -327,13 +425,19 @@ function Ground({
 }) {
   const ground = span * 30
   const grass = useShared('grass', '#8FA86B')
-  const paving = useShared('paving', '#CFCAC2')
+  // The yard in the reference render is pale chippings, not a paved slab —
+  // the brick path is the only laid surface on it.
+  const paving = useShared('gravel', '#E6E2DA')
   const floor = useShared('paving', '#D8D3CA')
   // Only the field is tiled to its size; the apron and the floor slab show
   // one tile across the whole slab, as they always have.
   const field = usePlaneGeometry(ground, ground, 'grass')
+  // Generous, because the render's chippings run well past the building.
+  const APRON = 2.6
+  const yardW = (bounds ? bounds.maxX - bounds.minX : 0) + APRON * 2
+  const yardD = (bounds ? bounds.maxZ - bounds.minZ : 0) + APRON * 2
+  const yard = usePlaneGeometry(yardW, yardD, 'gravel')
 
-  const apron = 1.2
   const width = bounds ? bounds.maxX - bounds.minX : 0
   const depth = bounds ? bounds.maxZ - bounds.minZ : 0
   const centreX = bounds ? (bounds.minX + bounds.maxX) / 2 : 0
@@ -351,15 +455,15 @@ function Ground({
 
       {bounds && (
         <>
-          {/* Paved apron, so the house stands on something built. */}
+          {/* Gravelled yard, wider than the house, so it stands in a plot
+              rather than on a slab the exact size of itself. */}
           <mesh
             rotation={[-Math.PI / 2, 0, 0]}
             position={[centreX, 0.005, centreZ]}
             material={paving}
+            geometry={yard}
             receiveShadow
-          >
-            <planeGeometry args={[width + apron * 2, depth + apron * 2]} />
-          </mesh>
+          />
 
           {Array.from({ length: storeys }, (_, level) => (
             <FloorSlab
@@ -590,6 +694,10 @@ export function Scene3D({
 
         {options.scenery && <Planting bounds={building.bounds} span={span} />}
         {options.fence && <Fence bounds={building.bounds} span={span} />}
+        {options.scenery && <PlantingBeds bounds={building.bounds} />}
+        {entryPathBoxes(building.openings, raise).map((box) => (
+          <PatternedBox key={box.id} box={box} pattern="cobble" color="#C9A68C" cast={false} />
+        ))}
         <Piers bounds={building.bounds} raise={raise} />
         <RaisedSkirt bounds={building.bounds} raise={raise} />
         <EntrySteps units={building.openings} raise={raise} />
@@ -599,6 +707,17 @@ export function Scene3D({
             the steps up to it stay where they are, so only the building
             moves — which is what lifting a house on piers means. */}
         <group position={[0, raise, 0]}>
+        {/* Lining the covered bay, under the roof, on the top storey —
+            the only storey with the roof directly over it. */}
+        {options.showRoof && (
+          <PorchSoffit
+            bounds={building.roofBounds}
+            rooms={floors[floors.length - 1]?.rooms ?? []}
+            y={eaves - 0.04}
+            pattern={WALL_FINISH[options.gableWall ?? 'wood'].pattern}
+            color={options.gableColor ?? '#B08152'}
+          />
+        )}
         <Cutaway active={!options.showRoof}>
           {building.walls.map((box) => {
             // A painted wall wins over the house default, field by field, so
