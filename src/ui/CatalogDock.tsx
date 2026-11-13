@@ -130,6 +130,8 @@ interface CatalogDockProps {
   onOptionsChange: (options: Building3DOptions) => void
   /** Summary tab. */
   area: number | null
+  floorAreas: (number | null)[]
+  activeFloor: number
   roomCount: number
   wallCount: number
   grade: MaterialGrade
@@ -225,6 +227,8 @@ export function CatalogDock({
   options,
   onOptionsChange,
   area,
+  floorAreas,
+  activeFloor,
   roomCount,
   wallCount,
   grade,
@@ -537,19 +541,6 @@ export function CatalogDock({
                   onChange={(next) => set({ showRoof: next === 'whole' })}
                 />
 
-                <PillRow
-                  label={t('building3d.storeys')}
-                  value={options.storeys}
-                  values={[1, 2]}
-                  render={(item) => t(item === 1 ? 'building3d.storey1' : 'building3d.storey2')}
-                  onChange={(storeys) => set({ storeys })}
-                />
-                {options.storeys > 1 && (
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
-                    {t('building3d.storeyNote')}
-                  </Typography>
-                )}
-
                 <Stack>
                   <FormControlLabel
                     control={
@@ -711,7 +702,14 @@ export function CatalogDock({
 
             {active === 'summary' && (
               <>
-                <AreaSummary bare area={area} roomCount={roomCount} wallCount={wallCount} />
+                <AreaSummary
+                  bare
+                  area={area}
+                  floorAreas={floorAreas}
+                  activeFloor={activeFloor}
+                  roomCount={roomCount}
+                  wallCount={wallCount}
+                />
                 <EstimatePanel
                   bare
                   grade={grade}

@@ -1,10 +1,17 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { DrawingState, Point } from './types'
 import {
+  addFloor as addFloorTo,
+  createInitialFloors,
+  floorIndex,
+  mapFloor,
+  removeFloor as removeFloorFrom,
+  type Floors,
+} from './floors'
+import {
   addFixture,
   addOpening,
   commitWall,
-  createInitialState,
   deleteNode,
   deleteFixture,
   deleteOpening,
@@ -23,19 +30,27 @@ import type { FixtureKind, OpeningKind, Point as PointType } from './types'
 import { findRooms } from './rooms'
 
 interface History {
-  past: DrawingState[]
-  present: DrawingState
-  future: DrawingState[]
+  past: Floors[]
+  present: Floors
+  future: Floors[]
 }
 
 const MAX_HISTORY = 50
 
 function initialHistory(): History {
-  return { past: [], present: createInitialState(), future: [] }
+  return { past: [], present: createInitialFloors(), future: [] }
 }
 
 export function useDrawingState() {
   const [history, setHistory] = useState<History>(initialHistory)
+  /**
+   * Which storey is being edited. Kept OUT of the history on purpose:
+   * switching floors is looking at the plan, not changing it, so it must not
+   * cost an undo step — and undo must not teleport the editor to another
+   * floor either. It is clamped on read, so undoing the addition of a floor
+   * cannot leave it pointing past the end.
+   */
+  const [wantedFloor, setWantedFloor] = useState(0)
 
   /**
    * State as it was when the current node drag started. A drag fires
@@ -43,15 +58,30 @@ export function useDrawingState() {
    * live state, not separate undo steps, so we hold the pre-drag state here
    * and push exactly one history entry when the drag finishes.
    */
-  const dragOriginRef = useRef<DrawingState | null>(null)
+  const dragOriginRef = useRef<Floors | null>(null)
 
   // Mirrors the live state so a native event handler can snapshot it
   // synchronously, without doing side effects inside a state updater.
   const presentRef = useRef(history.present)
   presentRef.current = history.present
 
-  /** Records a discrete, undoable change. */
+  /** The storey being edited, clamped to one that exists. */
+  const activeFloor = floorIndex(history.present, wantedFloor)
+  // Read inside state updaters, which run after the render that set it, so
+  // it cannot come from the closure (same reason as the refs above).
+  const activeRef = useRef(activeFloor)
+  activeRef.current = activeFloor
+
+  /** Records a discrete, undoable change to the storey being edited. */
   const commit = useCallback((next: (prev: DrawingState) => DrawingState) => {
+    setHistory((h) => {
+      const past = [...h.past, h.present].slice(-MAX_HISTORY)
+      return { past, present: mapFloor(h.present, activeRef.current, next), future: [] }
+    })
+  }, [])
+
+  /** The same, for a change to the whole stack rather than one storey. */
+  const commitStack = useCallback((next: (prev: Floors) => Floors) => {
     setHistory((h) => {
       const past = [...h.past, h.present].slice(-MAX_HISTORY)
       return { past, present: next(h.present), future: [] }
@@ -60,7 +90,7 @@ export function useDrawingState() {
 
   /** Updates the live state without creating an undo step. */
   const amend = useCallback((next: (prev: DrawingState) => DrawingState) => {
-    setHistory((h) => ({ ...h, present: next(h.present) }))
+    setHistory((h) => ({ ...h, present: mapFloor(h.present, activeRef.current, next) }))
   }, [])
 
   const addWall = useCallback(
@@ -80,23 +110,27 @@ export function useDrawingState() {
 
   const finalizeNodeMove = useCallback((nodeId: string, point: Point) => {
     setHistory((h) => {
+      const at = activeRef.current
       const origin = dragOriginRef.current ?? h.present
       dragOriginRef.current = null
-      const present = finishNodeMove(h.present, nodeId, point)
+      const stack = mapFloor(h.present, at, (floor) => finishNodeMove(floor, nodeId, point))
 
       // A drag that changed nothing (e.g. a plain click on a node)
       // shouldn't cost an undo step. Compare the actual geometry, not
-      // object identity — these helpers always return fresh objects.
-      const before = origin.nodes[nodeId]
-      const after = present.nodes[nodeId]
+      // object identity — these helpers always return fresh objects. Only
+      // the edited storey can have changed, so only it is compared.
+      const was = origin[floorIndex(origin, at)]
+      const now = stack[floorIndex(stack, at)]
+      const before = was.nodes[nodeId]
+      const after = now.nodes[nodeId]
       const moved = !before || !after || before.x !== after.x || before.y !== after.y
       const mergedOrDropped =
-        present.walls.length !== origin.walls.length ||
-        Object.keys(present.nodes).length !== Object.keys(origin.nodes).length
+        now.walls.length !== was.walls.length ||
+        Object.keys(now.nodes).length !== Object.keys(was.nodes).length
 
       if (!moved && !mergedOrDropped) return { ...h, present: origin }
 
-      return { past: [...h.past, origin].slice(-MAX_HISTORY), present, future: [] }
+      return { past: [...h.past, origin].slice(-MAX_HISTORY), present: stack, future: [] }
     })
   }, [])
 
@@ -112,7 +146,9 @@ export function useDrawingState() {
     (wallId: string) => commit((prev) => duplicateWall(prev, wallId)),
     [commit],
   )
-  const clearAll = useCallback(() => commit(() => createInitialState()), [commit])
+  // Clears the whole house, not just the storey on screen — "ล้างทั้งหมด"
+  // leaving an untouched floor upstairs would be a surprise.
+  const clearAll = useCallback(() => commitStack(() => createInitialFloors()), [commitStack])
 
   const placeOpening = useCallback(
     (wallId: string, offset: number, width: number, kind: OpeningKind) =>
@@ -123,9 +159,14 @@ export function useDrawingState() {
     (openingId: string) => commit((prev) => deleteOpening(prev, openingId)),
     [commit],
   )
+  /** A template or an imported file replaces the whole stack. */
   const applyTemplate = useCallback(
-    (plan: DrawingState) => commit(() => loadPlan(plan)),
-    [commit],
+    (plan: DrawingState | Floors) => {
+      const stack = Array.isArray(plan) ? plan : [plan]
+      commitStack(() => (stack.length > 0 ? stack.map(loadPlan) : createInitialFloors()))
+      setWantedFloor(0)
+    },
+    [commitStack],
   )
 
   const placeFixture = useCallback(
@@ -142,7 +183,9 @@ export function useDrawingState() {
       const origin = dragOriginRef.current
       dragOriginRef.current = null
       setHistory((h) => {
-        const present = moveFixture(h.present, fixtureId, point)
+        const present = mapFloor(h.present, activeRef.current, (floor) =>
+          moveFixture(floor, fixtureId, point),
+        )
         if (!origin) return { ...h, present }
         return { past: [...h.past, origin].slice(-MAX_HISTORY), present, future: [] }
       })
@@ -157,7 +200,9 @@ export function useDrawingState() {
     const origin = dragOriginRef.current
     dragOriginRef.current = null
     setHistory((h) => {
-      const present = finishWallMove(h.present, wallId)
+      const present = mapFloor(h.present, activeRef.current, (floor) =>
+        finishWallMove(floor, wallId),
+      )
       if (!origin) return { ...h, present }
       return { past: [...h.past, origin].slice(-MAX_HISTORY), present, future: [] }
     })
@@ -198,16 +243,53 @@ export function useDrawingState() {
     })
   }, [])
 
-  const state = history.present
+  const floors = history.present
+  const state = floors[activeFloor]
 
-  // Every enclosed room, so a plan with interior partitions reports the sum
-  // of its rooms rather than whichever single loop happened to be found.
-  const plan = useMemo(() => findRooms(state), [state])
+  const addFloor = useCallback(() => {
+    // The new storey copies the one you are standing on, then opens on it:
+    // adding a floor and being left looking at the old one is a dead end.
+    commitStack((stack) => addFloorTo(stack, activeRef.current))
+    setWantedFloor((n) => n + 1)
+  }, [commitStack])
+
+  const removeFloor = useCallback(() => {
+    commitStack((stack) => removeFloorFrom(stack, activeRef.current))
+    setWantedFloor((n) => Math.max(0, n - 1))
+  }, [commitStack])
+
+  const selectFloor = useCallback((index: number) => setWantedFloor(index), [])
+
+  // Every enclosed room of every storey. Per floor, so the editor can report
+  // the storey on screen while the price is quoted on the whole house.
+  const perFloor = useMemo(() => floors.map((floor) => findRooms(floor)), [floors])
+  const plan = perFloor[activeFloor]
   const roomArea = plan.rooms.length > 0 ? plan.totalArea : null
+  /** Summed over every storey — what the house costs to build. */
+  const totalArea = useMemo(() => {
+    const sum = perFloor.reduce((runningTotal, one) => runningTotal + one.totalArea, 0)
+    return sum > 0 ? sum : null
+  }, [perFloor])
+  /** Each storey's plan paired with its own exterior walls, for the 3D view. */
+  const floorPlans = useMemo(
+    () => floors.map((floor, i) => ({ state: floor, exteriorWallIds: perFloor[i].exteriorWallIds })),
+    [floors, perFloor],
+  )
 
   return {
     state,
+    floors,
+    floorPlans,
+    floorCount: floors.length,
+    activeFloor,
+    selectFloor,
+    addFloor,
+    removeFloor,
+    /** The storey below the one being edited, to trace over. */
+    floorBelow: activeFloor > 0 ? floors[activeFloor - 1] : null,
     roomArea,
+    totalArea,
+    floorAreas: perFloor.map((one) => (one.rooms.length > 0 ? one.totalArea : null)),
     rooms: plan.rooms,
     exteriorWallIds: plan.exteriorWallIds,
     addWall,

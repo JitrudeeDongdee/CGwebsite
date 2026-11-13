@@ -24,14 +24,18 @@ interface GalleryPlan {
   translate: boolean
   width?: number
   depth?: number
+  /** Ground floor — what the card's thumbnail shows. */
   state: DrawingState
+  /** Every storey. A built-in template is one. */
+  floors?: DrawingState[]
   /** Built-in plans can also carry the finishes they are meant to wear. */
   finish?: HouseFinish
 }
 
 interface PlanGalleryProps {
-  currentState: DrawingState
-  onLoadPlan: (state: DrawingState, finish?: HouseFinish) => void
+  /** Every storey of the plan on screen, for the download. */
+  currentFloors: DrawingState[]
+  onLoadPlan: (floors: DrawingState | DrawingState[], finish?: HouseFinish) => void
 }
 
 /**
@@ -109,7 +113,7 @@ function PlanCard({
   )
 }
 
-export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
+export function PlanGallery({ currentFloors, onLoadPlan }: PlanGalleryProps) {
   const { t } = useTranslation()
   const { requireAuth } = useAuth()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -190,6 +194,7 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
                   width: plan.width,
                   depth: plan.depth,
                   state: plan.state,
+                  floors: plan.floors,
                 }
                 return gp
               } catch {
@@ -215,7 +220,7 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
     if (!file) return
     try {
       const plan = parsePlanJson(await file.text(), file.name.replace(/\.json$/i, ''))
-      onLoadPlan(plan.state)
+      onLoadPlan(plan.floors)
       setError(null)
     } catch (err) {
       setError(err instanceof PlanFileError ? err.message : t('gallery.importError'))
@@ -223,7 +228,7 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
   }
 
   const handleDownload = () =>
-    requireAuth(() => downloadJson('house-plan.json', planFileToJson(currentState, 'My plan')))
+    requireAuth(() => downloadJson('house-plan.json', planFileToJson(currentFloors, 'My plan')))
 
   return (
     <Paper
@@ -344,7 +349,7 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
               key={plan.key}
               plan={plan}
               label={plan.translate ? t(plan.name) : plan.name}
-              onClick={() => onLoadPlan(plan.state, plan.finish)}
+              onClick={() => onLoadPlan(plan.floors ?? plan.state, plan.finish)}
             />
           ))}
         </Box>

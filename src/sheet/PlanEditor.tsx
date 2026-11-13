@@ -15,6 +15,8 @@ interface PlanEditorProps {
   state: DrawingState
   rooms: Room[]
   exteriorWallIds: ReadonlySet<string>
+  /** The storey below, traced faintly under this one. */
+  underlay?: DrawingState | null
   addWall: (start: Point, end: Point, thickness?: number) => void
   beginNodeDrag: () => void
   updateNodePosition: (nodeId: string, point: Point) => void
@@ -47,6 +49,7 @@ export function PlanEditor({
   state,
   rooms,
   exteriorWallIds,
+  underlay,
   addWall,
   beginNodeDrag,
   updateNodePosition,
@@ -210,6 +213,7 @@ export function PlanEditor({
   return (
     <PlanSheet
       state={state}
+      underlay={underlay}
       rooms={rooms}
       exteriorWallIds={exteriorWallIds}
       svgRef={svgRef}

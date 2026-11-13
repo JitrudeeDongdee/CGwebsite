@@ -4,8 +4,12 @@ import { Canvas } from '@react-three/fiber'
 import { useTheme } from '@mui/material/styles'
 import { extend, useFrame, useThree, type ThreeElement } from '@react-three/fiber'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import type { DrawingState } from '../drawing/types'
-import { LEVEL_HEIGHT, buildBuilding3D, type Building3D } from '../drawing/building3d'
+import {
+  LEVEL_HEIGHT,
+  buildBuilding3D,
+  type Building3D,
+  type FloorPlan,
+} from '../drawing/building3d'
 import {
   EAVES_OVERHANG,
   buildRoof,
@@ -46,7 +50,6 @@ export interface Building3DOptions {
   roof: RoofShape
   pitch: RoofPitch
   /** 1 or 2 — a second storey repeats the same plan above the first. */
-  storeys: number
   wall: WallMaterial
   wallColor: string
   frame: FrameMaterial
@@ -300,22 +303,19 @@ function Cutaway({ active, children }: { active: boolean; children: React.ReactN
 }
 
 export function Scene3D({
-  state,
-  exteriorWallIds,
+  floors,
   options,
   onReady,
 }: {
-  state: DrawingState
-  exteriorWallIds: ReadonlySet<string>
+  /** One entry per storey, ground floor first — each with its own plan. */
+  floors: FloorPlan[]
   options: Building3DOptions
   /** Called once the first real frame has been drawn. */
   onReady?: () => void
 }) {
   const { scene: sceneColors } = useTheme()
-  const building = useMemo(
-    () => buildBuilding3D(state, exteriorWallIds, { storeys: options.storeys }),
-    [state, exteriorWallIds, options.storeys],
-  )
+  const building = useMemo(() => buildBuilding3D(floors), [floors])
+  const storeys = Math.max(1, floors.length)
 
   const centre: [number, number, number] = building.bounds
     ? [
@@ -403,7 +403,7 @@ export function Scene3D({
       {/* Centred on the origin, so the light, its shadow camera and the orbit
           target all work from one place whatever the plan's coordinates. */}
       <group position={[-centre[0], 0, -centre[2]]}>
-        <Ground bounds={building.bounds} span={span} storeys={options.storeys} />
+        <Ground bounds={building.bounds} span={span} storeys={storeys} />
 
         {options.scenery && <Planting bounds={building.bounds} span={span} />}
 
@@ -429,13 +429,17 @@ export function Scene3D({
         </Cutaway>
 
         {options.furniture &&
-          Array.from({ length: options.storeys }, (_, level) => (
-            <FurnitureView key={level} state={state} floor={level * LEVEL_HEIGHT + 0.03} />
+          floors.map((floor, level) => (
+            <FurnitureView
+              key={level}
+              state={floor.state}
+              floor={level * LEVEL_HEIGHT + 0.03}
+            />
           ))}
 
-        {options.showRoof && building.bounds && (
+        {options.showRoof && building.roofBounds && (
           <Roof
-            bounds={building.bounds}
+            bounds={building.roofBounds}
             shape={options.roof}
             pitch={options.pitch}
             eaves={eaves}

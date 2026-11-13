@@ -11,6 +11,7 @@ import { PlanEditor } from '../sheet/PlanEditor'
 import { LeadFormDialog } from '../ui/LeadFormDialog'
 import { CanvasContextMenu, type ContextTarget } from '../ui/CanvasContextMenu'
 import { CatalogDock } from '../ui/CatalogDock'
+import { FloorSwitcher } from '../ui/FloorSwitcher'
 import { wallTypeById } from '../drawing/wallTypes'
 import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
@@ -52,7 +53,17 @@ export function DesignerPage() {
   useSeo({ title: t('app.seoTitle'), description: t('app.seoDesc') })
   const {
     state,
+    floors,
+    floorPlans,
+    floorCount,
+    activeFloor,
+    selectFloor,
+    addFloor,
+    removeFloor,
+    floorBelow,
     roomArea,
+    totalArea,
+    floorAreas,
     rooms,
     exteriorWallIds,
     addWall,
@@ -93,7 +104,6 @@ export function DesignerPage() {
   const [building3d, setBuilding3d] = useState<Building3DOptions>({
     roof: 'gable',
     pitch: 'medium',
-    storeys: 1,
     wall: 'plaster',
     wallColor: WALL_FINISH.plaster.defaultColor,
     frame: 'aluminium',
@@ -152,16 +162,19 @@ export function DesignerPage() {
   }, [])
 
   const priceConfig = useMemo(() => loadPriceConfig(), [])
-  const openingCounts = useMemo(
-    () => ({
-      door: state.openings.filter((o) => o.kind === 'door').length,
-      window: state.openings.filter((o) => o.kind === 'window').length,
-    }),
-    [state.openings],
-  )
+  // Across every storey, not just the one on screen: the quote is for the
+  // house. Counting the active floor's doors would under-price a two-storey
+  // house by exactly the floor you happened not to be looking at.
+  const openingCounts = useMemo(() => {
+    const all = floorPlans.flatMap((floor) => floor.state.openings)
+    return {
+      door: all.filter((o) => o.kind === 'door').length,
+      window: all.filter((o) => o.kind === 'window').length,
+    }
+  }, [floorPlans])
   const estimate = useMemo(
-    () => estimatePrice(roomArea, grade, priceConfig, openingCounts),
-    [roomArea, grade, priceConfig, openingCounts],
+    () => estimatePrice(totalArea, grade, priceConfig, openingCounts),
+    [totalArea, grade, priceConfig, openingCounts],
   )
 
   const usingPlaceholderRates = useMemo(
@@ -226,7 +239,10 @@ export function DesignerPage() {
     await leadRepository.create({
       contact,
       // Snapshot so later edits to the canvas don't mutate what was sent.
-      plan: structuredClone(state),
+      // `plan` stays the ground floor for anything already reading leads;
+      // `floors` carries the whole house.
+      plan: structuredClone(floors[0]),
+      floors: structuredClone(floors),
       grade,
       estimate,
     })
@@ -236,7 +252,7 @@ export function DesignerPage() {
 
   // A plan arrives either as a template id (sidebar) or a full state (gallery
   // card / uploaded file); both funnel through here so loading behaves the same.
-  const handleLoadPlanState = (next: DrawingState, finish?: HouseFinish) => {
+  const handleLoadPlanState = (next: DrawingState | DrawingState[], finish?: HouseFinish) => {
     applyTemplate(next)
     // A sample plan carries the finishes it is meant to be seen in.
     if (finish) setBuilding3d((current) => ({ ...current, ...finish }))
@@ -287,12 +303,21 @@ export function DesignerPage() {
         <ToggleButton value="three">{t('view.three')}</ToggleButton>
       </ToggleButtonGroup>
 
+      {/* Which storey is on the sheet. On the canvas, not in the dock: it
+          decides what the canvas IS, not what you are about to place. */}
+      <FloorSwitcher
+        count={floorCount}
+        active={activeFloor}
+        onSelect={selectFloor}
+        onAdd={addFloor}
+        onRemove={removeFloor}
+      />
+
       {view === 'three' ? (
         <>
           <Suspense fallback={null}>
             <Scene3D
-              state={state}
-              exteriorWallIds={exteriorWallIds}
+              floors={floorPlans}
               options={building3d}
               onReady={() => setSceneReady(true)}
             />
@@ -306,6 +331,7 @@ export function DesignerPage() {
       <>
       <PlanEditor
         state={state}
+        underlay={floorBelow}
         rooms={rooms}
         exteriorWallIds={exteriorWallIds}
         addWall={addWall}
@@ -360,6 +386,8 @@ export function DesignerPage() {
         options={building3d}
         onOptionsChange={setBuilding3d}
         area={roomArea}
+        floorAreas={floorAreas}
+        activeFloor={activeFloor}
         roomCount={rooms.length}
         wallCount={state.walls.length}
         grade={grade}
@@ -371,7 +399,7 @@ export function DesignerPage() {
       </Box>
       </Box>
 
-      <PlanGallery currentState={state} onLoadPlan={handleLoadPlanState} />
+      <PlanGallery currentFloors={floors} onLoadPlan={handleLoadPlanState} />
 
       <CanvasContextMenu
         target={contextTarget}

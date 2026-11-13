@@ -14,7 +14,8 @@ import type {
  * step with `DrawingState` in `types.ts`.
  */
 export const PLAN_FILE_FORMAT = 'cg-house-plan'
-export const PLAN_FILE_VERSION = 1
+/** v2 carries `floors`. v1 files have a single `state` and still load. */
+export const PLAN_FILE_VERSION = 2
 
 export interface PlanFile {
   format: typeof PLAN_FILE_FORMAT
@@ -24,7 +25,15 @@ export interface PlanFile {
   /** Footprint in metres, derived from the plan bounds. Card metadata only. */
   width?: number
   depth?: number
+  /**
+   * The ground floor. Kept at the top level even in v2, so a v1 reader — the
+   * deployed site until this ships, and anything else holding these files —
+   * still opens a two-storey plan and simply sees its ground floor rather
+   * than failing.
+   */
   state: DrawingState
+  /** Every storey, ground floor first. Always at least one entry. */
+  floors: DrawingState[]
 }
 
 /** Thrown by `parsePlanFile` when the input isn't a plan we can load. */
@@ -55,21 +64,25 @@ export function planBounds(state: DrawingState): { width: number; depth: number 
   }
 }
 
-export function serializePlan(state: DrawingState, name: string): PlanFile {
-  const { width, depth } = planBounds(state)
+export function serializePlan(floors: DrawingState | DrawingState[], name: string): PlanFile {
+  const stack = Array.isArray(floors) ? floors : [floors]
+  const ground = stack[0]
+  // The card's footprint is the ground floor's: it is what the house covers.
+  const { width, depth } = planBounds(ground)
   return {
     format: PLAN_FILE_FORMAT,
     version: PLAN_FILE_VERSION,
     name,
     width: Math.round(width * 100) / 100,
     depth: Math.round(depth * 100) / 100,
-    state,
+    state: ground,
+    floors: stack,
   }
 }
 
 /** Pretty-printed JSON string ready to hand to a download. */
-export function planFileToJson(state: DrawingState, name: string): string {
-  return JSON.stringify(serializePlan(state, name), null, 2)
+export function planFileToJson(floors: DrawingState | DrawingState[], name: string): string {
+  return JSON.stringify(serializePlan(floors, name), null, 2)
 }
 
 function validateNodes(raw: unknown): Record<string, DrawNode> {
@@ -196,9 +209,14 @@ function validateState(raw: unknown): DrawingState {
 export function parsePlanFile(raw: unknown, fallbackName = 'Plan'): PlanFile {
   if (!isObject(raw)) throw new PlanFileError('file is not a plan')
 
-  // A wrapped plan file carries `state`; a bare export is the state itself.
-  const stateSource = 'state' in raw ? raw.state : raw
-  const state = validateState(stateSource)
+  // v2 carries `floors`; v1 carries a single `state`; a bare export is the
+  // state itself. All three have to keep opening — files are already out
+  // there, and a plan that will not load is the worst possible regression.
+  const floors: DrawingState[] = Array.isArray(raw.floors)
+    ? raw.floors.map((one) => validateState(one))
+    : [validateState('state' in raw ? raw.state : raw)]
+  if (floors.length === 0) throw new PlanFileError('plan has no floors')
+  const state = floors[0]
 
   const { width, depth } = planBounds(state)
   const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : fallbackName
@@ -210,6 +228,7 @@ export function parsePlanFile(raw: unknown, fallbackName = 'Plan'): PlanFile {
     width: num(raw.width) ? raw.width : Math.round(width * 100) / 100,
     depth: num(raw.depth) ? raw.depth : Math.round(depth * 100) / 100,
     state,
+    floors,
   }
 }
 

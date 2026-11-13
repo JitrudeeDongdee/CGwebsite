@@ -24,6 +24,11 @@ export interface Lead {
    * what the customer sent, even if the customer keeps editing afterwards.
    */
   plan: DrawingState
+  /**
+   * Every storey, ground floor first. Optional and additive: `plan` stays the
+   * ground floor, so leads saved before houses had floors still read back.
+   */
+  floors?: DrawingState[]
   grade: MaterialGrade
   /** Estimate as shown to the customer at submit time, including the rate used. */
   estimate: PriceEstimate | null
