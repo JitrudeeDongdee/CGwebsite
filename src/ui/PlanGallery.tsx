@@ -34,6 +34,19 @@ interface PlanGalleryProps {
   onLoadPlan: (state: DrawingState, finish?: HouseFinish) => void
 }
 
+/**
+ * How much of the gallery is showing.
+ *
+ * It opens on ONE row, because the editor above it is the point of the page
+ * and a wall of sample plans pushes the house off the screen. From there the
+ * grab bar drags down to nothing or up to the full grid.
+ */
+type GalleryView = 'hidden' | 'row' | 'full'
+const VIEW_ORDER: GalleryView[] = ['hidden', 'row', 'full']
+const VIEW_KEY = 'cg:designer-gallery-view'
+/** Pixels of drag that move it one step. */
+const DRAG_STEP = 44
+
 function downloadJson(filename: string, text: string) {
   const blob = new Blob([text], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -102,6 +115,42 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [customPlans, setCustomPlans] = useState<GalleryPlan[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [view, setViewState] = useState<GalleryView>(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY)
+      if (saved === 'hidden' || saved === 'row' || saved === 'full') return saved
+    } catch {
+      /* blocked site data throws — fall through to the default */
+    }
+    return 'row'
+  })
+
+  const setView = (next: GalleryView) => {
+    setViewState(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      /* the choice just will not survive a reload */
+    }
+  }
+
+  // The gesture's own bookkeeping. Refs, not state: these are read inside
+  // pointer handlers during the same gesture that writes them, and a state
+  // update is not visible to the event that follows it (see MEMORY.md).
+  const dragFrom = useRef<number | null>(null)
+  const dragged = useRef(false)
+  // The current step, readable mid-gesture for the same reason: two moves can
+  // land before React re-renders, and both would otherwise read the old value.
+  const viewRef = useRef(view)
+  viewRef.current = view
+
+  const step = (direction: 1 | -1) => {
+    const at = VIEW_ORDER.indexOf(viewRef.current)
+    const next = VIEW_ORDER[Math.min(VIEW_ORDER.length - 1, Math.max(0, at + direction))]
+    if (next === viewRef.current) return
+    viewRef.current = next
+    setView(next)
+  }
 
   const builtInPlans = useMemo<GalleryPlan[]>(
     () =>
@@ -180,8 +229,51 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
     <Paper
       elevation={0}
       square
-      sx={{ borderTop: 1, borderColor: 'divider', p: 2, flexShrink: 0 }}
+      sx={{ borderTop: 1, borderColor: 'divider', px: 2, pb: 2, pt: 0.5, flexShrink: 0 }}
     >
+      {/* Grab bar. Drag up for the full grid, down to tuck the samples away;
+          a plain click is the same toggle for anyone who does not try to
+          drag a thing that does not look draggable. */}
+      <Box
+        role="separator"
+        aria-label={t('gallery.resize')}
+        onPointerDown={(e) => {
+          dragFrom.current = e.clientY
+          dragged.current = false
+          e.currentTarget.setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={(e) => {
+          if (dragFrom.current === null) return
+          const dy = dragFrom.current - e.clientY // positive = dragged upward
+          if (Math.abs(dy) < DRAG_STEP) return
+          dragged.current = true
+          step(dy > 0 ? 1 : -1)
+          dragFrom.current = e.clientY // re-anchor, so a long drag keeps stepping
+        }}
+        onPointerUp={() => {
+          dragFrom.current = null
+        }}
+        onClick={() => {
+          if (dragged.current) return // that was a drag, it already acted
+          step(view === 'hidden' ? 1 : -1)
+        }}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: 18,
+          mb: 0.5,
+          cursor: 'ns-resize',
+          touchAction: 'none', // or the browser scrolls the page instead
+          '&:hover > span': { bgcolor: 'primary.main' },
+        }}
+      >
+        <Box
+          component="span"
+          sx={{ width: 44, height: 4, borderRadius: 2, bgcolor: 'divider', transition: 'background-color 120ms' }}
+        />
+      </Box>
+
       <Stack
         direction="row"
         sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.5, gap: 2, flexWrap: 'wrap' }}
@@ -191,7 +283,7 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
             {t('gallery.title')}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-            {t('gallery.hint')}
+            {view === 'hidden' ? t('gallery.hiddenHint') : t('gallery.hint')}
           </Typography>
         </Box>
 
@@ -221,20 +313,42 @@ export function PlanGallery({ currentState, onLoadPlan }: PlanGalleryProps) {
         </Alert>
       )}
 
-      <Stack
-        direction="row"
-        spacing={1.5}
-        sx={{ overflowX: 'auto', pb: 1, pt: 0.5, '::-webkit-scrollbar': { height: 8 } }}
-      >
-        {[...customPlans, ...builtInPlans].map((plan) => (
-          <PlanCard
-            key={plan.key}
-            plan={plan}
-            label={plan.translate ? t(plan.name) : plan.name}
-            onClick={() => onLoadPlan(plan.state, plan.finish)}
-          />
-        ))}
-      </Stack>
+      {view !== 'hidden' && (
+        <Box
+          sx={
+            view === 'full'
+              ? {
+                  // Every plan at once, wrapped — the cards keep their own
+                  // width so a card is the same size in both views.
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 1.5,
+                  pb: 1,
+                  pt: 0.5,
+                  maxHeight: '48vh',
+                  overflowY: 'auto',
+                }
+              : {
+                  // One row that scrolls sideways, which is the default.
+                  display: 'flex',
+                  gap: 1.5,
+                  overflowX: 'auto',
+                  pb: 1,
+                  pt: 0.5,
+                  '::-webkit-scrollbar': { height: 8 },
+                }
+          }
+        >
+          {[...customPlans, ...builtInPlans].map((plan) => (
+            <PlanCard
+              key={plan.key}
+              plan={plan}
+              label={plan.translate ? t(plan.name) : plan.name}
+              onClick={() => onLoadPlan(plan.state, plan.finish)}
+            />
+          ))}
+        </Box>
+      )}
     </Paper>
   )
 }

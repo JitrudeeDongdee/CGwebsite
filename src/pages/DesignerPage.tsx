@@ -1,7 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
@@ -9,11 +8,9 @@ import { useDrawingState } from '../drawing/useDrawingState'
 import { findNodeAt, findWallAt } from '../drawing/geometry'
 import type { Point } from '../drawing/types'
 import { PlanEditor } from '../sheet/PlanEditor'
-import { AreaSummary } from '../ui/AreaSummary'
-import { EstimatePanel } from '../ui/EstimatePanel'
 import { LeadFormDialog } from '../ui/LeadFormDialog'
 import { CanvasContextMenu, type ContextTarget } from '../ui/CanvasContextMenu'
-import { ToolSidebar } from '../ui/ToolSidebar'
+import { CatalogDock } from '../ui/CatalogDock'
 import { wallTypeById } from '../drawing/wallTypes'
 import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
@@ -32,15 +29,8 @@ import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
  * of the "3D" toggle.
  */
 const Scene3D = lazy(() => import('../scene3d/Scene3D').then((m) => ({ default: m.Scene3D })))
-import { Building3DPanel } from '../ui/Building3DPanel'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { BottomToolbar } from '../ui/BottomToolbar'
 import { DRAW_TOOL, SELECT_TOOL, type ToolMode } from '../drawing/tools'
 import { estimatePrice } from '../pricing/estimate'
@@ -52,90 +42,6 @@ import { PlanGallery } from '../ui/PlanGallery'
 import { useAuth } from '../auth/AuthProvider'
 import type { DrawingState } from '../drawing/types'
 
-/** The little chevron that opens or closes one side panel. */
-function PanelHandle({
-  side,
-  open,
-  onToggle,
-  label,
-}: {
-  side: 'left' | 'right'
-  open: boolean
-  onToggle: () => void
-  label: string
-}) {
-  // Points the way it will move the panel: a left handle shows "<" while the
-  // panel is open (click to tuck it away) and ">" once it is shut.
-  const pointsLeft = side === 'left' ? open : !open
-  return (
-    <Tooltip title={label} placement={side === 'left' ? 'right' : 'left'}>
-      <IconButton
-        onClick={onToggle}
-        size="small"
-        aria-label={label}
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          [side]: 4,
-          zIndex: 2,
-          bgcolor: 'background.paper',
-          border: 1,
-          borderColor: 'divider',
-          // Tall and narrow, so it reads as a panel edge rather than a button
-          // floating on the drawing.
-          borderRadius: 1.5,
-          width: 22,
-          height: 56,
-          '&:hover': { bgcolor: 'background.paper' },
-        }}
-      >
-        {pointsLeft ? <ChevronLeftIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
-      </IconButton>
-    </Tooltip>
-  )
-}
-
-/**
- * Whether a side panel is open, remembered per visitor.
- *
- * The two panels cost 520px of a fixed-height layout, which is most of a small
- * laptop — so the house itself gets whatever is left. Both therefore start
- * CLOSED below `lg` and open above it, and an explicit choice always wins over
- * that default, in either direction.
- *
- * Read inside the initialiser rather than an effect: starting open and snapping
- * shut after mount would reflow the canvas (and re-fit the plan) on every load.
- * localStorage throws outright when site data is blocked, so every access is
- * wrapped — a panel that cannot remember its state is still a working panel.
- */
-function usePanelOpen(key: string, defaultOpen: boolean) {
-  const [open, setOpen] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(key)
-      if (saved === 'open') return true
-      if (saved === 'closed') return false
-    } catch {
-      /* blocked site data — fall through to the width-based default */
-    }
-    return defaultOpen
-  })
-
-  const set = useCallback(
-    (next: boolean) => {
-      setOpen(next)
-      try {
-        localStorage.setItem(key, next ? 'open' : 'closed')
-      } catch {
-        /* ignore — the choice just will not survive a reload */
-      }
-    },
-    [key],
-  )
-
-  return [open, set] as const
-}
-
 export function DesignerPage() {
   const { t } = useTranslation()
   const { requireAuth } = useAuth()
@@ -144,11 +50,6 @@ export function DesignerPage() {
   // duplicate of the home page. It is not prerendered (three.js), so this is the
   // only place the head gets set.
   useSeo({ title: t('app.seoTitle'), description: t('app.seoDesc') })
-  const theme = useTheme()
-  // 232 + 288 of chrome leaves a 1024px screen about 500px for the drawing.
-  const roomy = useMediaQuery(theme.breakpoints.up('lg'))
-  const [toolsOpen, setToolsOpen] = usePanelOpen('cg:designer-tools-panel', roomy)
-  const [infoOpen, setInfoOpen] = usePanelOpen('cg:designer-info-panel', roomy)
   const {
     state,
     roomArea,
@@ -362,39 +263,7 @@ export function DesignerPage() {
       {/* Editor fills the viewport; the gallery sits just below the fold so
           it's reached by scrolling down, per the agreed layout. */}
       <Box sx={{ display: 'flex', height: 'calc(100vh - 48px)', flexShrink: 0 }}>
-      {toolsOpen && (
-      <ToolSidebar
-        activeOpening={tool.type === 'opening' ? { kind: tool.kind, width: tool.width } : null}
-        onSelectOpening={(next) =>
-          setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)
-        }
-        activeWallTypeId={tool.type === 'draw' ? tool.wallTypeId : null}
-        onSelectWallType={handleSelectWallType}
-        view={view === 'three' ? '3d' : '2d'}
-        activeFixture={tool.type === 'fixture' ? tool.kind : null}
-        onSelectFixture={(kind) =>
-          setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)
-        }
-      />
-      )}
-
       <Box sx={{ position: 'relative', flexGrow: 1, minWidth: 0 }}>
-      {/* Edge handles, vertically centred: the top-left corner is taken by the
-          plan/3D toggle and the bottom by the hint text and the toolbar. They
-          live inside the canvas box (the only `position: relative` ancestor) so
-          they stay reachable whether their panel is open or shut. */}
-      <PanelHandle
-        side="left"
-        open={toolsOpen}
-        onToggle={() => setToolsOpen(!toolsOpen)}
-        label={t(toolsOpen ? 'app.panelToolsHide' : 'app.panelToolsShow')}
-      />
-      <PanelHandle
-        side="right"
-        open={infoOpen}
-        onToggle={() => setInfoOpen(!infoOpen)}
-        label={t(infoOpen ? 'app.panelInfoHide' : 'app.panelInfoShow')}
-      />
       <ToggleButtonGroup
         exclusive
         size="small"
@@ -477,37 +346,29 @@ export function DesignerPage() {
       />
       </>
       )}
-      </Box>
 
-      {infoOpen && (
-      <Stack
-        spacing={1}
-        sx={{
-          width: 288,
-          flexShrink: 0,
-          borderLeft: 1,
-          borderColor: 'divider',
-          overflowY: 'auto',
-          p: 2,
-        }}
-      >
-        {view === 'three' && (
-          <Building3DPanel options={building3d} onChange={setBuilding3d} />
-        )}
-        <AreaSummary
-          area={roomArea}
-          roomCount={rooms.length}
-          wallCount={state.walls.length}
-        />
-        <EstimatePanel
-          grade={grade}
-          onGradeChange={setGrade}
-          estimate={estimate}
-          onSubmit={() => requireAuth(() => setFormOpen(true))}
-          usingPlaceholderRates={usingPlaceholderRates}
-        />
-      </Stack>
-      )}
+      {/* Everything you can pick, in one panel over the bottom-right corner
+          of the drawing — the build-mode catalogue the owner asked for. It
+          replaces a 232px sidebar and a 288px column that together took
+          520px off the width of the house itself. */}
+      <CatalogDock
+        view={view}
+        tool={tool}
+        onSelectWallType={handleSelectWallType}
+        onSelectOpening={(next) => setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)}
+        onSelectFixture={(kind) => setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)}
+        options={building3d}
+        onOptionsChange={setBuilding3d}
+        area={roomArea}
+        roomCount={rooms.length}
+        wallCount={state.walls.length}
+        grade={grade}
+        onGradeChange={setGrade}
+        estimate={estimate}
+        onSubmitLead={() => requireAuth(() => setFormOpen(true))}
+        usingPlaceholderRates={usingPlaceholderRates}
+      />
+      </Box>
       </Box>
 
       <PlanGallery currentState={state} onLoadPlan={handleLoadPlanState} />

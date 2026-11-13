@@ -329,6 +329,20 @@ function Fridge({ w, d, p }: PieceProps) {
   )
 }
 
+function Tv({ w, d, p }: PieceProps) {
+  // A low unit with the screen standing on it: the stand is what gives the
+  // piece its footprint on the plan, the screen is what names it.
+  return (
+    <>
+      <Box size={[w, 0.45, d]} at={[0, 0.225, 0]} material={p.wood} />
+      <Box size={[w - 0.06, 0.02, 0.02]} at={[0, 0.3, d / 2 + 0.005]} material={p.recess} cast={false} />
+      {/* Screen: a thin dark slab on a short neck, tight to the back. */}
+      <Box size={[0.1, 0.18, 0.1]} at={[0, 0.54, 0]} material={p.metal} />
+      <Box size={[w * 0.92, 0.55, 0.04]} at={[0, 0.92, -0.02]} material={p.recess} />
+    </>
+  )
+}
+
 function Wardrobe({ w, d, p }: PieceProps) {
   return (
     <>
@@ -421,6 +435,8 @@ function Piece({ fixture, p }: { fixture: DrawFixture; p: Palette }) {
       return <Nightstand w={w} d={d} p={p} />
     case 'shower':
       return <Shower w={w} d={d} p={p} />
+    case 'tv':
+      return <Tv w={w} d={d} p={p} />
     default:
       return null
   }

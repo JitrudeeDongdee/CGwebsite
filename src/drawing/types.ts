@@ -52,6 +52,7 @@ export type FixtureKind =
   | 'wardrobe'
   | 'nightstand'
   | 'shower'
+  | 'tv'
 
 /**
  * A free-standing item placed on the plan — a structural column or a piece

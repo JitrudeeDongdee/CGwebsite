@@ -4,11 +4,7 @@
     "navDesigner": "Design",
     "navAdmin": "Admin",
     "seoTitle": "Design your house online — draw a plan, see it in 3D",
-    "seoDesc": "Draw your own floor plan in the browser, add doors and windows, view it in 3D and see a ballpark price straight away. Free, nothing to install.",
-    "panelToolsShow": "Show tools",
-    "panelToolsHide": "Hide tools",
-    "panelInfoShow": "Show area & price",
-    "panelInfoHide": "Hide area & price"
+    "seoDesc": "Draw your own floor plan in the browser, add doors and windows, view it in 3D and see a ballpark price straight away. Free, nothing to install."
   },
   "canvas": {
     "hint": "Click to start a wall · move, then click again to place it · Esc or right-click to cancel",
@@ -154,7 +150,12 @@
     "nightstand": "Bedside table",
     "shower": "Shower",
     "rotate": "Rotate 90°",
-    "delete": "Delete this item"
+    "delete": "Delete this item",
+    "tv": "TV",
+    "groupFurniture": "Furniture",
+    "groupElectronics": "Electronics",
+    "groupSanitary": "Bathroom",
+    "groupStructure": "Structure"
   },
   "rooms": {
     "studio": "Studio",
@@ -260,6 +261,18 @@
       "blue": "Blue"
     }
   },
+  "dock": {
+    "walls": "Walls",
+    "openings": "Doors",
+    "furniture": "Furniture",
+    "style": "Style",
+    "roof": "Roof",
+    "surfaces": "Surfaces",
+    "summary": "Summary",
+    "collapse": "Collapse the catalogue",
+    "expand": "Expand to a side panel",
+    "shrink": "Back to the corner"
+  },
   "view": {
     "plan": "2D plan",
     "three": "3D"
@@ -269,7 +282,9 @@
     "hint": "Pick a plan to view or customize · your own designs can be uploaded too",
     "upload": "Upload a file",
     "download": "Download current plan",
-    "importError": "Couldn't open that plan file"
+    "importError": "Couldn't open that plan file",
+    "resize": "Drag up to see them all, down to hide",
+    "hiddenHint": "Drag the bar up, or click it, to see the sample plans"
   },
   "auth": {
     "login": "Sign in",
