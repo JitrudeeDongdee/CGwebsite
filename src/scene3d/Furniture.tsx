@@ -502,7 +502,7 @@ function Piece({ fixture, p }: { fixture: DrawFixture; p: Palette }) {
 export function FurnitureView({
   state,
   floor,
-  onGrab,
+  drag,
 }: {
   state: DrawingState
   floor: number
@@ -511,7 +511,10 @@ export function FurnitureView({
    * the one being edited passes — they are scenery and ignore the pointer,
    * since a move would otherwise land on the wrong floor's plan.
    */
-  onGrab?: (event: ThreeEvent<PointerEvent>, fixtureId: string, at: Point) => void
+  drag?: {
+    grab: (event: ThreeEvent<PointerEvent>, fixtureId: string, at: Point) => void
+    isDragging: () => boolean
+  }
 }) {
   const palette = usePalette()
   const { gl } = useThree()
@@ -526,24 +529,27 @@ export function FurnitureView({
             position={[fixture.x, floor, fixture.y]}
             rotation={[0, -fixture.rotation, 0]}
             onPointerDown={
-              onGrab
-                ? (event) => onGrab(event, fixture.id, { x: fixture.x, y: fixture.y })
+              drag
+                ? (event) => drag.grab(event, fixture.id, { x: fixture.x, y: fixture.y })
                 : undefined
             }
             // The cursor is the only thing that says a piece can be picked
             // up: there is no outline or handle on it in 3D.
             onPointerOver={
-              onGrab
+              drag
                 ? (event) => {
                     event.stopPropagation()
-                    gl.domElement.style.cursor = 'grab'
+                    if (!drag.isDragging()) gl.domElement.style.cursor = 'grab'
                   }
                 : undefined
             }
             onPointerOut={
-              onGrab
+              drag
                 ? () => {
-                    gl.domElement.style.cursor = ''
+                    // NOT while a drag is live: the piece slides under the
+                    // cursor and can outrun it, and clearing here would drop
+                    // the grabbing cursor in the middle of the gesture.
+                    if (!drag.isDragging()) gl.domElement.style.cursor = ''
                   }
                 : undefined
             }

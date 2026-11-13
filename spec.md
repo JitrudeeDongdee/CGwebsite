@@ -1273,6 +1273,13 @@ and slid in the 3D view as well.
   dragging another storey's sofa would quietly move a different one; other floors render as before
   and ignore the pointer. The cursor turns to a grab hand on hover, which is the only thing that
   says a piece can be picked up — there is no outline or handle on it in 3D.
+- **The gesture owns the cursor**, not the hover: `grab` sets `grabbing`, the release clears it,
+  and the piece's own `pointerout` is guarded on `isDragging()` — the piece slides under the
+  cursor and can outrun it, which would otherwise drop the grab hand mid-drag. For the same
+  reason a release that was NOT a drag returns immediately rather than clearing the cursor out
+  from under a pointer still resting on a piece.
+- **All three listeners are on the window**, not the canvas: a drag that leaves the canvas would
+  otherwise freeze until the pointer came back. Moves cost nothing when nothing is being dragged.
 - ⚠️ **Verified by arithmetic, NOT in the browser.** Both the in-app browser pane and the Chrome
   extension were unreachable while this was written. A Node check against the real three.js
   (camera → ray → plane → plan delta) confirms: the plane lands exactly at the asked height for

@@ -81,6 +81,7 @@ export function useFixtureDrag({
       // native pointer events of its own, so a React prop set here would not
       // reach it before its own listener saw the first move (MEMORY.md).
       if (orbit.current) orbit.current.enabled = false
+      gl.domElement.style.cursor = 'grabbing'
 
       // The plane through the point that was actually grabbed.
       plane.constant = -event.point.y
@@ -92,7 +93,7 @@ export function useFixtureDrag({
       }
       onStart()
     },
-    [onStart, orbit, plane],
+    [gl, onStart, orbit, plane],
   )
 
   useEffect(() => {
@@ -113,19 +114,26 @@ export function useFixtureDrag({
 
     const end = () => {
       const state = drag.current
+      // These listeners see EVERY release on the page, so a release that was
+      // not a drag must change nothing: clearing the cursor here would drop
+      // the grab hand while the pointer is still resting on a piece.
+      if (!state) return
       drag.current = null
       if (orbit.current) orbit.current.enabled = true
-      if (state) onDrop(state.id, state.last)
+      element.style.cursor = ''
+      onDrop(state.id, state.last)
     }
 
-    element.addEventListener('pointermove', move)
-    // `pointerup` can land outside the canvas, and `pointercancel` is what a
-    // touch gets when the browser takes the gesture over; without both, a
-    // drag released off-canvas never commits and the orbit stays switched off.
+    // All three on the WINDOW, not the canvas: a drag that leaves the canvas
+    // would otherwise freeze until the pointer came back, and one released
+    // outside would never commit — leaving the camera switched off. Moves are
+    // free when nothing is being dragged, since `move` returns immediately.
+    window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', end)
+    // What a touch gets when the browser takes the gesture over.
     window.addEventListener('pointercancel', end)
     return () => {
-      element.removeEventListener('pointermove', move)
+      window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
     }

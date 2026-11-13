@@ -356,7 +356,7 @@ function Furnishings({
   onDrop?: (fixtureId: string, point: Point) => void
 }) {
   const live = Boolean(onMove && onDrop)
-  const { grab } = useFixtureDrag({
+  const drag = useFixtureDrag({
     onStart: onStart ?? (() => {}),
     onMove: onMove ?? (() => {}),
     onDrop: onDrop ?? (() => {}),
@@ -370,7 +370,7 @@ function Furnishings({
           key={level}
           state={floor.state}
           floor={level * LEVEL_HEIGHT + 0.03}
-          onGrab={live && level === activeFloor ? grab : undefined}
+          drag={live && level === activeFloor ? drag : undefined}
         />
       ))}
     </>
