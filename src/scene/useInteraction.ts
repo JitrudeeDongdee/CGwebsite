@@ -1,5 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
-import type { DrawingState, FixtureKind, OpeningKind, Point, SnapTarget } from '../drawing/types'
+import type {
+  DrawingState,
+  FixtureKind,
+  OpeningKind,
+  Point,
+  SnapTarget,
+  WallFinish,
+} from '../drawing/types'
 import { findNodeAt, findSnapTarget, findWallAt, snapToGrid } from '../drawing/geometry'
 import { offsetAlongWall } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
@@ -38,12 +45,19 @@ interface UseInteractionOptions {
   finalizeNodeMove: (nodeId: string, point: Point) => void
   /** What a click means: move only, draw walls, or place an opening. */
   tool: ToolMode
-  placeOpening: (wallId: string, offset: number, width: number, kind: OpeningKind) => void
+  placeOpening: (
+    wallId: string,
+    offset: number,
+    width: number,
+    kind: OpeningKind,
+    tall?: boolean,
+  ) => void
   placeFixture: (kind: FixtureKind, point: Point) => void
   updateFixturePosition: (fixtureId: string, point: Point) => void
   finalizeFixtureMove: (fixtureId: string, point: Point) => void
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
+  paintWall: (wallId: string, patch: WallFinish) => void
 }
 
 /**
@@ -70,6 +84,7 @@ export function useInteraction({
   tool,
   placeOpening,
   placeFixture,
+  paintWall,
   updateFixturePosition,
   finalizeFixtureMove,
   dragWallBy,
@@ -197,6 +212,21 @@ export function useInteraction({
         return
       }
 
+      // Brush a finish onto the wall under the cursor. Only the face being
+      // painted is written, so the other side keeps whatever it had.
+      if (tool.type === 'paint') {
+        const wall = findWallAt(state, point)
+        if (wall) {
+          paintWall(
+            wall.id,
+            tool.face === 'inside'
+              ? { insideColor: tool.finish.color }
+              : { material: tool.finish.material, color: tool.finish.color },
+          )
+        }
+        return
+      }
+
       // With a door/window selected, a click drops it on the wall under the
       // cursor rather than drawing.
       if (tool.type === 'opening') {
@@ -204,7 +234,7 @@ export function useInteraction({
         if (wall) {
           const offset = offsetAlongWall(state, wall.id, point)
           if (offset !== null) {
-            placeOpening(wall.id, offset, tool.width, tool.kind)
+            placeOpening(wall.id, offset, tool.width, tool.kind, tool.tall)
           }
         }
         return
@@ -234,6 +264,7 @@ export function useInteraction({
       finalizeNodeMove,
       finalizeFixtureMove,
       placeFixture,
+      paintWall,
       resolve,
       state,
       tool,

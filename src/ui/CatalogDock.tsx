@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Paper from '@mui/material/Paper'
@@ -15,6 +16,7 @@ import VillaIcon from '@mui/icons-material/Villa'
 import RoofingIcon from '@mui/icons-material/Roofing'
 import FormatPaintIcon from '@mui/icons-material/FormatPaint'
 import CalculateIcon from '@mui/icons-material/Calculate'
+import BrushIcon from '@mui/icons-material/Brush'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import OpenInFullIcon from '@mui/icons-material/OpenInFull'
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen'
@@ -40,8 +42,9 @@ import {
   WALL_FINISH,
   WALL_MATERIALS,
   type ColorOption,
+  type WallMaterial,
 } from '../drawing/materials'
-import type { FixtureKind, OpeningKind } from '../drawing/types'
+import type { FixtureKind, OpeningKind, WallFinish } from '../drawing/types'
 import type { ToolMode } from '../drawing/tools'
 import type { Building3DOptions } from '../scene3d/Scene3D'
 import type { MaterialGrade, PriceEstimate } from '../pricing/types'
@@ -68,7 +71,15 @@ import { EstimatePanel } from './EstimatePanel'
  * cleared in one click without losing the way back.
  */
 
-type TabId = 'walls' | 'openings' | 'furniture' | 'style' | 'roof' | 'surfaces' | 'summary'
+type TabId =
+  | 'walls'
+  | 'openings'
+  | 'furniture'
+  | 'paint'
+  | 'style'
+  | 'roof'
+  | 'surfaces'
+  | 'summary'
 
 interface Tab {
   id: TabId
@@ -80,6 +91,7 @@ const PLAN_TABS: Tab[] = [
   { id: 'walls', labelKey: 'dock.walls', Icon: StraightenIcon },
   { id: 'openings', labelKey: 'dock.openings', Icon: SensorDoorIcon },
   { id: 'furniture', labelKey: 'dock.furniture', Icon: ChairIcon },
+  { id: 'paint', labelKey: 'dock.paint', Icon: BrushIcon },
   { id: 'summary', labelKey: 'dock.summary', Icon: CalculateIcon },
 ]
 
@@ -87,6 +99,7 @@ const THREE_TABS: Tab[] = [
   { id: 'style', labelKey: 'dock.style', Icon: VillaIcon },
   { id: 'roof', labelKey: 'dock.roof', Icon: RoofingIcon },
   { id: 'surfaces', labelKey: 'dock.surfaces', Icon: FormatPaintIcon },
+  { id: 'paint', labelKey: 'dock.paint', Icon: BrushIcon },
   { id: 'summary', labelKey: 'dock.summary', Icon: CalculateIcon },
 ]
 
@@ -125,6 +138,9 @@ interface CatalogDockProps {
   onSelectWallType: (id: string) => void
   onSelectOpening: (tool: OpeningTool | null) => void
   onSelectFixture: (kind: FixtureKind | null) => void
+  /** Arms the brush with a finish, or disarms it with null. */
+  onSelectPaint: (paint: { finish: WallFinish; face: 'outside' | 'inside' } | null) => void
+  onResetPaint: () => void
   /** 3D: the house's finishes. */
   options: Building3DOptions
   onOptionsChange: (options: Building3DOptions) => void
@@ -224,6 +240,8 @@ export function CatalogDock({
   onSelectWallType,
   onSelectOpening,
   onSelectFixture,
+  onSelectPaint,
+  onResetPaint,
   options,
   onOptionsChange,
   area,
@@ -239,6 +257,8 @@ export function CatalogDock({
 }: CatalogDockProps) {
   const { t } = useTranslation()
   const [tab, setTab] = useState<TabId>('walls')
+  const [paintFace, setPaintFace] = useState<'outside' | 'inside'>('outside')
+  const [paintMaterial, setPaintMaterial] = useState<WallMaterial>('wood')
   const [open, setOpenState] = useState<boolean>(() => remembered(OPEN_KEY, true))
   /** Expanded: a full-height column down the side instead of a corner box. */
   const [big, setBigState] = useState<boolean>(() => remembered(BIG_KEY, false))
@@ -508,6 +528,89 @@ export function CatalogDock({
               </>
             )}
 
+            {active === 'paint' && (
+              <>
+                <Typography variant="caption" color="text.secondary">
+                  {t('paint.hint')}
+                </Typography>
+
+                {/* Which face the brush writes. Inside and outside are kept
+                    apart because they always are: a brick elevation does not
+                    mean a brick living room. */}
+                <PillRow
+                  label={t('paint.face')}
+                  value={paintFace}
+                  values={['outside', 'inside'] as const}
+                  render={(item) => t(`paint.${item}`)}
+                  onChange={setPaintFace}
+                />
+
+                {paintFace === 'outside' && (
+                  <DockSection label={t('building3d.wallMaterial')}>
+                    <SwatchGrid>
+                      {WALL_MATERIALS.map((material) => (
+                        <Swatch
+                          key={material}
+                          label={t(`building3d.wallMat.${material}`)}
+                          caption={t(`building3d.wallMat.${material}`)}
+                          selected={paintMaterial === material}
+                          onClick={() => setPaintMaterial(material)}
+                        >
+                          <MaterialPreview
+                            pattern={WALL_FINISH[material].pattern}
+                            color={WALL_FINISH[material].defaultColor}
+                          />
+                        </Swatch>
+                      ))}
+                    </SwatchGrid>
+                  </DockSection>
+                )}
+
+                <DockSection label={t('paint.pickColor')}>
+                  <SwatchGrid>
+                    {WALL_COLORS.map((option) => {
+                      const armed =
+                        tool.type === 'paint' &&
+                        tool.face === paintFace &&
+                        tool.finish.color?.toLowerCase() === option.hex.toLowerCase()
+                      return (
+                        <Swatch
+                          key={option.id}
+                          size={SWATCH_SMALL}
+                          label={t(`building3d.color.${option.id}`)}
+                          color={option.hex}
+                          selected={armed}
+                          onClick={() =>
+                            onSelectPaint(
+                              armed
+                                ? null
+                                : {
+                                    face: paintFace,
+                                    finish: {
+                                      color: option.hex,
+                                      material: paintFace === 'outside' ? paintMaterial : undefined,
+                                    },
+                                  },
+                            )
+                          }
+                        />
+                      )
+                    })}
+                  </SwatchGrid>
+                </DockSection>
+
+                {tool.type === 'paint' && (
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
+                    {t('paint.armed')}
+                  </Typography>
+                )}
+
+                <Button size="small" variant="outlined" onClick={onResetPaint}>
+                  {t('paint.reset')}
+                </Button>
+              </>
+            )}
+
             {active === 'style' && (
               <>
                 <DockSection label={t('building3d.style')}>
@@ -541,6 +644,14 @@ export function CatalogDock({
                   onChange={(next) => set({ showRoof: next === 'whole' })}
                 />
 
+                <PillRow
+                  label={t('building3d.raise')}
+                  value={options.raise}
+                  values={['none', 'low', 'high'] as const}
+                  render={(item) => t(`building3d.raiseOpt.${item}`)}
+                  onChange={(raise) => set({ raise })}
+                />
+
                 <Stack>
                   <FormControlLabel
                     control={
@@ -564,6 +675,26 @@ export function CatalogDock({
                     label={<Typography variant="body2">{t('building3d.scenery')}</Typography>}
                     sx={{ mr: 0 }}
                   />
+                  {(
+                    [
+                      ['curtains', 'building3d.curtains'],
+                      ['wallLights', 'building3d.wallLights'],
+                      ['fence', 'building3d.fence'],
+                    ] as const
+                  ).map(([key, labelKey]) => (
+                    <FormControlLabel
+                      key={key}
+                      control={
+                        <Switch
+                          size="small"
+                          checked={options[key]}
+                          onChange={(event) => set({ [key]: event.target.checked })}
+                        />
+                      }
+                      label={<Typography variant="body2">{t(labelKey)}</Typography>}
+                      sx={{ mr: 0 }}
+                    />
+                  ))}
                 </Stack>
               </>
             )}

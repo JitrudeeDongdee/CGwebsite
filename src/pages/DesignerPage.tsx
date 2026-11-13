@@ -85,6 +85,8 @@ export function DesignerPage() {
     dragWallBy,
     finalizeWallMove,
     nameRoom,
+    paintWall,
+    resetWallFinishes,
     undo,
     redo,
     canUndo,
@@ -112,6 +114,7 @@ export function DesignerPage() {
     pitch: 'medium',
     wall: 'plaster',
     wallColor: WALL_FINISH.plaster.defaultColor,
+    insideColor: WALL_FINISH.plaster.defaultColor,
     frame: 'aluminium',
     roofMaterial: 'tile',
     roofColor: ROOF_FINISH.tile.defaultColor,
@@ -119,8 +122,17 @@ export function DesignerPage() {
     furniture: true,
     scenery: true,
     eaves: 'normal',
+    // The reference render's cabin stands clear of the ground with steps up
+    // to it, sheers behind the glazing and sconces at the door — on by
+    // default because that is what a knock-down house here looks like.
+    raise: 'low',
+    curtains: true,
+    wallLights: true,
+    fence: false,
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
+  /** Filled in by PlanEditor, so the toolbar's zoom buttons can drive it. */
+  const zoomRef = useRef<((factor: number) => void) | null>(null)
 
   // Never leave the cover up for ever. If the first frame does not arrive —
   // WebGL refused, the context was lost, the tab was in the background the
@@ -357,6 +369,7 @@ export function DesignerPage() {
         finalizeNodeMove={finalizeNodeMove}
         onContextMenu={handleContextMenu}
         cancelRef={cancelDrawingRef}
+        zoomRef={zoomRef}
         tool={tool}
         fitToken={fitToken}
         placeOpening={placeOpening}
@@ -365,12 +378,14 @@ export function DesignerPage() {
         finalizeFixtureMove={finalizeFixtureMove}
         dragWallBy={dragWallBy}
         finalizeWallMove={finalizeWallMove}
+        paintWall={paintWall}
       />
 
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={{ position: 'absolute', bottom: 12, left: 12, maxWidth: '70%', pointerEvents: 'none' }}
+        // Above the toolbar, which now sits in this corner too.
+        sx={{ position: 'absolute', bottom: 72, left: 16, maxWidth: '55%', pointerEvents: 'none' }}
       >
         {t('canvas.hint')}
         <br />
@@ -384,6 +399,7 @@ export function DesignerPage() {
         onUndo={undo}
         onRedo={redo}
         onFit={() => setFitToken((n) => n + 1)}
+        onZoom={(factor) => zoomRef.current?.(factor)}
         canUndo={canUndo}
         canRedo={canRedo}
       />
@@ -400,6 +416,11 @@ export function DesignerPage() {
         onSelectWallType={handleSelectWallType}
         onSelectOpening={(next) => setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)}
         onSelectFixture={(kind) => setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)}
+        onSelectPaint={(paint) => setTool(paint ? { type: 'paint', ...paint } : SELECT_TOOL)}
+        onResetPaint={() => {
+          resetWallFinishes()
+          setTool(SELECT_TOOL)
+        }}
         options={building3d}
         onOptionsChange={setBuilding3d}
         area={roomArea}

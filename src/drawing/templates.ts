@@ -34,6 +34,8 @@ interface OpeningSpec {
   y: number
   width: number
   kind: OpeningKind
+  /** Glazed to the floor, as the reference cabin's long elevations are. */
+  tall?: boolean
 }
 
 interface Spec {
@@ -200,6 +202,7 @@ function buildFromSpec({
       offset: Math.min(Math.max(offset, half), wallLength - half),
       width: spec.width,
       kind: spec.kind,
+      ...(spec.tall ? { tall: true } : {}),
     })
   })
 
@@ -340,14 +343,14 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
         ],
         openings: [
           { x: 1.35, y: 1.9, width: 1.6, kind: 'door' }, // sliding door to the porch
-          { x: 3.99, y: 0, width: 3.13, kind: 'window' }, // living glazing
-          { x: 3.01, y: 3.4, width: 1.08, kind: 'window' }, // living, front
+          { x: 3.99, y: 0, width: 3.13, kind: 'window', tall: true }, // living glazing, floor to head
+          { x: 3.01, y: 3.4, width: 1.08, kind: 'window', tall: true }, // living, front
           { x: 6.51, y: 3.4, width: 0.98, kind: 'door' }, // entrance
           { x: 8, y: 0, width: 0.5, kind: 'window' }, // bathroom
           { x: 6.9, y: 1.72, width: 0.7, kind: 'door' }, // bathroom
           { x: 9, y: 2.9, width: 0.8, kind: 'door' }, // bedroom
-          { x: 9.96, y: 3.4, width: 1.26, kind: 'window' }, // bedroom, front
-          { x: 12, y: 1.7, width: 1.6, kind: 'window' }, // bedroom, end
+          { x: 9.96, y: 3.4, width: 1.26, kind: 'window', tall: true }, // bedroom, front
+          { x: 12, y: 1.7, width: 1.6, kind: 'window', tall: true }, // bedroom, end
         ],
         furniture: [
           // Porch

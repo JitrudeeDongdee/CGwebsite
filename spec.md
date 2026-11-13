@@ -1191,6 +1191,61 @@ at this angle a generous overhang covers the walls, and a card that is all roof 
 the house under it.
 
 
+## Per-wall finishes, and the site around the house (2026-11-13)
+From the owner's reference render of the 12 m cabin: add the steps, the house standing clear of
+the ground, full-height glazing, curtains, wall lights, a fence and camping chairs — and **let the
+wall material be chosen per wall, with each interior face its own colour.** That last one closes
+the gap this spec has carried since the cabin landed ("one wall finish per house … per-wall
+finishes are a real feature, not a tweak").
+
+### Painting one wall at a time
+- **`DrawWall.finish?: WallFinish`** — `{ material?, color?, insideColor? }`. Inside and outside
+  are separate fields because they always are in practice: the render is charcoal cladding outside
+  with timber accent panels, and a room is painted on its own. Any field left out falls back to
+  the house default, so a plan that sets nothing behaves exactly as before.
+- **A brush, not a property panel.** There is no "selected wall" in this editor, so `ToolMode`
+  gains `paint`: pick a material and colour in the dock's ทาสีผนัง tab, then click the walls you
+  want it on — the same shape as placing a door or a sofa. `setWallFinish` patches rather than
+  replaces, so brushing the outside does not wipe the colour behind it; `clearWallFinishes` takes
+  the whole house back to default.
+- ⚠️ **Two faces on one box.** A `BoxGeometry`'s groups are +x, −x, +y, −y, +z, −z, and a wall box
+  runs along local x with its thickness on z — so the two faces that matter are groups 4 and 5.
+  `PatternedBox` rotates local +z by the box's own angle and compares it with `outward` to decide
+  which is which, rather than re-deriving the sign the builder used. The inner face is always
+  `paint`, never the cladding: a brick elevation does not mean a brick living room.
+- `Building3DOptions.insideColor` is the house-wide room colour a painted wall overrides.
+
+### The site — `src/scene3d/SitePieces.tsx`
+All of it is in the render, all of it is switched from the 3D panel, and none of it touches the plan.
+- **`raise`** (none / 45 cm / 90 cm) lifts the house onto **piers** — on a grid down the long
+  sides, because a 12 m cabin on four posts reads as a table — with a skirt at the slab edge so it
+  does not float.
+- **Steps are built from the doors**, not placed by hand: a raised house with a door you cannot
+  reach is worse than no steps, and the door already knows where it is and which way it faces.
+  ~170 mm a rise, which is what a stair actually is.
+- **Wall lights** flank each exterior door. A small emissive face, not a real light: a point light
+  per door would cost a shadow map each and buy nothing in daylight, while the glow is the part
+  you see.
+- **Fence** — dark slats with gaps, set back from the house and only on the two FAR sides: the
+  camera starts off the +x/+z corner, and a fence across the elevation the customer came to look
+  at is a wall in front of the house.
+- **Curtains** hang inside the glazing (`OpeningsView curtains`), sheer and drawn back to the
+  jambs. They are what stops a big pane reading as a hole.
+- **Full-height windows**: `DrawOpening.tall` drops the sill to the floor and takes the head up to
+  the door height, so a run of glazing lines up with the doors beside it. New preset
+  `openings.windowFull`, and the `cabin-12x3-4` sample's long elevations now use it.
+- **`campChair` and `firePit`** fixtures, in a new `outdoor` group, with plan symbols and 3D models.
+
+Verified in the browser on `cabin-12x3-4`: raised on piers with the skirt and steps, full-height
+glazing with curtains behind it, and painting the long south elevation in timber left the rest of
+the house charcoal — the render's accent-panel look. `tsc -b` clean, `oxlint` 26 warnings (all the
+pre-existing `only-export-components` class), `pnpm run build` passes.
+
+⚠️ **Not matched to the render yet:** the wrap-around porch soffit lining, the gravel/paving
+pattern of the yard, and the planter beds. The fence is off by default, since most plans are not
+walled.
+
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

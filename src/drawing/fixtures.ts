@@ -9,13 +9,14 @@ import type { DrawFixture, FixtureKind, Point } from './types'
  * counterpart in the shop — nobody buys a structural column or a WC off the
  * products page — so they are the designer's own.
  */
-export type FixtureGroup = 'furniture' | 'electronics' | 'sanitary' | 'structure'
+export type FixtureGroup = 'furniture' | 'electronics' | 'sanitary' | 'structure' | 'outdoor'
 
 /** Drawer order in the palette, and the heading each one carries. */
 export const FIXTURE_GROUPS: { id: FixtureGroup; labelKey: string }[] = [
   { id: 'furniture', labelKey: 'fixtures.groupFurniture' },
   { id: 'electronics', labelKey: 'fixtures.groupElectronics' },
   { id: 'sanitary', labelKey: 'fixtures.groupSanitary' },
+  { id: 'outdoor', labelKey: 'fixtures.groupOutdoor' },
   { id: 'structure', labelKey: 'fixtures.groupStructure' },
 ]
 
@@ -53,6 +54,9 @@ export const FIXTURE_CATALOG: FixtureSpec[] = [
   { kind: 'nightstand', labelKey: 'fixtures.nightstand', width: 0.45, depth: 0.4, solid: false, group: 'furniture' },
   { kind: 'shower', labelKey: 'fixtures.shower', width: 0.9, depth: 0.9, solid: false, group: 'sanitary' },
   { kind: 'tv', labelKey: 'fixtures.tv', width: 1.4, depth: 0.4, solid: false, group: 'electronics' },
+  // The terrace in the reference render: folding chairs round a fire pit.
+  { kind: 'campChair', labelKey: 'fixtures.campChair', width: 0.7, depth: 0.7, solid: false, group: 'outdoor' },
+  { kind: 'firePit', labelKey: 'fixtures.firePit', width: 0.9, depth: 0.9, solid: false, group: 'outdoor' },
 ]
 
 export function fixtureSpec(kind: FixtureKind): FixtureSpec {

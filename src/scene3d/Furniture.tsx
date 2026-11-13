@@ -343,6 +343,57 @@ function Tv({ w, d, p }: PieceProps) {
   )
 }
 
+function CampChair({ w, d, p }: PieceProps) {
+  // A folding chair is mostly its frame, so the legs are what to get right:
+  // two crossed pairs with a sling slung between them.
+  return (
+    <>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Box
+            size={[0.035, 0.75, 0.035]}
+            at={[side * (w / 2 - 0.05), 0.37, 0]}
+            material={p.metal}
+          />
+          <Box
+            size={[0.035, 0.6, 0.035]}
+            at={[side * (w / 2 - 0.08), 0.3, d / 2 - 0.08]}
+            material={p.metal}
+          />
+        </group>
+      ))}
+      {/* Seat sling and back, the fabric part. */}
+      <Box size={[w - 0.12, 0.05, d - 0.18]} at={[0, 0.42, 0.02]} material={p.fabric} />
+      <Box size={[w - 0.12, 0.42, 0.05]} at={[0, 0.63, -d / 2 + 0.07]} material={p.fabric} />
+      {/* Arms. */}
+      {[-1, 1].map((side) => (
+        <Box
+          key={`arm${side}`}
+          size={[0.04, 0.04, d - 0.24]}
+          at={[side * (w / 2 - 0.05), 0.62, 0.02]}
+          material={p.metal}
+        />
+      ))}
+    </>
+  )
+}
+
+function FirePit({ w, d, p }: PieceProps) {
+  const r = Math.min(w, d) / 2
+  return (
+    <>
+      {/* A square steel bowl on a plinth, as in the render. */}
+      <Box size={[w, 0.12, d]} at={[0, 0.06, 0]} material={p.recess} />
+      <Box size={[w - 0.1, 0.26, d - 0.1]} at={[0, 0.25, 0]} material={p.worktop} />
+      {/* Pale gravel fill, which is what reads from above. */}
+      <Box size={[w - 0.26, 0.05, d - 0.26]} at={[0, 0.4, 0]} material={p.linen} />
+      <mesh position={[0, 0.5, 0]} material={p.wood} castShadow>
+        <coneGeometry args={[r * 0.3, 0.22, 8]} />
+      </mesh>
+    </>
+  )
+}
+
 function Wardrobe({ w, d, p }: PieceProps) {
   return (
     <>
@@ -437,6 +488,10 @@ function Piece({ fixture, p }: { fixture: DrawFixture; p: Palette }) {
       return <Shower w={w} d={d} p={p} />
     case 'tv':
       return <Tv w={w} d={d} p={p} />
+    case 'campChair':
+      return <CampChair w={w} d={d} p={p} />
+    case 'firePit':
+      return <FirePit w={w} d={d} p={p} />
     default:
       return null
   }

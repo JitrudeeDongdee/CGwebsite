@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@mui/material/styles'
-import type { DrawingState, FixtureKind, OpeningKind, Point } from '../drawing/types'
+import type { DrawingState, FixtureKind, OpeningKind, Point, WallFinish } from '../drawing/types'
 import type { ToolMode } from '../drawing/tools'
 import type { Room } from '../drawing/rooms'
 import { useInteraction } from '../scene/useInteraction'
@@ -30,7 +30,14 @@ interface PlanEditorProps {
   finalizeFixtureMove: (fixtureId: string, point: Point) => void
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
+  paintWall: (wallId: string, patch: WallFinish) => void
   cancelRef: React.RefObject<(() => void) | null>
+  /**
+   * Filled in by the editor with a zoom-by-factor function, the same way
+   * `cancelRef` works. The viewBox lives in here, so the toolbar outside
+   * cannot drive it without a handle back in.
+   */
+  zoomRef?: React.RefObject<((factor: number) => void) | null>
 }
 
 const MIN_VIEW_WIDTH = 2
@@ -63,7 +70,9 @@ export function PlanEditor({
   finalizeFixtureMove,
   dragWallBy,
   finalizeWallMove,
+  paintWall,
   cancelRef,
+  zoomRef,
 }: PlanEditorProps) {
   const { scene } = useTheme()
   const svgRef = useRef<SVGSVGElement>(null)
@@ -81,10 +90,28 @@ export function PlanEditor({
     finalizeFixtureMove,
     dragWallBy,
     finalizeWallMove,
+    paintWall,
   })
   cancelRef.current = cancelDrawing
 
   const [view, setView] = useState<SheetView>(() => fitView(sheetBounds(state)))
+
+  // Zoom about the middle of what is on screen, which is what a button does;
+  // the wheel zooms to the cursor instead, because it has one.
+  const zoomBy = useCallback((factor: number) => {
+    setView((v) => {
+      const width = Math.min(MAX_VIEW_WIDTH, Math.max(MIN_VIEW_WIDTH, v.width * factor))
+      const scale = width / v.width
+      const height = v.height * scale
+      return {
+        width,
+        height,
+        minX: v.minX + (v.width - width) / 2,
+        minY: v.minY + (v.height - height) / 2,
+      }
+    })
+  }, [])
+  if (zoomRef) zoomRef.current = zoomBy
 
   // Re-frame the plan on demand (fit button / template load), never mid-edit.
   const lastFit = useRef(fitToken)

@@ -42,7 +42,8 @@
     "door90": "Door 90 cm",
     "window100": "Window 100 cm",
     "window150": "Window 150 cm",
-    "deleteOpening": "Delete this opening"
+    "deleteOpening": "Delete this opening",
+    "windowFull": "Full-height window 200 cm"
   },
   "contextMenu": {
     "deleteWall": "Delete this wall",
@@ -130,7 +131,9 @@
   "tools": {
     "select": "Move (creates nothing)",
     "draw": "Draw walls",
-    "fit": "Fit to view"
+    "fit": "Fit to view",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
   },
   "fixtures": {
     "title": "Columns / furniture",
@@ -157,7 +160,10 @@
     "groupFurniture": "Furniture",
     "groupElectronics": "Electronics",
     "groupSanitary": "Bathroom",
-    "groupStructure": "Structure"
+    "groupStructure": "Structure",
+    "campChair": "Camping chair",
+    "firePit": "Fire pit",
+    "groupOutdoor": "Outdoor"
   },
   "rooms": {
     "studio": "Studio",
@@ -261,7 +267,12 @@
       "black": "Black",
       "green": "Green",
       "blue": "Blue"
-    }
+    },
+    "raise": "Raise the floor",
+    "curtains": "Show curtains",
+    "wallLights": "Show wall lights",
+    "fence": "Show the fence",
+    "raiseOpt": { "none": "On the ground", "low": "Raised 45 cm", "high": "Raised 90 cm" }
   },
   "dock": {
     "walls": "Walls",
@@ -273,7 +284,8 @@
     "summary": "Summary",
     "collapse": "Collapse the catalogue",
     "expand": "Expand to a side panel",
-    "shrink": "Back to the corner"
+    "shrink": "Back to the corner",
+    "paint": "Paint"
   },
   "floors": {
     "nth": "Floor {{n}}",
@@ -282,6 +294,15 @@
     "remove": "Remove floor {{n}}",
     "whole": "Whole house",
     "upTo": "Show up to floor {{n}}"
+  },
+  "paint": {
+    "hint": "Pick a colour, then click the walls you want it on — one at a time.",
+    "face": "Face to paint",
+    "outside": "Outside",
+    "inside": "Inside",
+    "pickColor": "Pick a colour",
+    "armed": "Colour ready — click a wall on the plan to paint it",
+    "reset": "Clear every painted wall"
   },
   "view": {
     "plan": "2D plan",
