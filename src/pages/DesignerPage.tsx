@@ -349,6 +349,13 @@ export function DesignerPage() {
               floors={shownFloors}
               options={building3d}
               onReady={() => setSceneReady(true)}
+              activeFloor={activeFloor}
+              // The same three calls the 2D editor uses, so a drag in either
+              // view is one undo step and the two stay in step with no extra
+              // state between them.
+              onFixtureDragStart={beginNodeDrag}
+              onFixtureDrag={updateFixturePosition}
+              onFixtureDrop={finalizeFixtureMove}
             />
           </Suspense>
           {/* One cover for the whole wait — the chunk download AND the first
