@@ -1,4 +1,4 @@
-import type { FixtureKind, OpeningKind } from './types'
+import type { FixtureKind, OpeningKind, WallFinish } from './types'
 
 /**
  * What a click on the canvas means.
@@ -10,8 +10,14 @@ import type { FixtureKind, OpeningKind } from './types'
 export type ToolMode =
   | { type: 'select' }
   | { type: 'draw'; wallTypeId: string; thickness?: number }
-  | { type: 'opening'; kind: OpeningKind; width: number }
+  | { type: 'opening'; kind: OpeningKind; width: number; tall?: boolean }
   | { type: 'fixture'; kind: FixtureKind }
+  /**
+   * Brush a finish onto one wall. A tool rather than a property panel: there
+   * is no "selected wall" in this editor, and picking a colour then clicking
+   * the walls you want it on is how a build-mode catalogue already works.
+   */
+  | { type: 'paint'; finish: WallFinish; face: 'outside' | 'inside' }
 
 export const SELECT_TOOL: ToolMode = { type: 'select' }
 /** Default draw mode: `auto` thickness, matching the previous behaviour. */

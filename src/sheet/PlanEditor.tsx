@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@mui/material/styles'
-import type { DrawingState, FixtureKind, OpeningKind, Point } from '../drawing/types'
+import type { DrawingState, FixtureKind, OpeningKind, Point, WallFinish } from '../drawing/types'
 import type { ToolMode } from '../drawing/tools'
 import type { Room } from '../drawing/rooms'
 import { useInteraction } from '../scene/useInteraction'
@@ -30,6 +30,7 @@ interface PlanEditorProps {
   finalizeFixtureMove: (fixtureId: string, point: Point) => void
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
+  paintWall: (wallId: string, patch: WallFinish) => void
   cancelRef: React.RefObject<(() => void) | null>
 }
 
@@ -63,6 +64,7 @@ export function PlanEditor({
   finalizeFixtureMove,
   dragWallBy,
   finalizeWallMove,
+  paintWall,
   cancelRef,
 }: PlanEditorProps) {
   const { scene } = useTheme()
@@ -81,6 +83,7 @@ export function PlanEditor({
     finalizeFixtureMove,
     dragWallBy,
     finalizeWallMove,
+    paintWall,
   })
   cancelRef.current = cancelDrawing
 

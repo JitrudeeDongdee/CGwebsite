@@ -25,8 +25,10 @@ import {
   finishWallMove,
   rotateFixture,
   setRoomLabel,
+  setWallFinish,
+  clearWallFinishes,
 } from './state'
-import type { FixtureKind, OpeningKind, Point as PointType } from './types'
+import type { FixtureKind, OpeningKind, Point as PointType, WallFinish } from './types'
 import { findRooms } from './rooms'
 
 interface History {
@@ -151,8 +153,8 @@ export function useDrawingState() {
   const clearAll = useCallback(() => commitStack(() => createInitialFloors()), [commitStack])
 
   const placeOpening = useCallback(
-    (wallId: string, offset: number, width: number, kind: OpeningKind) =>
-      commit((prev) => addOpening(prev, wallId, offset, width, kind)),
+    (wallId: string, offset: number, width: number, kind: OpeningKind, tall?: boolean) =>
+      commit((prev) => addOpening(prev, wallId, offset, width, kind, tall)),
     [commit],
   )
   const removeOpening = useCallback(
@@ -207,6 +209,16 @@ export function useDrawingState() {
       return { past: [...h.past, origin].slice(-MAX_HISTORY), present, future: [] }
     })
   }, [])
+
+  const paintWall = useCallback(
+    (wallId: string, patch: WallFinish) =>
+      commit((prev) => setWallFinish(prev, wallId, patch)),
+    [commit],
+  )
+  const resetWallFinishes = useCallback(
+    () => commit((prev) => clearWallFinishes(prev)),
+    [commit],
+  )
 
   const nameRoom = useCallback(
     (point: PointType, name: string, existingId?: string) =>
@@ -311,6 +323,8 @@ export function useDrawingState() {
     dragWallBy,
     finalizeWallMove,
     nameRoom,
+    paintWall,
+    resetWallFinishes,
     undo,
     redo,
     canUndo: history.past.length > 0,

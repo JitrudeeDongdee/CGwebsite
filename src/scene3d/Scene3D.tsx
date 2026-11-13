@@ -35,6 +35,15 @@ import {
 import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
 import { Planting, SUN_DIRECTION, SkyDome, SkyEnvironment } from './Scenery'
+import {
+  EntrySteps,
+  Fence,
+  Piers,
+  RAISE_HEIGHTS,
+  RaisedSkirt,
+  WallLights,
+  type RaiseHeight,
+} from './SitePieces'
 
 export { warmDefaultPatterns } from './textures'
 
@@ -62,6 +71,16 @@ export interface Building3DOptions {
   scenery: boolean
   /** How far the roof runs past the walls; `flush` is the Nordic archetype. */
   eaves: EavesDepth
+  /** One colour for every room side, unless a wall was painted its own. */
+  insideColor: string
+  /** Lifts the floor clear of the ground, on piers, with steps to each door. */
+  raise: RaiseHeight
+  /** Sheer curtains inside the glazing. */
+  curtains: boolean
+  /** Sconces either side of each exterior door. */
+  wallLights: boolean
+  /** A dark slatted fence round the plot. */
+  fence: boolean
   /** A gable in a different finish from the walls — a timber gable end. */
   gableWall?: WallMaterial
   gableColor?: string
@@ -333,6 +352,7 @@ export function Scene3D({
     : 10
 
   const { eaves } = building
+  const raise = RAISE_HEIGHTS[options.raise] ?? 0
   const wallPattern = WALL_FINISH[options.wall].pattern
   /** Lit from one side so the massing reads, filled from the other. */
   const sun = span * 1.2 + 6
@@ -406,16 +426,33 @@ export function Scene3D({
         <Ground bounds={building.bounds} span={span} storeys={storeys} />
 
         {options.scenery && <Planting bounds={building.bounds} span={span} />}
+        {options.fence && <Fence bounds={building.bounds} span={span} />}
+        <Piers bounds={building.bounds} raise={raise} />
+        <RaisedSkirt bounds={building.bounds} raise={raise} />
+        <EntrySteps units={building.openings} raise={raise} />
+        {options.wallLights && <WallLights units={building.openings} raise={raise} />}
 
+        {/* The house itself rides on the piers. Ground, planting, fence and
+            the steps up to it stay where they are, so only the building
+            moves — which is what lifting a house on piers means. */}
+        <group position={[0, raise, 0]}>
         <Cutaway active={!options.showRoof}>
-          {building.walls.map((box) => (
-            <PatternedBox
-              key={box.id}
-              box={box}
-              pattern={wallPattern}
-              color={options.wallColor}
-            />
-          ))}
+          {building.walls.map((box) => {
+            // A painted wall wins over the house default, field by field, so
+            // brushing one elevation does not drag the rest with it.
+            const material = (box.finish?.material ?? options.wall) as WallMaterial
+            return (
+              <PatternedBox
+                key={box.id}
+                box={box}
+                pattern={
+                  box.finish?.material ? WALL_FINISH[material].pattern : wallPattern
+                }
+                color={box.finish?.color ?? options.wallColor}
+                insideColor={box.finish?.insideColor ?? options.insideColor}
+              />
+            )
+          })}
 
           {building.trim.map((box) => (
             <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
@@ -425,7 +462,11 @@ export function Scene3D({
             <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
           ))}
 
-          <OpeningsView units={building.openings} frame={options.frame} />
+          <OpeningsView
+            units={building.openings}
+            frame={options.frame}
+            curtains={options.curtains}
+          />
         </Cutaway>
 
         {options.furniture &&
@@ -450,6 +491,7 @@ export function Scene3D({
             overhang={EAVES_OVERHANG[options.eaves]}
           />
         )}
+        </group>
       </group>
     </Canvas>
   )

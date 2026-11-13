@@ -85,6 +85,8 @@ export function DesignerPage() {
     dragWallBy,
     finalizeWallMove,
     nameRoom,
+    paintWall,
+    resetWallFinishes,
     undo,
     redo,
     canUndo,
@@ -112,6 +114,7 @@ export function DesignerPage() {
     pitch: 'medium',
     wall: 'plaster',
     wallColor: WALL_FINISH.plaster.defaultColor,
+    insideColor: WALL_FINISH.plaster.defaultColor,
     frame: 'aluminium',
     roofMaterial: 'tile',
     roofColor: ROOF_FINISH.tile.defaultColor,
@@ -119,6 +122,13 @@ export function DesignerPage() {
     furniture: true,
     scenery: true,
     eaves: 'normal',
+    // The reference render's cabin stands clear of the ground with steps up
+    // to it, sheers behind the glazing and sconces at the door — on by
+    // default because that is what a knock-down house here looks like.
+    raise: 'low',
+    curtains: true,
+    wallLights: true,
+    fence: false,
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 
@@ -365,6 +375,7 @@ export function DesignerPage() {
         finalizeFixtureMove={finalizeFixtureMove}
         dragWallBy={dragWallBy}
         finalizeWallMove={finalizeWallMove}
+        paintWall={paintWall}
       />
 
       <Typography
@@ -400,6 +411,11 @@ export function DesignerPage() {
         onSelectWallType={handleSelectWallType}
         onSelectOpening={(next) => setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)}
         onSelectFixture={(kind) => setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)}
+        onSelectPaint={(paint) => setTool(paint ? { type: 'paint', ...paint } : SELECT_TOOL)}
+        onResetPaint={() => {
+          resetWallFinishes()
+          setTool(SELECT_TOOL)
+        }}
         options={building3d}
         onOptionsChange={setBuilding3d}
         area={roomArea}

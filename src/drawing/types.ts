@@ -7,10 +7,29 @@ export interface DrawNode extends Point {
   id: string
 }
 
+/**
+ * What one wall is finished in, overriding the whole-house choice.
+ *
+ * Inside and outside are separate, because they always are: the render this
+ * was built from is charcoal cladding outside with timber accent panels, and
+ * a room is painted on its own. A field left out falls back to the house
+ * default, so a plan that sets nothing behaves exactly as before.
+ */
+export interface WallFinish {
+  /** A `WallMaterial` from `materials.ts`; kept as a string so `drawing/types` stays dependency-free. */
+  material?: string
+  /** Outside face. */
+  color?: string
+  /** The room side, painted separately from the elevation. */
+  insideColor?: string
+}
+
 export interface DrawWall {
   id: string
   a: string
   b: string
+  /** Per-wall finish; unset means the house default. */
+  finish?: WallFinish
   /**
    * Wall thickness in metres, measured across the centreline that `a`/`b`
    * define. Optional so existing plans keep working; renderers fall back to
@@ -33,6 +52,8 @@ export interface DrawOpening {
   /** Clear width in metres. */
   width: number
   kind: OpeningKind
+  /** A window that runs to the floor rather than sitting on a 0.9 m sill. */
+  tall?: boolean
 }
 
 export type FixtureKind =
@@ -53,6 +74,8 @@ export type FixtureKind =
   | 'nightstand'
   | 'shower'
   | 'tv'
+  | 'campChair'
+  | 'firePit'
 
 /**
  * A free-standing item placed on the plan — a structural column or a piece

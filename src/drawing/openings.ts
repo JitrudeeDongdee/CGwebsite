@@ -8,6 +8,9 @@ export const OPENING_PRESETS = [
   { kind: 'door', width: 0.9, labelKey: 'openings.door90' },
   { kind: 'window', width: 1.0, labelKey: 'openings.window100' },
   { kind: 'window', width: 1.5, labelKey: 'openings.window150' },
+  // Floor to head, as the reference render's glazed bays are. `tall` is what
+  // tells the 3D builder to drop the sill rather than sit it at 0.9 m.
+  { kind: 'window', width: 2.0, labelKey: 'openings.windowFull', tall: true },
 ] as const
 
 export interface PlacedOpening {

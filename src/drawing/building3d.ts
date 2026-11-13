@@ -1,4 +1,4 @@
-import type { DrawingState, OpeningKind } from './types'
+import type { DrawingState, OpeningKind, WallFinish } from './types'
 import { distance } from './geometry'
 import { EXTERIOR_WALL_THICKNESS, INTERIOR_WALL_THICKNESS } from './wallOutline'
 
@@ -34,6 +34,8 @@ export interface WallBox {
   outward?: { x: number; z: number }
   /** Interior walls stay up in a cutaway; only the shell is taken away. */
   exterior?: boolean
+  /** This wall's own finish, if it was painted; otherwise the house default. */
+  finish?: WallFinish
 }
 
 /**
@@ -172,6 +174,7 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
           angle,
           outward,
           exterior,
+          finish: wall.finish,
         }
       }
 
@@ -201,7 +204,12 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
           })
         }
 
-        const head = base + (opening.kind === 'door' ? DOOR_HEIGHT : WINDOW_SILL + WINDOW_HEIGHT)
+        // A full-height window is glazed from the floor to the door head,
+        // which is what keeps a run of them lining up with the doors beside
+        // them in an elevation.
+        const sill = opening.tall ? 0 : WINDOW_SILL
+        const glazedTop = opening.tall ? DOOR_HEIGHT : WINDOW_SILL + WINDOW_HEIGHT
+        const head = base + (opening.kind === 'door' ? DOOR_HEIGHT : glazedTop)
 
         // Header over the hole.
         push(`${wall.id}-head-${opening.id}`, {
@@ -213,12 +221,12 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
 
         // Wall under a window; a door goes to the floor. On an upper storey a
         // door opens onto a balcony, so it keeps its full height.
-        if (opening.kind === 'window') {
+        if (opening.kind === 'window' && sill > 0) {
           push(`${wall.id}-sill-${opening.id}`, {
             from: opening.start,
             to: opening.end,
             bottom: base,
-            top: base + WINDOW_SILL,
+            top: base + sill,
           })
         }
 
@@ -228,8 +236,8 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
             : {
                 from: opening.start,
                 to: opening.end,
-                bottom: base + WINDOW_SILL,
-                top: base + WINDOW_SILL + WINDOW_HEIGHT,
+                bottom: base + sill,
+                top: base + glazedTop,
               }
 
         const hole = boxFor(`${wall.id}-unit-${opening.id}-L${level}`, holeSpan)

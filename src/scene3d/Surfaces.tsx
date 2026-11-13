@@ -37,17 +37,43 @@ export function PatternedBox({
   box,
   pattern,
   color,
+  insideColor,
   cast = true,
   receive = true,
 }: {
   box: WallBox
   pattern: SurfacePattern
   color: string
+  /** Paints the room side separately. Omit and both faces match. */
+  insideColor?: string
   cast?: boolean
   receive?: boolean
 }) {
   const outward = box.exterior ? box.outward : undefined
   const material = useShared(pattern, color)
+  // The inner face is paint, never the outside cladding: a brick elevation
+  // does not mean a brick living room.
+  const inner = useShared('paint', insideColor ?? color)
+
+  /**
+   * Which of the box's two broad faces looks outward.
+   *
+   * A BoxGeometry's groups are +x, -x, +y, -y, +z, -z, and the wall runs
+   * along local x with its thickness on z — so the two faces that matter are
+   * groups 4 and 5. Rotating local +z by the box's own angle and comparing it
+   * with `outward` says which is which, rather than re-deriving the sign the
+   * builder used.
+   */
+  const faces = useMemo(() => {
+    if (!insideColor || !box.outward) return undefined
+    const zx = -Math.sin(box.angle)
+    const zz = Math.cos(box.angle)
+    const plusZIsOut = zx * box.outward.x + zz * box.outward.z > 0
+    const sides = [material, material, material, material]
+    return plusZIsOut
+      ? [...sides, material, inner]
+      : [...sides, inner, material]
+  }, [insideColor, box.outward, box.angle, material, inner])
 
   const geometry = useMemo(() => {
     const geom = new THREE.BoxGeometry(box.length, box.height, box.thickness)
@@ -64,7 +90,7 @@ export function PatternedBox({
       position={[box.x, box.y, box.z]}
       rotation={[0, -box.angle, 0]}
       geometry={geometry}
-      material={material}
+      material={faces ?? material}
       castShadow={cast}
       receiveShadow={receive}
       userData={outward ? { outward } : undefined}
