@@ -326,6 +326,7 @@ const FIXTURE_HEIGHT: Partial<Record<FixtureKind, number>> = {
   tv: 1.2,
   campChair: 0.8,
   firePit: 0.4,
+  floorVoid: 0.02,
 }
 
 /** The same 2:1 isometric the plan thumbnails use. */

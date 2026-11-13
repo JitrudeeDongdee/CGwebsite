@@ -36,6 +36,10 @@ interface OpeningSpec {
   kind: OpeningKind
   /** Glazed to the floor, as the reference cabin's long elevations are. */
   tall?: boolean
+  /** Two glazed panes on a track. */
+  sliding?: boolean
+  /** Glazed wall to wall, resolved against the wall it lands on. */
+  fullWall?: boolean
 }
 
 interface Spec {
@@ -203,6 +207,8 @@ function buildFromSpec({
       width: spec.width,
       kind: spec.kind,
       ...(spec.tall ? { tall: true } : {}),
+      ...(spec.sliding ? { sliding: true } : {}),
+      ...(spec.fullWall ? { fullWall: true } : {}),
     })
   })
 
@@ -342,14 +348,14 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
           [9, 0, 9, 3.4], // bedroom
         ],
         openings: [
-          { x: 1.35, y: 1.9, width: 1.6, kind: 'door' }, // sliding door to the porch
-          { x: 3.99, y: 0, width: 3.13, kind: 'window', tall: true }, // living glazing, floor to head
+          { x: 1.35, y: 1.9, width: 1.8, kind: 'door', sliding: true, tall: true }, // slider onto the porch
+          { x: 3.99, y: 0, width: 3.13, kind: 'door', sliding: true, tall: true }, // the long elevation's big slider
           { x: 3.01, y: 3.4, width: 1.08, kind: 'window', tall: true }, // living, front
           { x: 6.51, y: 3.4, width: 0.98, kind: 'door' }, // entrance
           { x: 8, y: 0, width: 0.5, kind: 'window' }, // bathroom
           { x: 6.9, y: 1.72, width: 0.7, kind: 'door' }, // bathroom
           { x: 9, y: 2.9, width: 0.8, kind: 'door' }, // bedroom
-          { x: 9.96, y: 3.4, width: 1.26, kind: 'window', tall: true }, // bedroom, front
+          { x: 9.96, y: 3.4, width: 1.26, kind: 'door', sliding: true, tall: true }, // bedroom slider, front
           { x: 12, y: 1.7, width: 1.6, kind: 'window', tall: true }, // bedroom, end
         ],
         furniture: [

@@ -1306,6 +1306,60 @@ and slid in the 3D view as well.
   piece at exactly its old coordinates** (no jump on a plain click); and a ray that cannot meet the
   plane returns no point rather than one behind the camera. What is NOT verified is the wiring —
   that the grab fires, that the camera really holds still during a drag, and the hover cursor.
+## Sliding glazing, punched holes and floor voids (2026-11-13)
+From the reference render again: there was no sliding glass door and no wall-to-wall glazing, and
+no way to punch a plain hole in a wall or take the floor out of part of a plan.
+
+### Flags on an opening, not new kinds
+`DrawOpening` gains `sliding`, `fullWall` and `open` beside the existing `tall`. **Deliberately
+not new `OpeningKind` values**: `kind` is read by pricing (`openingPrice` is per door/window), the
+plan-file validator, the context menu and the templates, and a new kind would have had to be
+taught to each. A sliding door IS a door — only how it is BUILT differs.
+- **`sliding`** builds two glazed panes on a track. The panes LAP at the centre and sit at
+  different depths, so one visibly passes behind the other — that overlap is what reads as
+  "sliding" rather than "two windows". In plan it is the two-offset-panels symbol.
+- **`fullWall`** is resolved against the wall rather than stored: `resolveOpening(opening,
+  wallLength)` returns the span less a jamb each end, **centred**, so stretching the wall widens
+  the glass instead of leaving a stripe of blank wall, and a bay placed where the pointer happened
+  to be does not hang off one end. `PlacedOpening` now carries that resolved `width`, and
+  `building3d` resolves it the same way — the plan and the model cut the same hole.
+- **`open`** is a hole with nothing in it: no unit is emitted in 3D, and the plan draws only the
+  gap and its jambs. Anything else would read as glazing.
+- ⚠️ **Two pre-existing bugs found while wiring this**, both silent. The dock built its tool as
+  `{kind, width}` and **dropped the flags**, so a full-height window placed from the palette came
+  out ordinary — only templates, which bypass the palette, were ever right. And `planFile`'s
+  validator dropped them too, so a saved plan came back with its glazing sitting on a sill. The
+  palette's selected-tile check also keyed on kind+width, which two presets can now share, so it
+  keys on the preset's `labelKey`.
+- ⚠️ `OPENING_PRESETS` lost its `as const`: with literal types each preset had its own shape and
+  the optional flags existed on only some of them, so `preset.sliding` did not compile. It is a
+  declared `readonly OpeningPreset[]` now.
+
+### Floor voids are a fixture
+"ลบพื้นบางพื้นที่" is a `floorVoid` **fixture kind**, not a new entity. A fixture already carries
+id / x / y / width / depth / rotation and already has placement, dragging, rotation, delete,
+selection, undo, the file format and templates built around it — a new top-level array would have
+needed all of that again, and `column` is precedent for a fixture that is not furniture.
+- `findRooms` subtracts a void's area from the room it sits in, so it is neither counted as living
+  area nor priced as one. The room's POLYGON is untouched: the walls have not moved, and the
+  outline is what the drawing is. Clamped at zero — a void dragged larger than its room would
+  otherwise report a negative area and then a negative price.
+- In 3D the slab becomes a `THREE.Shape` of the footprint with one `Path` hole per void, because a
+  `planeGeometry` cannot have one. `FurnitureView` skips it, as it already skips columns.
+- In plan it is a dashed rectangle with a cross — the convention for a void rather than an object,
+  so nobody reads it as a table.
+
+### The cabin
+`cabin-12x3-4`'s porch opening, its long elevation and the bedroom front are sliding glazed doors
+now, all floor-to-head, which is the render's defining elevation.
+
+**Verified headlessly against the real modules** (no browser — see the note in the 3D-drag section):
+the cabin carries 3 sliders, all `tall`, and still closes to 36.21 m²; a wall-to-wall bay spans
+7.76 m on an 8 m wall and 3.76 m on a 4 m one and is centred on both; an ordinary opening keeps its
+own width and offset; a 2×2 void takes the total from 36.21 to 32.21 m² and its room from 21.80 to
+17.80 with the polygon unchanged; an oversized void clamps at zero; and sliding, tall, open and the
+void all survive a save-and-load round trip. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
+`pnpm run build` passes.
 
 
 ## Current state

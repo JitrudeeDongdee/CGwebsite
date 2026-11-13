@@ -10,7 +10,17 @@ import type { FixtureKind, OpeningKind, WallFinish } from './types'
 export type ToolMode =
   | { type: 'select' }
   | { type: 'draw'; wallTypeId: string; thickness?: number }
-  | { type: 'opening'; kind: OpeningKind; width: number; tall?: boolean }
+  | {
+      type: 'opening'
+      kind: OpeningKind
+      width: number
+      tall?: boolean
+      sliding?: boolean
+      fullWall?: boolean
+      open?: boolean
+      /** Which preset armed this, so the palette can mark the right tile. */
+      labelKey?: string
+    }
   | { type: 'fixture'; kind: FixtureKind }
   /**
    * Brush a finish onto one wall. A tool rather than a property panel: there

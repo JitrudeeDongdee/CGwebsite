@@ -50,7 +50,7 @@ interface UseInteractionOptions {
     offset: number,
     width: number,
     kind: OpeningKind,
-    tall?: boolean,
+    flags?: { tall?: boolean; sliding?: boolean; fullWall?: boolean; open?: boolean },
   ) => void
   placeFixture: (kind: FixtureKind, point: Point) => void
   updateFixturePosition: (fixtureId: string, point: Point) => void
@@ -276,7 +276,12 @@ export function useInteraction({
         if (wall) {
           const offset = offsetAlongWall(state, wall.id, point)
           if (offset !== null) {
-            placeOpening(wall.id, offset, tool.width, tool.kind, tool.tall)
+            placeOpening(wall.id, offset, tool.width, tool.kind, {
+              tall: tool.tall,
+              sliding: tool.sliding,
+              fullWall: tool.fullWall,
+              open: tool.open,
+            })
           }
         }
         return

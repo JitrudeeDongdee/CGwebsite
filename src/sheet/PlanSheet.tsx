@@ -166,7 +166,10 @@ function Openings({
     <g>
       {placed.map((item) => {
         const { center, direction, opening, thickness } = item
-        const half = opening.width / 2
+        // The RESOLVED width: a wall-to-wall bay spans its wall, so the gap
+        // drawn here has to match the one the 3D builder cuts.
+        const width = item.width
+        const half = width / 2
         const normal = { x: -direction.y, y: direction.x }
         const t = (thickness * 1.06) / 2
 
@@ -185,18 +188,34 @@ function Openings({
           return `M ${cx - normal.x * t} ${cy - normal.y * t} L ${cx + normal.x * t} ${cy + normal.y * t}`
         })
 
+        const from = { x: center.x - direction.x * half, y: center.y - direction.y * half }
+        const to = { x: center.x + direction.x * half, y: center.y + direction.y * half }
+
         let symbol: string
-        if (opening.kind === 'door') {
-          const hinge = { x: center.x - direction.x * half, y: center.y - direction.y * half }
-          const leafEnd = { x: hinge.x + normal.x * opening.width, y: hinge.y + normal.y * opening.width }
-          const arcStart = { x: hinge.x + direction.x * opening.width, y: hinge.y + direction.y * opening.width }
+        if (opening.open) {
+          // A punched hole has no symbol at all — the gap and its jambs ARE
+          // the drawing. Anything else would read as glazing or a leaf.
+          symbol = ''
+        } else if (opening.sliding) {
+          // Two panels drawn offset across the wall, overlapping at the
+          // centre: the convention for a slider, and what tells it apart
+          // from a pair of windows at a glance.
+          const off = (thickness * 0.3)
+          const mid = { x: center.x, y: center.y }
+          symbol =
+            `M ${from.x - normal.x * off} ${from.y - normal.y * off} ` +
+            `L ${mid.x + direction.x * half * 0.12 - normal.x * off} ${mid.y + direction.y * half * 0.12 - normal.y * off} ` +
+            `M ${to.x + normal.x * off} ${to.y + normal.y * off} ` +
+            `L ${mid.x - direction.x * half * 0.12 + normal.x * off} ${mid.y - direction.y * half * 0.12 + normal.y * off}`
+        } else if (opening.kind === 'door') {
+          const hinge = from
+          const leafEnd = { x: hinge.x + normal.x * width, y: hinge.y + normal.y * width }
+          const arcStart = { x: hinge.x + direction.x * width, y: hinge.y + direction.y * width }
           symbol =
             `M ${hinge.x} ${hinge.y} L ${leafEnd.x} ${leafEnd.y} ` +
-            `M ${arcStart.x} ${arcStart.y} A ${opening.width} ${opening.width} 0 0 0 ${leafEnd.x} ${leafEnd.y}`
+            `M ${arcStart.x} ${arcStart.y} A ${width} ${width} 0 0 0 ${leafEnd.x} ${leafEnd.y}`
         } else {
-          symbol =
-            `M ${center.x - direction.x * half} ${center.y - direction.y * half} ` +
-            `L ${center.x + direction.x * half} ${center.y + direction.y * half}`
+          symbol = `M ${from.x} ${from.y} L ${to.x} ${to.y}`
         }
 
         return (

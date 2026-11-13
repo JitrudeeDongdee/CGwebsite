@@ -146,9 +146,23 @@ export function findRooms(state: DrawingState): PlanFaces {
     }
   }
 
+  // A floor void is a piece of the plan with no floor in it — a terrace cut
+  // into the footprint, a stair well. It is subtracted from the room it sits
+  // in, so it is neither counted as living area nor priced as one. The room's
+  // POLYGON is untouched: the walls round it have not moved, and the outline
+  // is what the drawing is.
+  const voided = rooms.map((room) => {
+    const cut = state.fixtures
+      .filter((f) => f.kind === 'floorVoid' && pointInPolygon({ x: f.x, y: f.y }, room.polygon))
+      .reduce((sum, f) => sum + f.width * f.depth, 0)
+    // Never below zero: a void dragged larger than its room would otherwise
+    // make the house report a negative area, and then a negative price.
+    return cut > 0 ? { ...room, area: Math.max(0, room.area - cut) } : room
+  })
+
   return {
-    rooms,
-    totalArea: rooms.reduce((sum, room) => sum + room.area, 0),
+    rooms: voided,
+    totalArea: voided.reduce((sum, room) => sum + room.area, 0),
     exteriorWallIds,
   }
 }

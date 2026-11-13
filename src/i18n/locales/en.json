@@ -43,7 +43,11 @@
     "window100": "Window 100 cm",
     "window150": "Window 150 cm",
     "deleteOpening": "Delete this opening",
-    "windowFull": "Full-height window 200 cm"
+    "windowFull": "Full-height window 200 cm",
+    "sliding180": "Sliding glass door 180 cm",
+    "sliding240": "Sliding glass door 240 cm",
+    "glassWall": "Glazed wall to wall",
+    "hole": "Punched hole (no frame)"
   },
   "contextMenu": {
     "deleteWall": "Delete this wall",
@@ -163,7 +167,8 @@
     "groupStructure": "Structure",
     "campChair": "Camping chair",
     "firePit": "Fire pit",
-    "groupOutdoor": "Outdoor"
+    "groupOutdoor": "Outdoor",
+    "floorVoid": "No floor here"
   },
   "rooms": {
     "studio": "Studio",

@@ -57,6 +57,8 @@ export const FIXTURE_CATALOG: FixtureSpec[] = [
   // The terrace in the reference render: folding chairs round a fire pit.
   { kind: 'campChair', labelKey: 'fixtures.campChair', width: 0.7, depth: 0.7, solid: false, group: 'outdoor' },
   { kind: 'firePit', labelKey: 'fixtures.firePit', width: 0.9, depth: 0.9, solid: false, group: 'outdoor' },
+  // Not furniture: an area with no floor, cut out of the room it sits in.
+  { kind: 'floorVoid', labelKey: 'fixtures.floorVoid', width: 2, depth: 2, solid: false, group: 'structure' },
 ]
 
 export function fixtureSpec(kind: FixtureKind): FixtureSpec {

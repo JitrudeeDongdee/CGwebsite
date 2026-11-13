@@ -54,9 +54,27 @@ export interface DrawOpening {
   kind: OpeningKind
   /** A window that runs to the floor rather than sitting on a 0.9 m sill. */
   tall?: boolean
+  /**
+   * A sliding glazed door — two big panes on a track, as the reference
+   * render's long elevation has. Still a `door` for counting and pricing,
+   * because that is what it is; only how it is BUILT differs.
+   */
+  sliding?: boolean
+  /**
+   * Glazed wall to wall: the width is resolved against the wall it lands on
+   * rather than stored, so it still spans after the wall is stretched.
+   */
+  fullWall?: boolean
+  /**
+   * A plain hole punched through the wall — no frame, no leaf, no glass.
+   * A pass-through, or an opening between two rooms.
+   */
+  open?: boolean
 }
 
 export type FixtureKind =
+  /** Not furniture: a region with no floor, cut out of the room it sits in. */
+  | 'floorVoid'
   | 'column'
   | 'bedDouble'
   | 'bedSingle'

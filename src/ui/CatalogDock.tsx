@@ -129,6 +129,16 @@ function remember(key: string, value: boolean) {
 export interface OpeningTool {
   kind: OpeningKind
   width: number
+  /**
+   * The preset's own flags, carried through. They were being DROPPED here,
+   * so a full-height window placed from the palette came out as an ordinary
+   * one — only templates, which bypass the palette, ever got it right.
+   */
+  tall?: boolean
+  sliding?: boolean
+  fullWall?: boolean
+  open?: boolean
+  labelKey?: string
 }
 
 interface CatalogDockProps {
@@ -280,7 +290,8 @@ export function CatalogDock({
 
   const set = (patch: Partial<Building3DOptions>) => onOptionsChange({ ...options, ...patch })
 
-  const activeOpening = tool.type === 'opening' ? { kind: tool.kind, width: tool.width } : null
+  const activeOpeningLabel = tool.type === 'opening' ? tool.labelKey : null
+  const activeOpening = tool.type === 'opening'
   const activeFixture = tool.type === 'fixture' ? tool.kind : null
   const activeWallTypeId = tool.type === 'draw' ? tool.wallTypeId : null
 
@@ -462,8 +473,9 @@ export function CatalogDock({
               >
                 <SwatchGrid>
                   {OPENING_PRESETS.map((preset) => {
-                    const selected =
-                      activeOpening?.kind === preset.kind && activeOpening.width === preset.width
+                    // Keyed on the label, not kind+width: two presets can
+                    // share both and differ only by a flag.
+                    const selected = activeOpeningLabel === preset.labelKey
                     return (
                       <Swatch
                         key={`${preset.kind}-${preset.width}`}
@@ -472,7 +484,17 @@ export function CatalogDock({
                         selected={selected}
                         onClick={() =>
                           onSelectOpening(
-                            selected ? null : { kind: preset.kind, width: preset.width },
+                            selected
+                              ? null
+                              : {
+                                  kind: preset.kind,
+                                  width: preset.width,
+                                  tall: preset.tall,
+                                  sliding: preset.sliding,
+                                  fullWall: preset.fullWall,
+                                  open: preset.open,
+                                  labelKey: preset.labelKey,
+                                },
                           )
                         }
                       >
