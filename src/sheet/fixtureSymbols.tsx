@@ -286,6 +286,24 @@ export function FixtureSymbol({ kind, width, depth, ink, stroke = 1, nonScaling 
         </>
       )
 
+    case 'floorVoid':
+      return (
+        <>
+          {/* Dashed outline and a cross: the drafting convention for a void
+              rather than an object, so nobody reads it as a table. */}
+          <rect
+            x={x}
+            y={y}
+            width={w}
+            height={d}
+            {...thin}
+            strokeDasharray="6 4"
+          />
+          <line x1={x} y1={y} x2={x + w} y2={y + d} {...thin} />
+          <line x1={x + w} y1={y} x2={x} y2={y + d} {...thin} />
+        </>
+      )
+
     default:
       return <rect x={x} y={y} width={w} height={d} {...body} />
   }

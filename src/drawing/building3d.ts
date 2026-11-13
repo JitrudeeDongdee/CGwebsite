@@ -1,5 +1,6 @@
 import type { DrawingState, OpeningKind, WallFinish } from './types'
 import { distance } from './geometry'
+import { resolveOpening } from './openings'
 import { EXTERIOR_WALL_THICKNESS, INTERIOR_WALL_THICKNESS } from './wallOutline'
 
 /** Storey and opening heights in metres, typical for a house built here. */
@@ -54,6 +55,8 @@ export interface OpeningUnit {
   width: number
   height: number
   wallThickness: number
+  /** A door built as two glazed panes on a track rather than a solid leaf. */
+  sliding?: boolean
   outward?: { x: number; z: number }
   exterior?: boolean
 }
@@ -180,11 +183,17 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
 
       const wallOpenings = state.openings
         .filter((opening) => opening.wallId === wall.id)
-        .map((opening) => ({
-          ...opening,
-          start: Math.max(0, opening.offset - opening.width / 2),
-          end: Math.min(length, opening.offset + opening.width / 2),
-        }))
+        .map((opening) => {
+          // A wall-to-wall bay is resolved against THIS wall, so stretching
+          // the wall widens the glass instead of leaving a blank stripe.
+          const { offset, width } = resolveOpening(opening, length)
+          return {
+            ...opening,
+            width,
+            start: Math.max(0, offset - width / 2),
+            end: Math.min(length, offset + width / 2),
+          }
+        })
         .sort((one, two) => one.start - two.start)
 
       const push = (id: string, span: Span) => {
@@ -240,11 +249,14 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
                 top: base + glazedTop,
               }
 
-        const hole = boxFor(`${wall.id}-unit-${opening.id}-L${level}`, holeSpan)
+        // A punched hole carries no unit at all — that is what makes it a
+        // hole rather than a window with invisible glass.
+        const hole = opening.open ? null : boxFor(`${wall.id}-unit-${opening.id}-L${level}`, holeSpan)
         if (hole) {
           openings.push({
             id: hole.id,
             kind: opening.kind,
+            sliding: opening.sliding,
             x: hole.x,
             y: hole.y,
             z: hole.z,

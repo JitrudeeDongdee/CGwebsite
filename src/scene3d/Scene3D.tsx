@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { useTheme } from '@mui/material/styles'
 import { extend, useFrame, useThree, type ThreeElement } from '@react-three/fiber'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import type { DrawFixture } from '../drawing/types'
 import {
   LEVEL_HEIGHT,
   buildBuilding3D,
@@ -216,15 +217,102 @@ function Roof({
   )
 }
 
+/**
+ * A storey's floor as a shape with the voids cut out of it.
+ *
+ * A plain `planeGeometry` cannot have a hole, so the slab is a `THREE.Shape`
+ * of the footprint with one `Path` per void. Built in the XY plane and then
+ * laid flat by the mesh's rotation, the way `planeGeometry` already is —
+ * which is why the void's plan y maps to the shape's y with no sign flip.
+ */
+function useFloorGeometry(
+  width: number,
+  depth: number,
+  centreX: number,
+  centreZ: number,
+  voids: DrawFixture[],
+) {
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.moveTo(-width / 2, -depth / 2)
+    shape.lineTo(width / 2, -depth / 2)
+    shape.lineTo(width / 2, depth / 2)
+    shape.lineTo(-width / 2, depth / 2)
+    shape.closePath()
+
+    for (const cut of voids) {
+      const hw = cut.width / 2
+      const hd = cut.depth / 2
+      const cos = Math.cos(cut.rotation)
+      const sin = Math.sin(cut.rotation)
+      const corner = (sx: number, sy: number) => {
+        const lx = sx * hw
+        const ly = sy * hd
+        return [
+          cut.x - centreX + lx * cos - ly * sin,
+          cut.y - centreZ + lx * sin + ly * cos,
+        ] as const
+      }
+      const path = new THREE.Path()
+      const [x0, y0] = corner(-1, -1)
+      path.moveTo(x0, y0)
+      for (const [sx, sy] of [[1, -1], [1, 1], [-1, 1]] as const) {
+        const [px, py] = corner(sx, sy)
+        path.lineTo(px, py)
+      }
+      path.closePath()
+      shape.holes.push(path)
+    }
+
+    return new THREE.ShapeGeometry(shape)
+  }, [width, depth, centreX, centreZ, voids])
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return geometry
+}
+
+/** One storey's slab, with its voids cut out. */
+function FloorSlab({
+  width,
+  depth,
+  centreX,
+  centreZ,
+  y,
+  material,
+  voids,
+}: {
+  width: number
+  depth: number
+  centreX: number
+  centreZ: number
+  y: number
+  material: THREE.Material
+  voids: DrawFixture[]
+}) {
+  const geometry = useFloorGeometry(width, depth, centreX, centreZ, voids)
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[centreX, y, centreZ]}
+      geometry={geometry}
+      material={material}
+      receiveShadow
+    />
+  )
+}
+
 /** Ground, paving apron and the floor of each storey. */
 function Ground({
   bounds,
   span,
   storeys,
+  floors,
 }: {
   bounds: Building3D['bounds']
   span: number
   storeys: number
+  /** Each storey's plan, for the voids cut out of its floor. */
+  floors: FloorPlan[]
 }) {
   const ground = span * 30
   const grass = useShared('grass', '#8FA86B')
@@ -263,15 +351,18 @@ function Ground({
           </mesh>
 
           {Array.from({ length: storeys }, (_, level) => (
-            <mesh
+            <FloorSlab
               key={level}
-              rotation={[-Math.PI / 2, 0, 0]}
-              position={[centreX, level * LEVEL_HEIGHT + 0.02, centreZ]}
+              width={width}
+              depth={depth}
+              centreX={centreX}
+              centreZ={centreZ}
+              y={level * LEVEL_HEIGHT + 0.02}
               material={floor}
-              receiveShadow
-            >
-              <planeGeometry args={[width, depth]} />
-            </mesh>
+              voids={
+                floors[level]?.state.fixtures.filter((f) => f.kind === 'floorVoid') ?? []
+              }
+            />
           ))}
         </>
       )}
@@ -423,7 +514,7 @@ export function Scene3D({
       {/* Centred on the origin, so the light, its shadow camera and the orbit
           target all work from one place whatever the plan's coordinates. */}
       <group position={[-centre[0], 0, -centre[2]]}>
-        <Ground bounds={building.bounds} span={span} storeys={storeys} />
+        <Ground bounds={building.bounds} span={span} storeys={storeys} floors={floors} />
 
         {options.scenery && <Planting bounds={building.bounds} span={span} />}
         {options.fence && <Fence bounds={building.bounds} span={span} />}

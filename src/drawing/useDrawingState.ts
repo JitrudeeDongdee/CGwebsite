@@ -153,8 +153,13 @@ export function useDrawingState() {
   const clearAll = useCallback(() => commitStack(() => createInitialFloors()), [commitStack])
 
   const placeOpening = useCallback(
-    (wallId: string, offset: number, width: number, kind: OpeningKind, tall?: boolean) =>
-      commit((prev) => addOpening(prev, wallId, offset, width, kind, tall)),
+    (
+      wallId: string,
+      offset: number,
+      width: number,
+      kind: OpeningKind,
+      flags?: { tall?: boolean; sliding?: boolean; fullWall?: boolean; open?: boolean },
+    ) => commit((prev) => addOpening(prev, wallId, offset, width, kind, flags)),
     [commit],
   )
   const removeOpening = useCallback(

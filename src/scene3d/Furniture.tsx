@@ -504,7 +504,9 @@ export function FurnitureView({ state, floor }: { state: DrawingState; floor: nu
   return (
     <>
       {state.fixtures
-        .filter((fixture) => fixture.kind !== 'column')
+        // Columns are drawn by the building, and a floor void is a hole in
+        // the slab rather than a thing standing on it.
+        .filter((fixture) => fixture.kind !== 'column' && fixture.kind !== 'floorVoid')
         .map((fixture) => (
           <group
             key={fixture.id}

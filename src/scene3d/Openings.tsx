@@ -117,6 +117,97 @@ function WindowUnit({
   )
 }
 
+/**
+ * A sliding glazed door: two big panes on a track, one slightly in front of
+ * the other, as the reference render's long elevation has.
+ *
+ * The OVERLAP is what says "sliding" rather than "two windows" — the panes
+ * are each slightly more than half the opening and sit on different depths,
+ * so one visibly passes behind the other at the meeting stile.
+ */
+function SlidingDoorUnit({
+  unit,
+  mats,
+  curtains,
+}: {
+  unit: OpeningUnit
+  mats: UnitMaterials
+  curtains?: boolean
+}) {
+  const { width, height, wallThickness } = unit
+  const depth = wallThickness * 0.8
+  const innerW = width - MEMBER * 2
+  const innerH = height - MEMBER * 2
+  // Each leaf laps the centre, which is how a two-panel slider is built.
+  const leafW = innerW / 2 + 0.04
+
+  return (
+    <group
+      position={[unit.x, unit.y, unit.z]}
+      rotation={[0, -unit.angle, 0]}
+      userData={unit.exterior && unit.outward ? { outward: unit.outward } : undefined}
+    >
+      {/* Outer frame: jambs, head, and the track at the foot. */}
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`jamb${side}`}
+          position={[side * (width / 2 - MEMBER / 2), 0, 0]}
+          material={mats.frame}
+          castShadow
+        >
+          <boxGeometry args={[MEMBER, height, depth]} />
+        </mesh>
+      ))}
+      <mesh position={[0, height / 2 - MEMBER / 2, 0]} material={mats.frame} castShadow>
+        <boxGeometry args={[innerW, MEMBER, depth]} />
+      </mesh>
+      {/* The track is shallower than the head, and sits at the floor. */}
+      <mesh position={[0, -(height / 2) + 0.025, 0]} material={mats.frame} castShadow>
+        <boxGeometry args={[width, 0.05, depth * 1.1]} />
+      </mesh>
+
+      {[-1, 1].map((side) => (
+        <group key={`leaf${side}`} position={[side * (innerW / 4 + 0.02), 0, side * 0.03]}>
+          {/* Each leaf is a pane in its own slim frame. */}
+          <mesh material={mats.glass}>
+            <boxGeometry args={[leafW - MEMBER, innerH - MEMBER, 0.018]} />
+          </mesh>
+          {[-1, 1].map((edge) => (
+            <mesh
+              key={edge}
+              position={[edge * (leafW / 2 - MULLION / 2), 0, 0]}
+              material={mats.frame}
+              castShadow
+            >
+              <boxGeometry args={[MULLION, innerH, depth * 0.7]} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+
+      {curtains && (
+        <>
+          {[-1, 1].map((side) => (
+            <mesh
+              key={`curtain${side}`}
+              position={[side * (innerW * 0.3), 0, -(depth / 2 + 0.06)]}
+              material={mats.curtain}
+            >
+              <boxGeometry args={[innerW * 0.36, innerH, 0.03]} />
+            </mesh>
+          ))}
+          <mesh
+            position={[0, height / 2 - MEMBER * 0.6, -(depth / 2 + 0.06)]}
+            material={mats.frame}
+          >
+            <boxGeometry args={[width, 0.03, 0.03]} />
+          </mesh>
+        </>
+      )}
+    </group>
+  )
+}
+
 /** A door: frame, panelled leaf, lever and threshold. */
 function DoorUnit({ unit, mats }: { unit: OpeningUnit; mats: UnitMaterials }) {
   const { width, height, wallThickness } = unit
@@ -225,13 +316,17 @@ export function OpeningsView({
 
   return (
     <>
-      {units.map((unit) =>
-        unit.kind === 'window' ? (
-          <WindowUnit key={unit.id} unit={unit} mats={mats} curtains={curtains} />
-        ) : (
-          <DoorUnit key={unit.id} unit={unit} mats={mats} />
-        ),
-      )}
+      {units.map((unit) => {
+        if (unit.kind === 'window') {
+          return <WindowUnit key={unit.id} unit={unit} mats={mats} curtains={curtains} />
+        }
+        if (unit.sliding) {
+          return (
+            <SlidingDoorUnit key={unit.id} unit={unit} mats={mats} curtains={curtains} />
+          )
+        }
+        return <DoorUnit key={unit.id} unit={unit} mats={mats} />
+      })}
     </>
   )
 }

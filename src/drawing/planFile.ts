@@ -137,6 +137,14 @@ function validateOpenings(raw: unknown): DrawOpening[] {
         offset: value.offset,
         width: value.width,
         kind: value.kind,
+        // The flags were being dropped here, so a saved plan came back with
+        // its sliding doors turned into hinged ones and its full-height
+        // glazing sitting on a sill. Only the ones that are set are written,
+        // which keeps a plain door the three fields it has always been.
+        ...(value.tall === true ? { tall: true } : {}),
+        ...(value.sliding === true ? { sliding: true } : {}),
+        ...(value.fullWall === true ? { fullWall: true } : {}),
+        ...(value.open === true ? { open: true } : {}),
       })
     }
   })

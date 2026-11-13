@@ -250,7 +250,7 @@ export function addOpening(
   offsetAlongWall: number,
   width: number,
   kind: OpeningKind,
-  tall?: boolean,
+  flags?: { tall?: boolean; sliding?: boolean; fullWall?: boolean; open?: boolean },
 ): DrawingState {
   const wall = state.walls.find((w) => w.id === wallId)
   if (!wall) return state
@@ -266,7 +266,19 @@ export function addOpening(
   const half = width / 2
   const offset = Math.min(Math.max(offsetAlongWall, half), wallLength - half)
 
-  const opening: DrawOpening = { id: nextId('opening'), wallId, offset, width, kind, ...(tall ? { tall } : {}) }
+  const opening: DrawOpening = {
+    id: nextId('opening'),
+    wallId,
+    offset,
+    width,
+    kind,
+    // Only the flags that are set are stored, so a plain door stays the
+    // three fields it has always been in a saved plan.
+    ...(flags?.tall ? { tall: true } : {}),
+    ...(flags?.sliding ? { sliding: true } : {}),
+    ...(flags?.fullWall ? { fullWall: true } : {}),
+    ...(flags?.open ? { open: true } : {}),
+  }
   return { ...state, openings: [...state.openings, opening] }
 }
 

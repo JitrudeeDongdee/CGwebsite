@@ -1,9 +1,24 @@
-import type { DrawingState, DrawOpening, Point } from './types'
+import type { DrawingState, DrawOpening, OpeningKind, Point } from './types'
 import { distance } from './geometry'
 import { EXTERIOR_WALL_THICKNESS, INTERIOR_WALL_THICKNESS } from './wallOutline'
 
+/**
+ * One entry in the palette. Declared rather than inferred from `as const`:
+ * with literal types each preset got its own shape and the optional flags
+ * existed on only some of them, so reading `preset.sliding` did not compile.
+ */
+export interface OpeningPreset {
+  kind: OpeningKind
+  width: number
+  labelKey: string
+  tall?: boolean
+  sliding?: boolean
+  fullWall?: boolean
+  open?: boolean
+}
+
 /** Standard sizes offered in the palette, in metres. */
-export const OPENING_PRESETS = [
+export const OPENING_PRESETS: readonly OpeningPreset[] = [
   { kind: 'door', width: 0.8, labelKey: 'openings.door80' },
   { kind: 'door', width: 0.9, labelKey: 'openings.door90' },
   { kind: 'window', width: 1.0, labelKey: 'openings.window100' },
@@ -11,10 +26,19 @@ export const OPENING_PRESETS = [
   // Floor to head, as the reference render's glazed bays are. `tall` is what
   // tells the 3D builder to drop the sill rather than sit it at 0.9 m.
   { kind: 'window', width: 2.0, labelKey: 'openings.windowFull', tall: true },
-] as const
+  // The reference render's long elevation: a wide sliding glazed door, and
+  // bays glazed from wall to wall between the timber panels.
+  { kind: 'door', width: 1.8, labelKey: 'openings.sliding180', sliding: true, tall: true },
+  { kind: 'door', width: 2.4, labelKey: 'openings.sliding240', sliding: true, tall: true },
+  { kind: 'window', width: 2.4, labelKey: 'openings.glassWall', tall: true, fullWall: true },
+  // A hole, with nothing in it.
+  { kind: 'window', width: 1.0, labelKey: 'openings.hole', open: true },
+]
 
 export interface PlacedOpening {
   opening: DrawOpening
+  /** Clear width on the wall — resolved, so a `fullWall` bay reports its span. */
+  width: number
   /** Centre point in world coordinates. */
   center: Point
   /** Unit vector along the wall, from a to b. */
@@ -27,6 +51,26 @@ export interface PlacedOpening {
  * the position is stored along the wall rather than as a coordinate, moving
  * or stretching a wall carries its doors and windows with it for free.
  */
+/**
+ * The clear width an opening actually takes on its wall.
+ *
+ * A `fullWall` glazed bay is stored with whatever width it was placed at but
+ * DRAWN wall to wall, less a jamb each end — so stretching the wall widens
+ * the glass with it instead of leaving a stripe of blank wall.
+ */
+export const FULL_WALL_JAMB = 0.12
+
+export function resolveOpening(
+  opening: DrawOpening,
+  wallLength: number,
+): { offset: number; width: number } {
+  if (!opening.fullWall) return { offset: opening.offset, width: opening.width }
+  // Wall to wall, and therefore centred on it — a glazed bay placed where
+  // the pointer happened to be would hang off one end.
+  const width = Math.max(0.3, wallLength - FULL_WALL_JAMB * 2)
+  return { offset: wallLength / 2, width }
+}
+
 export function placeOpenings(
   state: DrawingState,
   exteriorWallIds: ReadonlySet<string>,
@@ -45,13 +89,15 @@ export function placeOpenings(
     if (length === 0) continue
 
     const direction = { x: (b.x - a.x) / length, y: (b.y - a.y) / length }
+    const { offset, width } = resolveOpening(opening, length)
     const center = {
-      x: a.x + direction.x * opening.offset,
-      y: a.y + direction.y * opening.offset,
+      x: a.x + direction.x * offset,
+      y: a.y + direction.y * offset,
     }
 
     placed.push({
       opening,
+      width,
       center,
       direction,
       thickness:
