@@ -9,7 +9,7 @@
   "canvas": {
     "hint": "Click to start a wall · move, then click again to place it · Esc or right-click to cancel",
     "hint2": "Drag a corner to move it · right-click (when not drawing) to delete/copy · Ctrl+Z to undo",
-    "zoomHint": "Pinch or scroll to zoom"
+    "zoomHint": "Pinch, or Ctrl/⌘ + scroll, to zoom · plain scroll moves down the page"
   },
   "templates": {
     "title": "Starter plans",
@@ -279,7 +279,9 @@
     "nth": "Floor {{n}}",
     "show": "Show floor {{n}}",
     "add": "Add a floor",
-    "remove": "Remove floor {{n}}"
+    "remove": "Remove floor {{n}}",
+    "whole": "Whole house",
+    "upTo": "Show up to floor {{n}}"
   },
   "view": {
     "plan": "2D plan",

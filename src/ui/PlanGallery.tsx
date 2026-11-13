@@ -101,7 +101,7 @@ function PlanCard({
           borderRadius: 1,
         }}
       >
-        <IsoThumbnail state={plan.state} size={82} />
+        <IsoThumbnail state={plan.state} size={82} finish={plan.finish} />
       </Box>
       <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
         {label}

@@ -39,7 +39,7 @@ const MAX_VIEW_WIDTH = 400
 /**
  * The 2D floor-plan editor, drawn as vector SVG. It renders the same
  * `PlanSheet` used for the PDF, and layers interaction on top: pan (middle
- * button / Space-drag), wheel-zoom to the cursor, and — reusing the shared,
+ * button / Space-drag), ctrl/⌘-wheel zoom to the cursor, and — reusing the shared,
  * framework-agnostic `useInteraction` state machine — click-to-draw walls plus
  * drag-to-move for corners, walls and fixtures. Pointer positions are turned
  * into world metres through the SVG's own CTM, so one code path serves mouse
@@ -188,6 +188,15 @@ export function PlanEditor({
     const svg = svgRef.current
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
+      // A plain wheel scrolls the PAGE, so the sample plans below the editor
+      // can be reached. The editor is a full viewport tall, so swallowing the
+      // wheel to zoom made everything under it unreachable by scrolling —
+      // which is how people actually get to the rest of the page.
+      //
+      // Zoom is ctrl/⌘ + wheel, the usual convention. A trackpad pinch
+      // already arrives as a wheel event with ctrlKey set, so pinch-to-zoom
+      // keeps working with no extra handling.
+      if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       const world = toWorld(e.clientX, e.clientY)
       if (!world) return
