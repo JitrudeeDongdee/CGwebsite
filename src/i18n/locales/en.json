@@ -61,7 +61,9 @@
     "wallCount": "Walls",
     "wallUnit": "segments",
     "roomCount": "Rooms",
-    "roomUnit": "rooms"
+    "roomUnit": "rooms",
+    "floorArea": "Room area, floor {{n}}",
+    "houseTotal": "Whole house"
   },
   "estimate": {
     "title": "Price estimate",
@@ -272,6 +274,12 @@
     "collapse": "Collapse the catalogue",
     "expand": "Expand to a side panel",
     "shrink": "Back to the corner"
+  },
+  "floors": {
+    "nth": "Floor {{n}}",
+    "show": "Show floor {{n}}",
+    "add": "Add a floor",
+    "remove": "Remove floor {{n}}"
   },
   "view": {
     "plan": "2D plan",
