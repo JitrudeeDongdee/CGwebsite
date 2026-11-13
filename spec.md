@@ -1265,6 +1265,47 @@ pattern of the yard, and the planter beds. The fence is off by default, since mo
 walled.
 
 
+## Dragging furniture in the 3D view — `src/scene3d/useFixtureDrag.ts` (2026-11-13)
+Furniture could only be moved on the 2D plan; in 3D it was a picture. Now a piece can be grabbed
+and slid in the 3D view as well.
+
+- **The piece slides along the horizontal plane through the point that was GRABBED**, not along
+  the floor, so it tracks the cursor at the height it was picked up. The plane is taken from the
+  hit itself (`plane.constant = -event.point.y`), which means the hook needs to know nothing about
+  the scene's offsets — the recentring group, the raised floor and the storey height all drop out.
+- **Plan and world coordinates differ by a constant translation and nothing else**, so the DELTA in
+  world x/z is the delta in plan x/y. That is why no mapping between the two is needed either.
+- ⚠️ **OrbitControls is switched off imperatively, in the same synchronous pointerdown**, not
+  through a React prop — it listens to its own native pointer events, so a prop set here would not
+  reach it before its listener saw the first move (the race in MEMORY.md). `Orbit` keeps its own
+  stable ref and MIRRORS the instance onto the one handed in; a `controls ?? own` expression is a
+  fresh value every render and would make its effect depend on something that always changes.
+- `pointerup` is listened for on the **window**, with `pointercancel` beside it: a release outside
+  the canvas (or a touch the browser takes over) would otherwise never commit the move and would
+  leave the camera switched off.
+- Everything the native move/up handlers read is a **ref** — they fire during the same gesture that
+  writes it (MEMORY.md's `useInteraction` race).
+- It calls the SAME three functions the 2D editor uses (`beginNodeDrag` / `updateFixturePosition` /
+  `finalizeFixtureMove`), so a drag in either view is one undo step and the two views need no extra
+  state between them.
+- **Only the storey being edited is draggable.** A move is applied to the active floor's plan, so
+  dragging another storey's sofa would quietly move a different one; other floors render as before
+  and ignore the pointer. The cursor turns to a grab hand on hover, which is the only thing that
+  says a piece can be picked up — there is no outline or handle on it in 3D.
+- **The gesture owns the cursor**, not the hover: `grab` sets `grabbing`, the release clears it,
+  and the piece's own `pointerout` is guarded on `isDragging()` — the piece slides under the
+  cursor and can outrun it, which would otherwise drop the grab hand mid-drag. For the same
+  reason a release that was NOT a drag returns immediately rather than clearing the cursor out
+  from under a pointer still resting on a piece.
+- **All three listeners are on the window**, not the canvas: a drag that leaves the canvas would
+  otherwise freeze until the pointer came back. Moves cost nothing when nothing is being dragged.
+- ⚠️ **Verified by arithmetic, NOT in the browser.** Both the in-app browser pane and the Chrome
+  extension were unreachable while this was written. A Node check against the real three.js
+  (camera → ray → plane → plan delta) confirms: the plane lands exactly at the asked height for
+  y = 0 / 0.85 / 3.2; the plan delta equals the world delta; **a click with no movement leaves the
+  piece at exactly its old coordinates** (no jump on a plain click); and a ray that cannot meet the
+  plane returns no point rather than one behind the camera. What is NOT verified is the wiring —
+  that the grab fires, that the camera really holds still during a drag, and the hover cursor.
 ## Sliding glazing, punched holes and floor voids (2026-11-13)
 From the reference render again: there was no sliding glass door and no wall-to-wall glazing, and
 no way to punch a plain hole in a wall or take the floor out of part of a plan.
