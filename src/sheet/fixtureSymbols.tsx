@@ -244,6 +244,24 @@ export function FixtureSymbol({ kind, width, depth, ink, stroke = 1, nonScaling 
         </>
       )
 
+    case 'tv':
+      return (
+        <>
+          {/* The stand is the footprint; the screen is the heavy line across
+              the back, which is how a plan shows a wall-facing television. */}
+          <rect x={x} y={y} width={w} height={d} {...body} />
+          <line x1={x + w * 0.04} y1={y + d * 0.2} x2={x + w * 0.96} y2={y + d * 0.2} {...body} />
+          <line x1={0} y1={y + d * 0.2} x2={0} y2={y + d * 0.45} {...thin} />
+          <line
+            x1={x + w * 0.25}
+            y1={y + d * 0.72}
+            x2={x + w * 0.75}
+            y2={y + d * 0.72}
+            {...thin}
+          />
+        </>
+      )
+
     default:
       return <rect x={x} y={y} width={w} height={d} {...body} />
   }

@@ -23,6 +23,8 @@ interface EstimatePanelProps {
   onSubmit: () => void
   /** True while the configured rates are still the placeholder defaults. */
   usingPlaceholderRates: boolean
+  /** Drop the card chrome — inside the catalogue dock it is a card already. */
+  bare?: boolean
 }
 
 export function EstimatePanel({
@@ -31,12 +33,20 @@ export function EstimatePanel({
   estimate,
   onSubmit,
   usingPlaceholderRates,
+  bare,
 }: EstimatePanelProps) {
   const { t, i18n } = useTranslation()
   const locale = i18n.resolvedLanguage === 'th' ? 'th-TH' : 'en-US'
 
   return (
-    <Paper elevation={0} sx={{ p: 2, width: 280, border: 1, borderColor: 'divider' }}>
+    <Paper
+      elevation={0}
+      sx={
+        bare
+          ? { p: 0, width: '100%', bgcolor: 'transparent' }
+          : { p: 2, width: 280, border: 1, borderColor: 'divider' }
+      }
+    >
       <Typography variant="overline" color="text.secondary">
         {t('estimate.title')}
       </Typography>

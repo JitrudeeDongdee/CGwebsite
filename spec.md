@@ -1062,6 +1062,68 @@ in 3D while the 3D view is up, and stop the plan reading as "a lot of rectangles
   already use, with the plan symbol laid on the top face by an SVG `matrix`). A 3D view with
   flat symbols beside it reads as two different tools.
 
+## The catalogue dock — one panel in the corner, not two down the sides (2026-11-13)
+The owner's report: the controls sit on BOTH sides and hide the house being looked at; make
+picking things work like The Sims 4, with the choices in the bottom-right — and make the colour
+picker look the same way.
+
+- **`src/ui/CatalogDock.tsx`** replaces `ToolSidebar` (232px, left) and the info column (288px,
+  right), **both deleted**, along with `Building3DPanel` whose contents moved into its tabs. Those
+  two cost 520px of a fixed-height layout — on a 1024px laptop most of the screen — and the house
+  got what was left. The dock is one `position: absolute` panel over the bottom-right corner of
+  the drawing: a rail of category icons, then that category's tiles. Pressing the open category
+  collapses it back to the rail, so the plan can always be cleared in one click.
+  - Tabs follow the view: ผนัง / ประตู-หน้าต่าง / เฟอร์นิเจอร์ / สรุปราคา in 2D, and
+    สไตล์ / หลังคา / ผนัง-สี / สรุปราคา in 3D. The remembered tab may not exist in the view now on
+    screen, so `active` falls back to the first rather than rendering an empty panel.
+  - **Expanded, it becomes a column down the side** (`33.333%`, full height, `minWidth` 360) rather
+    than a bigger floating box — the owner asked for the big size to be "ข้างๆ", beside the house
+    instead of on top of it. Normal/expanded in `cg:designer-dock-big`, open/collapsed in
+    `cg:designer-dock-open`, both read in try/catch (blocked site data throws).
+  - On a phone the rail turns horizontal and sits under the panel (`flexDirection: column-reverse`),
+    because a vertical rail eats a fifth of 375px; the dock also lifts to `bottom: 68` there so the
+    centred `BottomToolbar` stays reachable.
+- **`src/ui/Swatch.tsx` is the one option tile, and the answer to "make the colour picker the
+  same".** Wall types, doors, furniture, roof shapes, materials AND colours are all now the same
+  square tile with the same selected ring — colours just at `SWATCH_SMALL` (32px) instead of 58.
+  Before this, one screen offered colours as circles, materials as a segmented text control and
+  furniture as full-width list rows: three answers to one question. The ring is an `outline`, not a
+  thicker border, or selecting a tile would nudge its neighbours.
+- **`src/ui/MaterialPreview.tsx`** draws each finish as a small SVG (brick courses, timber lap,
+  vertical fibre/standing seam, stone, scalloped tile, shingles, speckle) tinted with the colour
+  it is actually set to. ⚠️ It does NOT reuse `scene3d/textures.ts`: that module is part of the
+  three.js chunk, and importing it would pull ~240 kB into the 2D editor to decorate a 58px square.
+- `RoofPreview` became **`RoofShapePreview`** — bare SVG with no chrome, since the `Swatch` around
+  it now owns the tile, the ring and the caption. `AreaSummary` / `EstimatePanel` gained `bare`,
+  which drops their card chrome inside the dock (they are already inside a card).
+- The four `app.panel*` i18n keys went with the side panels; `dock.*` is new.
+
+### Furniture is grouped the way the shop groups products (2026-11-13)
+Sixteen pieces in one undivided grid meant hunting for the fridge among the beds. `FixtureSpec`
+gained `group`, and the furniture tab renders one drawer per `FIXTURE_GROUPS` entry.
+`furniture` and `electronics` are deliberately the **same split the rest of the site uses**
+(`ProductCategory`), so a sofa and a fridge mean the same thing wherever a customer meets them;
+a built-in kitchen run is filed under furniture because that is how the products page sells it.
+`sanitary` and `structure` are the designer's own — the shop has no category for a WC or a
+structural column. **A `tv` fixture was added** (1.4 × 0.4): plan symbol in `fixtureSymbols.tsx`,
+3D model in `Furniture.tsx`, `FIXTURE_HEIGHT` entry for the isometric preview.
+
+### The plan gallery opens on one row (2026-11-13)
+`PlanGallery` now has three steps — `hidden` / `row` / `full` — with a grab bar across its top:
+drag up for the full wrapping grid, down to tuck the samples away, or click it to toggle. It opens
+on **one row**, because the editor above it is the point of the page. The step is remembered in
+`cg:designer-gallery-view`. ⚠️ The drag reads `viewRef`/`dragFrom` as **refs, not state**: two
+pointer moves can land before React re-renders and both would otherwise read the stale step (the
+same race as the `useInteraction` entry in MEMORY.md). `touchAction: 'none'` on the bar, or a
+phone scrolls the page instead of dragging it.
+
+Verified in the browser at 1440×900, both views: the plan runs the full width with the dock over
+one corner; the 3D tab set swaps in; a roof colour click turned the roof brick red; the furniture
+tab shows four drawers with the TV under เครื่องใช้ไฟฟ้า; the TV draws in plan and in 3D (seen in
+the cutaway); the gallery stepped full→row→hidden→(clamped)→row under real pointer gestures with
+each step persisted. `tsc -b` clean, `oxlint` 25 warnings (all the pre-existing
+`only-export-components` class), `pnpm run build` passes.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

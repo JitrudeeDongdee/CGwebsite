@@ -8,13 +8,22 @@ interface AreaSummaryProps {
   area: number | null
   roomCount: number
   wallCount: number
+  /** Drop the card chrome — inside the catalogue dock it is a card already. */
+  bare?: boolean
 }
 
-export function AreaSummary({ area, roomCount, wallCount }: AreaSummaryProps) {
+export function AreaSummary({ area, roomCount, wallCount, bare }: AreaSummaryProps) {
   const { t } = useTranslation()
 
   return (
-    <Paper elevation={0} sx={{ p: 2, minWidth: 200, border: 1, borderColor: 'divider' }}>
+    <Paper
+      elevation={0}
+      sx={
+        bare
+          ? { p: 0, width: '100%', bgcolor: 'transparent' }
+          : { p: 2, minWidth: 200, border: 1, borderColor: 'divider' }
+      }
+    >
       <Typography variant="overline" color="text.secondary">
         {t('summary.title')}
       </Typography>

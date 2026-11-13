@@ -430,3 +430,21 @@ untracked file) before stash/branch surgery, and move the work to its own branch
 `git stash push -u` + `checkout` + `pop` rather than committing onto whatever branch happens
 to be checked out. When a file edit silently reverts, suspect another writer before suspecting
 the edit.
+
+## A full-height panel looked empty, because the page was scrolled
+
+**What happened**: the catalogue dock's new expanded mode — a column down the right-hand
+side, `position: absolute` with `top: 0; bottom: 0` — screenshotted as a tall white strip
+with one stray icon at the top. It read as a broken layout: wrong flex direction, content
+not rendering, rail collapsed.
+
+**Root cause**: none of those. Measuring the element said `width: 480` (exactly a third of
+1440), `height: 852`, with both children present and populated — and `top: -123`. The page
+was scrolled down 123px, so the panel's content, which sits at ITS top, was above the
+viewport and the screenshot showed the empty lower half of a correct panel.
+
+**Correct behavior**: when a panel looks empty or absent, read its `getBoundingClientRect()`
+and its children's before reading the code — the numbers separate "not rendered" from
+"rendered somewhere you are not looking" in one call, and a screenshot cannot. Same lesson
+as the furniture and the sky entries above: three times now the thing was drawn correctly
+and the view was the problem.

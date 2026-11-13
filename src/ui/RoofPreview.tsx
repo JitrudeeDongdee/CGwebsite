@@ -1,75 +1,48 @@
-import ButtonBase from '@mui/material/ButtonBase'
-import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import type { RoofShape } from '../drawing/roof'
 
-const W = 40
-const H = 26
+const W = 48
+const H = 34
 
 /** Section profile of each roof shape, drawn over a stub of wall. */
 const PROFILE: Record<RoofShape, string> = {
-  gable: `M 2 ${H - 6} L ${W / 2} 4 L ${W - 2} ${H - 6}`,
-  hip: `M 2 ${H - 6} L 11 4 L ${W - 11} 4 L ${W - 2} ${H - 6}`,
-  shed: `M 2 ${H - 6} L ${W - 2} 4`,
-  flat: `M 2 6 L ${W - 2} 6`,
+  gable: `M 3 ${H - 9} L ${W / 2} 6 L ${W - 3} ${H - 9}`,
+  hip: `M 3 ${H - 9} L 13 6 L ${W - 13} 6 L ${W - 3} ${H - 9}`,
+  shed: `M 3 ${H - 9} L ${W - 3} 6`,
+  flat: `M 3 9 L ${W - 3} 9`,
 }
 
-export function RoofPreview({
-  shape,
-  label,
-  selected,
-  onClick,
-}: {
-  shape: RoofShape
-  label: string
-  selected: boolean
-  onClick: () => void
-}) {
+/**
+ * Roof shapes are nearly impossible to tell apart by name, so each option in
+ * the catalogue carries a small section drawing of its profile instead.
+ *
+ * Bare SVG with no chrome of its own: it sits inside a `Swatch`, which owns
+ * the tile, the selected ring and the caption, like every other option on the
+ * screen.
+ */
+export function RoofShapePreview({ shape }: { shape: RoofShape }) {
   const theme = useTheme()
 
   return (
-    <ButtonBase
-      onClick={onClick}
-      sx={{
-        flex: 1,
-        flexDirection: 'column',
-        gap: 0.25,
-        p: 0.75,
-        borderRadius: 1,
-        border: 1,
-        borderColor: selected ? 'primary.main' : 'divider',
-        bgcolor: selected ? 'action.selected' : 'transparent',
-      }}
-    >
-      <svg width={W} height={H} aria-hidden>
-        <path
-          d={PROFILE[shape]}
-          fill="none"
-          stroke={theme.scene.wall}
-          strokeWidth={2}
-          strokeLinejoin="round"
-        />
-        {/* Wall stubs, so the profile reads as a roof on a building. */}
-        <line
-          x1={5}
-          y1={H - 6}
-          x2={5}
-          y2={H - 1}
-          stroke={theme.scene.dimension}
-          strokeWidth={1.5}
-        />
-        <line
-          x1={W - 5}
-          y1={H - 6}
-          x2={W - 5}
-          y2={H - 1}
-          stroke={theme.scene.dimension}
-          strokeWidth={1.5}
-        />
-      </svg>
-      <Typography variant="caption" sx={{ lineHeight: 1.1 }}>
-        {label}
-      </Typography>
-    </ButtonBase>
+    <svg width={W} height={H} aria-hidden>
+      <path
+        d={PROFILE[shape]}
+        fill="none"
+        stroke={theme.scene.wall}
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {/* Wall stubs, so the profile reads as a roof on a building. */}
+      <line x1={7} y1={H - 9} x2={7} y2={H - 2} stroke={theme.scene.dimension} strokeWidth={1.5} />
+      <line
+        x1={W - 7}
+        y1={H - 9}
+        x2={W - 7}
+        y2={H - 2}
+        stroke={theme.scene.dimension}
+        strokeWidth={1.5}
+      />
+    </svg>
   )
 }

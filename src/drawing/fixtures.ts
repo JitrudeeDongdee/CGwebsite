@@ -1,5 +1,24 @@
 import type { DrawFixture, FixtureKind, Point } from './types'
 
+/**
+ * Which drawer of the catalogue a piece lives in.
+ *
+ * `furniture` and `electronics` are deliberately the SAME split the shop uses
+ * on the rest of the site (`ProductCategory`), so a customer meets one idea of
+ * what a sofa is and what a fridge is wherever they are. The other two have no
+ * counterpart in the shop — nobody buys a structural column or a WC off the
+ * products page — so they are the designer's own.
+ */
+export type FixtureGroup = 'furniture' | 'electronics' | 'sanitary' | 'structure'
+
+/** Drawer order in the palette, and the heading each one carries. */
+export const FIXTURE_GROUPS: { id: FixtureGroup; labelKey: string }[] = [
+  { id: 'furniture', labelKey: 'fixtures.groupFurniture' },
+  { id: 'electronics', labelKey: 'fixtures.groupElectronics' },
+  { id: 'sanitary', labelKey: 'fixtures.groupSanitary' },
+  { id: 'structure', labelKey: 'fixtures.groupStructure' },
+]
+
 export interface FixtureSpec {
   kind: FixtureKind
   labelKey: string
@@ -8,28 +27,32 @@ export interface FixtureSpec {
   depth: number
   /** Columns are structural and draw solid; furniture draws as an outline. */
   solid: boolean
+  group: FixtureGroup
 }
 
 /** Real-world sizes so the plan stays to scale. */
 export const FIXTURE_CATALOG: FixtureSpec[] = [
-  { kind: 'column', labelKey: 'fixtures.column', width: 0.2, depth: 0.2, solid: true },
-  { kind: 'bedDouble', labelKey: 'fixtures.bedDouble', width: 1.6, depth: 2.0, solid: false },
-  { kind: 'bedSingle', labelKey: 'fixtures.bedSingle', width: 1.0, depth: 2.0, solid: false },
-  { kind: 'sofa', labelKey: 'fixtures.sofa', width: 2.0, depth: 0.85, solid: false },
-  { kind: 'table', labelKey: 'fixtures.table', width: 1.4, depth: 0.8, solid: false },
-  { kind: 'kitchen', labelKey: 'fixtures.kitchen', width: 2.4, depth: 0.6, solid: false },
-  { kind: 'toilet', labelKey: 'fixtures.toilet', width: 0.4, depth: 0.7, solid: false },
-  { kind: 'sink', labelKey: 'fixtures.sink', width: 0.5, depth: 0.45, solid: false },
+  { kind: 'column', labelKey: 'fixtures.column', width: 0.2, depth: 0.2, solid: true, group: 'structure' },
+  { kind: 'bedDouble', labelKey: 'fixtures.bedDouble', width: 1.6, depth: 2.0, solid: false, group: 'furniture' },
+  { kind: 'bedSingle', labelKey: 'fixtures.bedSingle', width: 1.0, depth: 2.0, solid: false, group: 'furniture' },
+  { kind: 'sofa', labelKey: 'fixtures.sofa', width: 2.0, depth: 0.85, solid: false, group: 'furniture' },
+  { kind: 'table', labelKey: 'fixtures.table', width: 1.4, depth: 0.8, solid: false, group: 'furniture' },
+  // A built-in kitchen run is sold as furniture on the products page, so it
+  // is filed as furniture here too rather than invented into its own group.
+  { kind: 'kitchen', labelKey: 'fixtures.kitchen', width: 2.4, depth: 0.6, solid: false, group: 'furniture' },
+  { kind: 'toilet', labelKey: 'fixtures.toilet', width: 0.4, depth: 0.7, solid: false, group: 'sanitary' },
+  { kind: 'sink', labelKey: 'fixtures.sink', width: 0.5, depth: 0.45, solid: false, group: 'sanitary' },
   // Added 2026-11-12 for the 12 m cabin sample, which needed every one of
   // these. Sizes are the real article, as above.
-  { kind: 'sofaL', labelKey: 'fixtures.sofaL', width: 2.6, depth: 1.7, solid: false },
-  { kind: 'coffeeTable', labelKey: 'fixtures.coffeeTable', width: 1, depth: 0.6, solid: false },
-  { kind: 'diningRound', labelKey: 'fixtures.diningRound', width: 1.4, depth: 1.4, solid: false },
-  { kind: 'chair', labelKey: 'fixtures.chair', width: 0.5, depth: 0.5, solid: false },
-  { kind: 'fridge', labelKey: 'fixtures.fridge', width: 0.6, depth: 0.65, solid: false },
-  { kind: 'wardrobe', labelKey: 'fixtures.wardrobe', width: 1, depth: 0.6, solid: false },
-  { kind: 'nightstand', labelKey: 'fixtures.nightstand', width: 0.45, depth: 0.4, solid: false },
-  { kind: 'shower', labelKey: 'fixtures.shower', width: 0.9, depth: 0.9, solid: false },
+  { kind: 'sofaL', labelKey: 'fixtures.sofaL', width: 2.6, depth: 1.7, solid: false, group: 'furniture' },
+  { kind: 'coffeeTable', labelKey: 'fixtures.coffeeTable', width: 1, depth: 0.6, solid: false, group: 'furniture' },
+  { kind: 'diningRound', labelKey: 'fixtures.diningRound', width: 1.4, depth: 1.4, solid: false, group: 'furniture' },
+  { kind: 'chair', labelKey: 'fixtures.chair', width: 0.5, depth: 0.5, solid: false, group: 'furniture' },
+  { kind: 'fridge', labelKey: 'fixtures.fridge', width: 0.6, depth: 0.65, solid: false, group: 'electronics' },
+  { kind: 'wardrobe', labelKey: 'fixtures.wardrobe', width: 1, depth: 0.6, solid: false, group: 'furniture' },
+  { kind: 'nightstand', labelKey: 'fixtures.nightstand', width: 0.45, depth: 0.4, solid: false, group: 'furniture' },
+  { kind: 'shower', labelKey: 'fixtures.shower', width: 0.9, depth: 0.9, solid: false, group: 'sanitary' },
+  { kind: 'tv', labelKey: 'fixtures.tv', width: 1.4, depth: 0.4, solid: false, group: 'electronics' },
 ]
 
 export function fixtureSpec(kind: FixtureKind): FixtureSpec {

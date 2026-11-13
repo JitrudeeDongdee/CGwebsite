@@ -230,6 +230,7 @@ const FIXTURE_HEIGHT: Partial<Record<FixtureKind, number>> = {
   toilet: 0.78,
   sink: 0.85,
   shower: 1.2,
+  tv: 1.2,
 }
 
 /** The same 2:1 isometric the plan thumbnails use. */
