@@ -24,7 +24,8 @@
     "shop": "Shop unit",
     "tiny": "Tiny home",
     "threeBed": "3 bedrooms",
-    "cabin12": "12 m modular cabin"
+    "cabin12": "12 m modular cabin",
+    "nordicBarn": "Nordic barn 7×9"
   },
   "wallTypes": {
     "title": "Wall types",
@@ -185,6 +186,8 @@
     "storey2": "2 storeys",
     "storeyNote": "The upper storey repeats the ground-floor plan.",
     "roofShape": "Roof shape",
+    "style": "House style",
+    "eaves": "Eaves",
     "pitch": "Roof pitch",
     "roofMaterial": "Roof material",
     "roofColor": "Roof colour",
@@ -192,6 +195,18 @@
     "wallColor": "Wall colour",
     "frameMaterial": "Door / window material",
     "note": "Built from the plan you drew — walls, doors, windows, roof and the furniture you placed. An impression of the shape and colours, not a construction drawing.",
+    "eavesOpt": {
+      "flush": "Flush",
+      "normal": "Normal",
+      "deep": "Deep"
+    },
+    "styles": {
+      "nordic": "Nordic",
+      "nordicLight": "Nordic, pale",
+      "modernBox": "Modern box",
+      "thaiContemporary": "Thai contemporary",
+      "cabin": "Timber cabin"
+    },
     "roof": {
       "gable": "Gable",
       "hip": "Hip",
@@ -201,7 +216,8 @@
     "pitches": {
       "low": "Shallow",
       "medium": "Normal",
-      "steep": "Steep"
+      "steep": "Steep",
+      "alpine": "Alpine"
     },
     "roofMat": {
       "tile": "Tile",

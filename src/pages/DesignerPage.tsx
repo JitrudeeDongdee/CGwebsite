@@ -22,7 +22,7 @@ import { RoomNameDialog } from '../ui/RoomNameDialog'
 import { Scene3DLoading } from '../ui/Scene3DLoading'
 import { useSeo } from '../seo/useSeo'
 import type { Building3DOptions } from '../scene3d/Scene3D'
-import type { TemplateFinish } from '../drawing/templates'
+import type { HouseFinish } from '../drawing/houseStyle'
 import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
 
 /**
@@ -201,6 +201,7 @@ export function DesignerPage() {
     showRoof: true,
     furniture: true,
     scenery: true,
+    eaves: 'normal',
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
 
@@ -334,7 +335,7 @@ export function DesignerPage() {
 
   // A plan arrives either as a template id (sidebar) or a full state (gallery
   // card / uploaded file); both funnel through here so loading behaves the same.
-  const handleLoadPlanState = (next: DrawingState, finish?: TemplateFinish) => {
+  const handleLoadPlanState = (next: DrawingState, finish?: HouseFinish) => {
     applyTemplate(next)
     // A sample plan carries the finishes it is meant to be seen in.
     if (finish) setBuilding3d((current) => ({ ...current, ...finish }))
@@ -369,6 +370,7 @@ export function DesignerPage() {
         }
         activeWallTypeId={tool.type === 'draw' ? tool.wallTypeId : null}
         onSelectWallType={handleSelectWallType}
+        view={view === 'three' ? '3d' : '2d'}
         activeFixture={tool.type === 'fixture' ? tool.kind : null}
         onSelectFixture={(kind) =>
           setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)

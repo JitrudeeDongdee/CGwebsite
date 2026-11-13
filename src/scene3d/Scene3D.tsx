@@ -6,7 +6,13 @@ import { extend, useFrame, useThree, type ThreeElement } from '@react-three/fibe
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { DrawingState } from '../drawing/types'
 import { LEVEL_HEIGHT, buildBuilding3D, type Building3D } from '../drawing/building3d'
-import { PITCH_RISE, buildRoof, type RoofPitch, type RoofShape } from '../drawing/roof'
+import {
+  EAVES_OVERHANG,
+  buildRoof,
+  type EavesDepth,
+  type RoofPitch,
+  type RoofShape,
+} from '../drawing/roof'
 import {
   ROOF_FINISH,
   TRIM_SURFACE,
@@ -51,6 +57,11 @@ export interface Building3DOptions {
   furniture: boolean
   /** Trees and shrubs round the plot. */
   scenery: boolean
+  /** How far the roof runs past the walls; `flush` is the Nordic archetype. */
+  eaves: EavesDepth
+  /** A gable in a different finish from the walls — a timber gable end. */
+  gableWall?: WallMaterial
+  gableColor?: string
 }
 
 /**
@@ -144,6 +155,7 @@ function Roof({
   color,
   wall,
   wallColor,
+  overhang,
 }: {
   bounds: NonNullable<Building3D['bounds']>
   shape: RoofShape
@@ -153,10 +165,11 @@ function Roof({
   color: string
   wall: WallMaterial
   wallColor: string
+  overhang: number
 }) {
   const mesh = useMemo(
-    () => buildRoof(bounds, shape, { eaves, rise: PITCH_RISE[pitch] }),
-    [bounds, shape, pitch, eaves],
+    () => buildRoof(bounds, shape, { eaves, pitch, overhang }),
+    [bounds, shape, pitch, eaves, overhang],
   )
 
   const roofPattern = ROOF_FINISH[material].pattern
@@ -242,6 +255,48 @@ function Ground({
       )}
     </>
   )
+}
+
+
+/**
+ * Takes away the walls standing between the camera and the rooms.
+ *
+ * With the roof off you are looking into a box, and from any angle two of
+ * its sides are in the way. Each shell piece carries the direction it faces;
+ * if that is turned towards the camera, it goes. Interior walls and the floor
+ * plinth stay, so the plan still reads — it is a cutaway, not a demolition.
+ *
+ * One `useFrame` over the group rather than a hook per mesh: there are about
+ * ninety of them and they all answer the same question.
+ */
+function Cutaway({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const group = useRef<THREE.Group>(null)
+  const camera = useThree((three) => three.camera)
+  const here = useMemo(() => new THREE.Vector3(), [])
+
+  useFrame(() => {
+    const root = group.current
+    if (!root) return
+
+    root.traverse((object) => {
+      const outward = (object.userData as { outward?: { x: number; z: number } }).outward
+      if (!outward) return
+      if (!active) {
+        object.visible = true
+        return
+      }
+
+      object.getWorldPosition(here)
+      const toCameraX = camera.position.x - here.x
+      const toCameraZ = camera.position.z - here.z
+      const distance = Math.hypot(toCameraX, toCameraZ) || 1
+      const facing = (outward.x * toCameraX + outward.z * toCameraZ) / distance
+      // A little past square-on, so a wall seen edge-wise is left standing.
+      object.visible = facing < 0.35
+    })
+  })
+
+  return <group ref={group}>{children}</group>
 }
 
 export function Scene3D({
@@ -352,24 +407,26 @@ export function Scene3D({
 
         {options.scenery && <Planting bounds={building.bounds} span={span} />}
 
-        {building.walls.map((box) => (
-          <PatternedBox
-            key={box.id}
-            box={box}
-            pattern={wallPattern}
-            color={options.wallColor}
-          />
-        ))}
+        <Cutaway active={!options.showRoof}>
+          {building.walls.map((box) => (
+            <PatternedBox
+              key={box.id}
+              box={box}
+              pattern={wallPattern}
+              color={options.wallColor}
+            />
+          ))}
 
-        {building.trim.map((box) => (
-          <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
-        ))}
+          {building.trim.map((box) => (
+            <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
+          ))}
 
-        {building.columns.map((box) => (
-          <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
-        ))}
+          {building.columns.map((box) => (
+            <PatternedBox key={box.id} box={box} pattern="paint" color={TRIM_SURFACE.color} />
+          ))}
 
-        <OpeningsView units={building.openings} frame={options.frame} />
+          <OpeningsView units={building.openings} frame={options.frame} />
+        </Cutaway>
 
         {options.furniture &&
           Array.from({ length: options.storeys }, (_, level) => (
@@ -384,8 +441,9 @@ export function Scene3D({
             eaves={eaves}
             material={options.roofMaterial}
             color={options.roofColor}
-            wall={options.wall}
-            wallColor={options.wallColor}
+            wall={options.gableWall ?? options.wall}
+            wallColor={options.gableColor ?? options.wallColor}
+            overhang={EAVES_OVERHANG[options.eaves]}
           />
         )}
       </group>

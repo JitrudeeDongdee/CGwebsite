@@ -23,6 +23,8 @@ interface ToolSidebarProps {
   onSelectWallType: (id: string) => void
   activeFixture: FixtureKind | null
   onSelectFixture: (kind: FixtureKind | null) => void
+  /** Which view is on screen; the fixture previews follow it. */
+  view?: '2d' | '3d'
 }
 
 export function ToolSidebar({
@@ -32,6 +34,7 @@ export function ToolSidebar({
   onSelectWallType,
   activeFixture,
   onSelectFixture,
+  view = '2d',
 }: ToolSidebarProps) {
   const { t } = useTranslation()
 
@@ -137,7 +140,7 @@ export function ToolSidebar({
             onClick={() => onSelectFixture(activeFixture === spec.kind ? null : spec.kind)}
             sx={{ justifyContent: 'flex-start', textAlign: 'left', gap: 1, py: 0.75 }}
           >
-            <FixturePreview kind={spec.kind} />
+            <FixturePreview kind={spec.kind} view={view} />
             <Stack sx={{ flexGrow: 1, alignItems: 'flex-start' }}>
               <span>{t(spec.labelKey)}</span>
               <Typography variant="caption" color="text.secondary">

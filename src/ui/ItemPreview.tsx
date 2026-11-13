@@ -1,6 +1,7 @@
 import { useTheme } from '@mui/material/styles'
 import type { DrawingState, FixtureKind, OpeningKind } from '../drawing/types'
 import { fixtureSpec } from '../drawing/fixtures'
+import { FixtureSymbol } from '../sheet/fixtureSymbols'
 import type { PlanTemplate } from '../drawing/templates'
 
 const BOX = 34
@@ -211,39 +212,99 @@ export function WallTypePreview({ thickness }: { thickness?: number }) {
   )
 }
 
-export function FixturePreview({ kind }: { kind: FixtureKind }) {
+/** Standing height of each piece, for the isometric preview. */
+const FIXTURE_HEIGHT: Partial<Record<FixtureKind, number>> = {
+  column: 1.2,
+  bedDouble: 0.55,
+  bedSingle: 0.55,
+  sofa: 0.85,
+  sofaL: 0.85,
+  table: 0.75,
+  coffeeTable: 0.4,
+  chair: 0.85,
+  diningRound: 0.78,
+  kitchen: 0.9,
+  fridge: 1.2,
+  wardrobe: 1.2,
+  nightstand: 0.5,
+  toilet: 0.78,
+  sink: 0.85,
+  shower: 1.2,
+}
+
+/** The same 2:1 isometric the plan thumbnails use. */
+const ISO_COS = 0.866
+const ISO_SIN = 0.5
+
+/**
+ * What a fixture looks like in the palette.
+ *
+ * It follows the view: the plan symbol while the plan is on screen, and a
+ * little isometric of the same piece once the 3D view is. Picking furniture
+ * off a row of identical rectangles told nobody anything, and a 3D view with
+ * flat plan symbols beside it reads as two different tools.
+ */
+export function FixturePreview({ kind, view = '2d' }: { kind: FixtureKind; view?: '2d' | '3d' }) {
   const theme = useTheme()
   const spec = fixtureSpec(kind)
+  const ink = spec.solid ? theme.scene.wall : theme.scene.dimension
 
-  const scale = Math.min((BOX - 8) / spec.width, (BOX - 8) / spec.depth)
-  const w = spec.width * scale
-  const h = spec.depth * scale
-  const x = (BOX - w) / 2
-  const y = (BOX - h) / 2
+  if (view === '2d') {
+    const scale = Math.min((BOX - 8) / spec.width, (BOX - 8) / spec.depth)
+    return (
+      <svg width={BOX} height={BOX} style={{ flexShrink: 0 }} aria-hidden>
+        <g transform={`translate(${BOX / 2} ${BOX / 2}) scale(${scale})`} opacity={0.85}>
+          <FixtureSymbol
+            kind={kind}
+            width={spec.width}
+            depth={spec.depth}
+            ink={ink}
+            stroke={1 / scale}
+          />
+        </g>
+      </svg>
+    )
+  }
+
+  const h = FIXTURE_HEIGHT[kind] ?? 0.8
+  const spread = spec.width + spec.depth
+  const scale = Math.min((BOX - 6) / (spread * ISO_COS), (BOX - 6) / (spread * ISO_SIN + h))
+  const project = (px: number, py: number): [number, number] => [
+    (px - py) * ISO_COS * scale,
+    (px + py) * ISO_SIN * scale,
+  ]
+
+  const hw = spec.width / 2
+  const hd = spec.depth / 2
+  const lift = h * scale
+  const base = [project(-hw, -hd), project(hw, -hd), project(hw, hd), project(-hw, hd)]
+  const top = base.map(([bx, by]) => [bx, by - lift] as [number, number])
+  const poly = (pts: [number, number][]) => pts.map(([px, py]) => `${px},${py}`).join(' ')
+
+  // Centre the whole solid, which reaches `lift` above the footprint.
+  const midY = (-lift + hd * 2 * ISO_SIN * scale) / 2
 
   return (
     <svg width={BOX} height={BOX} style={{ flexShrink: 0 }} aria-hidden>
-      <rect
-        x={x}
-        y={y}
-        width={w}
-        height={h}
-        fill={spec.solid ? theme.scene.wall : 'none'}
-        stroke={spec.solid ? theme.scene.wall : theme.scene.dimension}
-        strokeWidth={spec.solid ? 1.5 : 1}
-        opacity={spec.solid ? 1 : 0.65}
-      />
-      {(kind === 'bedDouble' || kind === 'bedSingle') && (
-        <line
-          x1={x}
-          y1={y + h * 0.24}
-          x2={x + w}
-          y2={y + h * 0.24}
-          stroke={theme.scene.dimension}
-          strokeWidth={1}
-          opacity={0.65}
-        />
-      )}
+      <g transform={`translate(${BOX / 2} ${BOX / 2 - midY})`}>
+        {/* The two faces turned towards the viewer, then the top with the
+            plan symbol laid on it. */}
+        <polygon points={poly([base[3], base[2], top[2], top[3]])} fill={ink} opacity={0.2} />
+        <polygon points={poly([base[2], base[1], top[1], top[2]])} fill={ink} opacity={0.32} />
+        <polygon points={poly(top)} fill={ink} opacity={0.08} stroke={ink} strokeWidth={1} />
+        <g
+          transform={`translate(0 ${-lift}) matrix(${ISO_COS * scale} ${ISO_SIN * scale} ${-ISO_COS * scale} ${ISO_SIN * scale} 0 0)`}
+          opacity={0.9}
+        >
+          <FixtureSymbol
+            kind={kind}
+            width={spec.width}
+            depth={spec.depth}
+            ink={ink}
+            stroke={1 / scale}
+          />
+        </g>
+      </g>
     </svg>
   )
 }

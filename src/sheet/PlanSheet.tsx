@@ -5,7 +5,7 @@ import type { DrawingState, Point } from '../drawing/types'
 import { computeWallOutlines } from '../drawing/wallOutline'
 import { placeOpenings } from '../drawing/openings'
 import { pointInPolygon, type Room } from '../drawing/rooms'
-import { fixtureSpec } from '../drawing/fixtures'
+import { FixtureSymbol } from './fixtureSymbols'
 import {
   dimensionChain,
   nodeDegrees,
@@ -179,19 +179,15 @@ function Fixtures({ state }: { state: DrawingState }) {
   return (
     <g>
       {state.fixtures.map((fixture) => {
-        const spec = fixtureSpec(fixture.kind)
         const deg = (fixture.rotation * 180) / Math.PI
         return (
           <g key={fixture.id} transform={`translate(${fixture.x} ${fixture.y}) rotate(${deg})`}>
-            <rect
-              x={-fixture.width / 2}
-              y={-fixture.depth / 2}
+            <FixtureSymbol
+              kind={fixture.kind}
               width={fixture.width}
-              height={fixture.depth}
-              fill={spec.solid ? palette.ink : 'none'}
-              stroke={palette.ink}
-              strokeWidth={spec.solid ? 0 : 1}
-              vectorEffect="non-scaling-stroke"
+              depth={fixture.depth}
+              ink={palette.ink}
+              nonScaling
             />
           </g>
         )

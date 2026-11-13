@@ -1009,6 +1009,59 @@ missing.
   13 walls, 9 openings, 15 pieces of furniture, 3 rooms, 36.2 m² — then in the browser in 2D and
   3D, including the porch reading as a roofed open bay.
 
+## House styles — a shape you pick, not a colour you approximate (2026-11-12)
+Asked for Nordic houses **as a choice**, explicitly not "take what exists and make it look
+similar". Two things in the roof made the real thing impossible, and both are fixed here.
+
+- ⚠️ **Pitch was a rise in metres, not an angle.** `PITCH_RISE` held 2.3 m for "steep" whatever
+  was under it, so one setting gave 53° on a 3.4 m wide cabin and 21° on a 12 m one — two
+  different roofs under one name, and no silhouette-defined style is buildable that way. It is
+  now `PITCH_DEGREES` (15 / 25 / 38 / 48°) and `riseFor(pitch, halfSpan)`, worked out inside
+  `buildRoof` from the span each shape's slope actually crosses (a shed crosses the whole depth,
+  the rest half of it). Checked: 48° gives 3.89 m over a 3.5 m half-span and 6.66 m over 6 m.
+- ⚠️ **The overhang was a constant 0.4 m.** `EAVES_DEPTHS` = flush (0.02) / normal (0.4) / deep
+  (0.8), picked in the panel. **Flush skips the fascia and barge boards entirely** — there is no
+  overhang to trim, and a band hanging off the wall face is the exact thing the Nordic archetype
+  is defined by not having.
+- **A gable end can take its own finish** (`gableWall` / `gableColor`): the timber gable above
+  dark walls that reads as Nordic at a glance. The roof already built its gables as a separate
+  mesh with the wall finish, so this is one material, not new geometry.
+- **`src/drawing/houseStyle.ts`** holds `HouseFinish` (roof shape, pitch, eaves, finishes — only
+  primitives from `drawing/`, never `Building3DOptions`, which lives in `scene3d/`) and
+  `HOUSE_STYLES`: nordic, nordicLight, modernBox, thaiContemporary, cabin. The 3D panel leads
+  with them, and every control below stays live, so a style is a starting point rather than a
+  lock. `PlanTemplate.finish` is the same type, so a plan can carry the style it is meant to be
+  seen in.
+- **`nordic-barn-7x9`** is the first plan that is a style rather than a layout: one steep gable
+  down the length, glazing in the gable end because that is the elevation the shape is for.
+  Verified headlessly — 4 rooms, 63.0 m² = 7 × 9 exactly, 9 openings — and in the browser, where
+  switching the same plan to Thai contemporary turns it into a hipped, tiled, deep-eaved house.
+
+## Cutaway walls, and furniture that looks like furniture (2026-11-12)
+Three things asked for together: hide the walls in the way as the view turns, show the palette
+in 3D while the 3D view is up, and stop the plan reading as "a lot of rectangles".
+
+- **`Cutaway` (`Scene3D.tsx`)** takes away the shell walls standing between the camera and the
+  rooms, live as you orbit. Every shell piece carries the direction it faces (`WallBox.outward`,
+  set in `building3d.ts` by flipping the wall's perpendicular away from the plan's centroid) and
+  one `useFrame` over the group hides anything whose outward face is turned towards the camera
+  (`facing < 0.35`, so a wall seen edge-wise stays). One frame loop, not a hook per mesh —
+  there are about ninety and they all answer the same question. Interior walls and the **floor
+  plinth stay up**: the plinth draws the outline of the room the wall was taken from, which is
+  what makes it read as a cutaway rather than a demolition. Visibility is hierarchical in
+  three.js, so a door or window only needs the tag on its own group.
+- **`src/sheet/fixtureSymbols.tsx`** is one plan symbol per fixture — beds with pillows and a
+  turned-down sheet, a sofa with its back and arms, a round table with four chairs, a kitchen
+  run with burners and a sink, a crossed box for a wardrobe, an oval pan for a WC, a swept
+  screen for a shower. Drawn in the fixture's own metres with the back at `-y`, the same
+  convention the 3D models use. ⚠️ Used by BOTH the drawing sheet and the tool palette, so a
+  piece cannot look like one thing to place and another once placed. The sheet passes
+  `nonScaling` for its constant pen weight (see the `vector-effect` note above).
+- **The palette follows the view**: plan symbols while the plan is up, a small isometric of the
+  same piece once the 3D view is (`FIXTURE_HEIGHT` + the 2:1 projection the plan thumbnails
+  already use, with the plan symbol laid on the top face by an SVG `matrix`). A 3D view with
+  flat symbols beside it reads as two different tools.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 
