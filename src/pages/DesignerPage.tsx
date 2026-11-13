@@ -100,6 +100,9 @@ export function DesignerPage() {
   const [tool, setTool] = useState<ToolMode>(DRAW_TOOL)
   const [fitToken, setFitToken] = useState(0)
   const [renaming, setRenaming] = useState(false)
+  /** What Delete would remove. Cleared by Escape, a click on empty ground,
+      or the piece itself going away. */
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
   const [view, setView] = useState<'plan' | 'three'>('plan')
   /**
    * 3D only: the top storey to build, or null for the whole house. Separate
@@ -237,7 +240,19 @@ export function DesignerPage() {
       if (e.key === 'Escape') {
         // Drop back to plain drawing rather than leaving a tool armed.
         setTool((current) => (current.type === 'opening' ? DRAW_TOOL : current))
+        setSelectedFixtureId(null)
         cancelDrawingRef.current?.()
+        return
+      }
+
+      // Delete removes the selected piece. Backspace too, because half of
+      // everyone reaches for that one; neither fires while a field has
+      // focus, which the guard above already covers.
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!selectedFixtureId) return
+        e.preventDefault()
+        removeFixture(selectedFixtureId)
+        setSelectedFixtureId(null)
         return
       }
 
@@ -251,7 +266,7 @@ export function DesignerPage() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [undo, redo])
+  }, [undo, redo, removeFixture, selectedFixtureId])
 
   const handleSubmit = async (contact: LeadContact) => {
     await leadRepository.create({
@@ -370,6 +385,8 @@ export function DesignerPage() {
         onContextMenu={handleContextMenu}
         cancelRef={cancelDrawingRef}
         zoomRef={zoomRef}
+        selectedFixtureId={selectedFixtureId}
+        onPick={setSelectedFixtureId}
         tool={tool}
         fitToken={fitToken}
         placeOpening={placeOpening}
@@ -443,7 +460,10 @@ export function DesignerPage() {
         target={contextTarget}
         onClose={() => setContextTarget(null)}
         onDeleteOpening={removeOpening}
-        onDeleteFixture={removeFixture}
+        onDeleteFixture={(id) => {
+          removeFixture(id)
+          setSelectedFixtureId((current) => (current === id ? null : current))
+        }}
         onRotateFixture={turnFixture}
         onRenameRoom={() => setRenaming(true)}
         onDeleteWall={removeWall}
