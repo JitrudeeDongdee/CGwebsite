@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
-import type { DrawFixture, DrawingState } from '../drawing/types'
+import { useThree, type ThreeEvent } from '@react-three/fiber'
+import type { DrawFixture, DrawingState, Point } from '../drawing/types'
 
 /**
  * The furniture from the plan, built in 3D.
@@ -498,8 +499,25 @@ function Piece({ fixture, p }: { fixture: DrawFixture; p: Palette }) {
 }
 
 /** Every piece of furniture on the plan, placed and turned as drawn. */
-export function FurnitureView({ state, floor }: { state: DrawingState; floor: number }) {
+export function FurnitureView({
+  state,
+  floor,
+  drag,
+}: {
+  state: DrawingState
+  floor: number
+  /**
+   * Makes the pieces draggable. Omitted — which is what every storey except
+   * the one being edited passes — they are scenery and ignore the pointer,
+   * since a move would otherwise land on the wrong floor's plan.
+   */
+  drag?: {
+    grab: (event: ThreeEvent<PointerEvent>, fixtureId: string, at: Point) => void
+    isDragging: () => boolean
+  }
+}) {
   const palette = usePalette()
+  const { gl } = useThree()
 
   return (
     <>
@@ -510,6 +528,31 @@ export function FurnitureView({ state, floor }: { state: DrawingState; floor: nu
             key={fixture.id}
             position={[fixture.x, floor, fixture.y]}
             rotation={[0, -fixture.rotation, 0]}
+            onPointerDown={
+              drag
+                ? (event) => drag.grab(event, fixture.id, { x: fixture.x, y: fixture.y })
+                : undefined
+            }
+            // The cursor is the only thing that says a piece can be picked
+            // up: there is no outline or handle on it in 3D.
+            onPointerOver={
+              drag
+                ? (event) => {
+                    event.stopPropagation()
+                    if (!drag.isDragging()) gl.domElement.style.cursor = 'grab'
+                  }
+                : undefined
+            }
+            onPointerOut={
+              drag
+                ? () => {
+                    // NOT while a drag is live: the piece slides under the
+                    // cursor and can outrun it, and clearing here would drop
+                    // the grabbing cursor in the middle of the gesture.
+                    if (!drag.isDragging()) gl.domElement.style.cursor = ''
+                  }
+                : undefined
+            }
           >
             <Piece fixture={fixture} p={palette} />
           </group>

@@ -34,6 +34,8 @@ import {
 } from './Surfaces'
 import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
+import { useFixtureDrag } from './useFixtureDrag'
+import type { Point } from '../drawing/types'
 import { Planting, SUN_DIRECTION, SkyDome, SkyEnvironment } from './Scenery'
 import {
   EntrySteps,
@@ -136,13 +138,19 @@ function Orbit({
   span,
   eaves,
   cutaway,
+  controls,
 }: {
   target: [number, number, number]
   span: number
   eaves: number
   cutaway: boolean
+  /** Handed out so a furniture drag can switch the camera off imperatively. */
+  controls?: React.RefObject<OrbitControls | null>
 }) {
   const { camera, gl } = useThree()
+  // Kept as its own stable ref and the outside one is MIRRORED onto it: a
+  // `controls ?? own` expression is a fresh value every render, which makes
+  // the effect below depend on something that always changes.
   const ref = useRef<OrbitControls>(null)
   const wasCutaway = useRef(cutaway)
 
@@ -159,7 +167,10 @@ function Orbit({
 
   return (
     <orbitControls
-      ref={ref}
+      ref={(instance: OrbitControls | null) => {
+        ref.current = instance
+        if (controls) controls.current = instance
+      }}
       args={[camera, gl.domElement]}
       target={target}
       maxPolarAngle={Math.PI / 2.05}
@@ -321,18 +332,78 @@ function Cutaway({ active, children }: { active: boolean; children: React.ReactN
   return <group ref={group}>{children}</group>
 }
 
+
+/**
+ * The furniture of every storey, with the one being edited made draggable.
+ *
+ * It is its own component because `useFixtureDrag` needs the Canvas context —
+ * the renderer, the camera and the raycaster — and `Scene3D`'s body runs
+ * outside it.
+ */
+function Furnishings({
+  floors,
+  activeFloor,
+  orbit,
+  onStart,
+  onMove,
+  onDrop,
+}: {
+  floors: FloorPlan[]
+  activeFloor: number
+  orbit: React.RefObject<OrbitControls | null>
+  onStart?: () => void
+  onMove?: (fixtureId: string, point: Point) => void
+  onDrop?: (fixtureId: string, point: Point) => void
+}) {
+  const live = Boolean(onMove && onDrop)
+  const drag = useFixtureDrag({
+    onStart: onStart ?? (() => {}),
+    onMove: onMove ?? (() => {}),
+    onDrop: onDrop ?? (() => {}),
+    orbit,
+  })
+
+  return (
+    <>
+      {floors.map((floor, level) => (
+        <FurnitureView
+          key={level}
+          state={floor.state}
+          floor={level * LEVEL_HEIGHT + 0.03}
+          drag={live && level === activeFloor ? drag : undefined}
+        />
+      ))}
+    </>
+  )
+}
+
 export function Scene3D({
   floors,
   options,
   onReady,
+  activeFloor = 0,
+  onFixtureDragStart,
+  onFixtureDrag,
+  onFixtureDrop,
 }: {
   /** One entry per storey, ground floor first — each with its own plan. */
   floors: FloorPlan[]
   options: Building3DOptions
   /** Called once the first real frame has been drawn. */
   onReady?: () => void
+  /**
+   * Which storey is being edited. Only its furniture can be dragged — a move
+   * is applied to the active floor's plan, so dragging another storey's sofa
+   * would quietly move a different one.
+   */
+  activeFloor?: number
+  /** Omit these and the 3D view stays read-only, as it was. */
+  onFixtureDragStart?: () => void
+  onFixtureDrag?: (fixtureId: string, point: Point) => void
+  onFixtureDrop?: (fixtureId: string, point: Point) => void
 }) {
   const { scene: sceneColors } = useTheme()
+  const orbitRef = useRef<OrbitControls>(null)
   const building = useMemo(() => buildBuilding3D(floors), [floors])
   const storeys = Math.max(1, floors.length)
 
@@ -418,6 +489,7 @@ export function Scene3D({
         span={span}
         eaves={eaves}
         cutaway={!options.showRoof}
+        controls={orbitRef}
       />
 
       {/* Centred on the origin, so the light, its shadow camera and the orbit
@@ -469,14 +541,16 @@ export function Scene3D({
           />
         </Cutaway>
 
-        {options.furniture &&
-          floors.map((floor, level) => (
-            <FurnitureView
-              key={level}
-              state={floor.state}
-              floor={level * LEVEL_HEIGHT + 0.03}
-            />
-          ))}
+        {options.furniture && (
+          <Furnishings
+            floors={floors}
+            activeFloor={activeFloor}
+            orbit={orbitRef}
+            onStart={onFixtureDragStart}
+            onMove={onFixtureDrag}
+            onDrop={onFixtureDrop}
+          />
+        )}
 
         {options.showRoof && building.roofBounds && (
           <Roof
