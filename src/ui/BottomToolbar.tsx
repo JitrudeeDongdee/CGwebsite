@@ -4,6 +4,8 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Tooltip from '@mui/material/Tooltip'
 import Divider from '@mui/material/Divider'
+import Button from '@mui/material/Button'
+import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import OpenWith from '@mui/icons-material/OpenWith'
 import Edit from '@mui/icons-material/Edit'
@@ -126,11 +128,29 @@ export function BottomToolbar({
 
       <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
 
+      {/* Labelled, not another icon. As the eighth icon in a row of identical
+          icon buttons it was invisible — the one action here that is not a
+          view control deserves to look different from the seven that are.
+          Icon-only on a phone, where the toolbar is centred and tight. */}
       <Tooltip title={t('plans.save')}>
         <span>
-          <IconButton size="small" onClick={onSave} disabled={saving} color="primary">
-            <Save fontSize="small" />
-          </IconButton>
+          <Button
+            size="small"
+            onClick={onSave}
+            disabled={saving}
+            variant="contained"
+            disableElevation
+            startIcon={<Save fontSize="small" />}
+            sx={{
+              minWidth: { xs: 36, sm: 'auto' },
+              px: { xs: 1, sm: 1.5 },
+              '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.75 }, ml: 0 },
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {t('plans.save')}
+            </Box>
+          </Button>
         </span>
       </Tooltip>
     </Paper>

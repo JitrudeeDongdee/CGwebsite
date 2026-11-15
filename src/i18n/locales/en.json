@@ -310,6 +310,10 @@
     "reset": "Clear every painted wall"
   },
   "plans": {
+    "gotIt": "Got it",
+    "whySignUp": "Drawing needs no account. Keeping a plan, and opening it on another device, does.",
+    "movedToAccount": "Your saved plans are now on your account.",
+    "savedLocalSignUp": "Saved on this computer — sign up to keep it on your account and open it anywhere.",
     "save": "Save plan",
     "saved": "Saved",
     "saveFailed": "Could not save — this browser may be blocking site data, or storage is full",
@@ -318,7 +322,9 @@
     "defaultName": "My plan",
     "localOnly": "Saved on this computer only; the link opens in this browser alone.",
     "notFound": "No such plan on this computer — a saved plan opens only in the browser that saved it",
-    "mine": "Saved plans"
+    "notFoundCloud": "No such plan on this account — check you are signed in to the account that saved it",
+    "mine": "Saved plans",
+    "cloud": "Saved to your account — opens on any device you sign in on."
   },
   "view": {
     "plan": "2D plan",
@@ -334,6 +340,7 @@
     "hiddenHint": "Drag the bar up, or click it, to see the sample plans"
   },
   "auth": {
+    "confirmThenSaves": "Click the link and the plan you saved moves to your account on its own — no need to press save again. Until then it stays on this computer.",
     "login": "Sign in",
     "logout": "Sign out",
     "loginTitle": "Sign in to continue",

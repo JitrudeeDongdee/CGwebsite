@@ -18,6 +18,8 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
+import Tabs from '@mui/material/Tabs'
+import Tab from '@mui/material/Tab'
 import { supabase, siteUrl } from '../supabase/client'
 
 /**
@@ -44,6 +46,9 @@ export interface AuthUser {
   email: string
 }
 
+/** Which half of the auth dialog is showing. */
+export type AuthMode = 'signIn' | 'signUp'
+
 /** `null` means "signed in but not granted access yet", not "unknown". */
 export type StaffRole = 'admin' | 'staff' | null
 
@@ -54,10 +59,15 @@ interface AuthContextValue {
    *  or a reload bounces a signed-in admin to the login page. */
   loading: boolean
   isStaff: boolean
-  /** Run `action` if signed in, otherwise open the sign-in dialog and run it
-   *  once sign-in succeeds. Use this to gate a protected action. */
-  requireAuth: (action?: () => void) => void
-  /** Open the sign-in dialog with no follow-up action. */
+  /** Run `action` if signed in, otherwise open the auth dialog and run it
+   *  once a session exists. Use this to gate a protected action.
+   *
+   *  `prefer` picks which tab the dialog opens on. Pass `'signUp'` where the
+   *  person is most likely NOT to have an account — a visitor who has just
+   *  drawn a house has no reason to own one, and showing them a sign-in form
+   *  asks for a password they never set. */
+  requireAuth: (action?: () => void, prefer?: AuthMode) => void
+  /** Open the auth dialog with no follow-up action. */
   promptLogin: () => void
   signIn: (email: string, password: string) => Promise<void>
   /** Resolves to `confirmationSent` when the account still has to be verified
@@ -106,7 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [recovery, setRecovery] = useState(ARRIVED_TO_SET_PASSWORD)
-  // The protected action waiting for a successful sign-in.
+  const [mode, setMode] = useState<AuthMode>('signIn')
+  /** The address a confirmation e-mail just went to, or null. */
+  const [sentTo, setSentTo] = useState<string | null>(null)
+  // The protected action waiting for a session. A ref, not state: it is read
+  // by the auth-state listener, which fires outside React's render cycle.
   const pendingAction = useRef<(() => void) | null>(null)
 
   /**
@@ -143,6 +157,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.email ?? '' })
         void loadRole(session.user.id)
+        // A session arriving is the thing the waiting action was waiting for,
+        // and it does not only arrive from this dialog: confirming the e-mail
+        // in ANOTHER TAB signs this one in too, because supabase-js keeps the
+        // session in localStorage and broadcasts the change. So someone can
+        // press save, sign up, click the link in their mail, and come back to
+        // find the save already done — which is the whole point.
+        const waiting = pendingAction.current
+        pendingAction.current = null
+        if (waiting) {
+          setDialogOpen(false)
+          waiting()
+        }
       } else {
         setUser(null)
         setRole(null)
@@ -155,21 +181,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadRole])
 
-  const openDialog = useCallback((action?: () => void) => {
+  const openDialog = useCallback((action?: () => void, prefer: AuthMode = 'signIn') => {
     pendingAction.current = action ?? null
     setEmail('')
     setPassword('')
     setError(null)
+    setSentTo(null)
+    setMode(prefer)
     setDialogOpen(true)
   }, [])
 
   const requireAuth = useCallback(
-    (action?: () => void) => {
+    (action?: () => void, prefer?: AuthMode) => {
       if (user) {
         action?.()
         return
       }
-      openDialog(action)
+      openDialog(action, prefer)
     },
     [user, openDialog],
   )
@@ -248,14 +276,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRecovery(true)
   }, [])
 
+  /** Supabase's own minimum is 6; 8 is what the login page already asks for,
+      and the two forms must not disagree about what a valid password is. */
+  const tooShort = mode === 'signUp' && password.length < 8
+
   const submit = async () => {
     setBusy(true)
     setError(null)
     try {
-      await signIn(email, password)
+      if (mode === 'signUp') {
+        const outcome = await signUp(email, password)
+        if (outcome === 'confirmationSent') {
+          // No session yet, so the waiting action CANNOT run — Supabase has
+          // only created the account. It stays pending: the listener above
+          // runs it the moment the confirmation lands.
+          setSentTo(email.trim())
+          return
+        }
+      } else {
+        await signIn(email, password)
+      }
+      // Signed in. The listener fires on the same session and runs the
+      // waiting action, so there is nothing to do here but get out of the way.
       setDialogOpen(false)
-      pendingAction.current?.()
-      pendingAction.current = null
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure))
     } finally {
@@ -292,47 +335,100 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={value}>
       {children}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{t('auth.loginTitle')}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            {error && <Alert severity="error">{error}</Alert>}
-            <TextField
-              label={t('auth.email')}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              fullWidth
-              size="small"
-              autoFocus
-            />
-            <TextField
-              label={t('auth.password')}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void submit()
+        <DialogTitle sx={{ pb: sentTo ? undefined : 0 }}>
+          {sentTo
+            ? t('auth.confirmSentTitle')
+            : mode === 'signUp'
+              ? t('auth.signUpTitle')
+              : t('auth.loginTitle')}
+        </DialogTitle>
+
+        {/* The account has been created but there is no session yet. The form
+            is REPLACED rather than left on screen, so a second submit cannot
+            fire a second e-mail. */}
+        {sentTo ? (
+          <>
+            <DialogContent>
+              <Alert severity="success" variant="outlined">
+                {t('auth.confirmSentBody', { email: sentTo })}
+              </Alert>
+              <Alert severity="info" variant="outlined" sx={{ mt: 1.5 }}>
+                {t('auth.confirmThenSaves')}
+              </Alert>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDialogOpen(false)} variant="contained">
+                {t('plans.gotIt')}
+              </Button>
+            </DialogActions>
+          </>
+        ) : (
+          <>
+            <Tabs
+              value={mode}
+              onChange={(_, next: AuthMode) => {
+                setMode(next)
+                setError(null)
               }}
-              autoComplete="current-password"
-              fullWidth
-              size="small"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} disabled={busy}>
-            {t('auth.cancel')}
-          </Button>
-          <Button
-            onClick={() => void submit()}
-            variant="contained"
-            disabled={busy || !email.trim() || !password}
-            startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
-          >
-            {t('auth.submit')}
-          </Button>
-        </DialogActions>
+              variant="fullWidth"
+              sx={{ px: 3, minHeight: 40 }}
+            >
+              <Tab value="signUp" label={t('auth.signUpTab')} sx={{ minHeight: 40 }} />
+              <Tab value="signIn" label={t('auth.signInTab')} sx={{ minHeight: 40 }} />
+            </Tabs>
+            <DialogContent>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {error && <Alert severity="error">{error}</Alert>}
+                {/* Why they are being asked at all. Without this the dialog is
+                    a password prompt that appeared for no stated reason. */}
+                {pendingAction.current && (
+                  <Alert severity="info" variant="outlined" sx={{ py: 0 }}>
+                    {t('plans.whySignUp')}
+                  </Alert>
+                )}
+                <TextField
+                  label={t('auth.email')}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  fullWidth
+                  size="small"
+                  autoFocus
+                />
+                <TextField
+                  label={t('auth.password')}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !tooShort) void submit()
+                  }}
+                  // A new password must not be offered from the password
+                  // manager's saved sign-ins, and a saved one must be.
+                  autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
+                  helperText={mode === 'signUp' ? t('auth.passwordMin') : undefined}
+                  error={mode === 'signUp' && password.length > 0 && tooShort}
+                  fullWidth
+                  size="small"
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDialogOpen(false)} disabled={busy}>
+                {t('auth.cancel')}
+              </Button>
+              <Button
+                onClick={() => void submit()}
+                variant="contained"
+                disabled={busy || !email.trim() || !password || tooShort}
+                startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
+              >
+                {mode === 'signUp' ? t('auth.signUpSubmit') : t('auth.submit')}
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </AuthContext.Provider>
   )

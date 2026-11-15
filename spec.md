@@ -1428,11 +1428,10 @@ a uuid, that uuid is the URL (`/design/<id>`), and there is a save button.
   than loading it into the current editor, so the address bar always says which plan is on screen.
 - An id this browser has never seen says so. An empty sheet would read as "the plan was lost".
 
-⚠️ **A saved plan lives in this browser only, so the link opens on no other machine.** That is a
-real limitation of this step, stated in the save dialog and in the not-found message rather than
-left to be discovered — a URL with a uuid in it is exactly the kind of thing people assume they
-can send to someone. The id and the route are what a backend needs anyway, so the next step is a
-`plans` table with RLS and the save gated behind sign-in; everything else stays as it is.
+~~⚠️ **A saved plan lives in this browser only, so the link opens on no other machine.**~~ —
+**superseded the same day by the `plans` table below**, which is exactly the next step this
+paragraph named. localStorage is still the fallback, so the caveat holds wherever Supabase is not
+configured or the migration has not been run.
 
 Verified headlessly against the repository with a stubbed storage (15 checks): an unknown id
 returns null rather than throwing; floors, finishes and the measured area all survive a
@@ -1442,6 +1441,135 @@ than reporting success**; and corrupt stored data reads as empty instead of taki
 down. `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` passes. **Not seen in a
 browser.**
 
+
+## Each account keeps its own designs — `public.plans` (2026-11-15)
+A saved plan now lives in Postgres against the account that saved it, so `/design/<id>` opens on
+any machine that signs in, and one person's designs are never another's.
+
+- **`owner uuid not null references auth.users(id) on delete cascade` IS the access rule.** RLS
+  `plans_owner_all` is `for all` with the check on **both** sides (`using` and `with check`) — with
+  `using` alone a signed-in account could insert a row owned by someone else and then not be able
+  to see what it had created. NOT NULL matters for the same reason: a row with no owner would be
+  readable by whichever policy asked first. The app filters nothing; `select *` returns that
+  person's plans because the policy says so.
+- **Staff may READ and deliberately cannot write.** `plans_staff_read` is `for select` only, so the
+  team can open a design a customer is asking about and nobody on the team can edit, or silently
+  delete, somebody's drawing.
+- **`src/plans/index.ts` is a `PlanStore` wrapper, not a straight choice between the two
+  repositories**, because two things have to survive at once: the code may deploy before anyone
+  runs the SQL, and plans saved before any of this existed are sitting in localStorage. A missing
+  table (`PGRST205` / `42P01`) drops the session to localStorage — the order-independent rollout
+  `CompanyProvider` uses — and local plans are **merged into** the listing rather than hidden, the
+  backend winning on an id collision because it is the copy that is shared.
+- ⚠️ **Only a missing table falls back.** Signed out, offline or refused **rethrows**: quietly
+  writing to localStorage instead would tell someone their design is safe on their account when it
+  is not. `sharesAcrossDevices` is what the editor reads to decide whether to ask for a sign-in
+  first (`requireAuth`) and which sentence the save dialog shows.
+- `options` (the 3D finishes) is stored as well as `floors`. A house reopened in the default
+  plaster and tile is not the house that was saved. It stays typed as `Record<string, unknown>` —
+  `plans/` must not import from `scene3d/`, which pulls in three.js.
+- Save upserts on the primary key, since the editor mints the id on the first save and re-sends it
+  afterwards; `touch_updated_at` keeps `updated_at` current, so the gallery's "newest first" needs
+  nothing from the client.
+
+**Verified on a throwaway local Postgres** (the migration applied twice — the second run's
+"already exists, skipping" notices are the proof it is re-runnable — with the `authenticated` /
+`anon` / `service_role` roles created to stand in for Supabase's): as Alice, 1 plan; as Bob, **0 of
+Alice's**; Bob's insert of a row owned by Alice **refused** (`insufficient_privilege`); his delete
+of her row matched **0 rows**; he then saw only his own; with `is_staff` on, **2 rows readable** and
+a staff `UPDATE` matched **nothing**; `updated_at` equal to `created_at` on insert and greater after
+an update. The database was dropped afterwards. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
+`pnpm run build` exit 0.
+
+⚠️ **The migration must be run by hand in the Supabase SQL editor** — nothing in the build applies
+it, and until it is, saving stays in the browser exactly as before. **Not seen in a browser**, and
+the sign-in gate and cross-device open are the parts that can only be confirmed against a real
+project.
+
+### Saving asks for an account, and never holds the drawing hostage (2026-11-15)
+The owner's ask: anyone may edit without an account, but saving should require signing up, with the
+sign-up as a modal that saves straight afterwards.
+
+**The constraint that shapes it:** this project has `mailer_autoconfirm = false` (read off
+`/auth/v1/settings`), so `signUp` returns a user and **no session**. "Sign up and it saves" cannot
+be one step — there is nothing to save with until the e-mail link is clicked, which can be minutes
+later and in another tab. A hard gate here would be a dialog that stands between someone and the
+house they just drew, and loses it if they close the tab.
+
+So the order is: **keep the work, then ask.**
+- Pressing save always saves. `persist()` tries the account; on `plan-save-needs-sign-in` it writes
+  the plan into **this browser** (`PlanStore.saveLocally`), puts the id in the URL, says
+  `plans.savedLocalSignUp`, and only then opens the dialog on its **sign-up** tab.
+- The dialog keeps the save as its pending action, and `AuthProvider` runs it **the moment a session
+  exists — from any source**. The resume moved out of the submit handler into `onAuthStateChange`,
+  because confirming the e-mail **in another tab signs this one in too** (supabase-js keeps the
+  session in localStorage and broadcasts it). Press save → sign up → click the link → come back to
+  find the save already done.
+- `PlanStore.syncLocalToAccount()` moves every browser-held plan up when an account appears (an
+  effect keyed on the account **id** — `setUser` builds a fresh object on every token refresh, so
+  keying on the object would run it hourly). The local copy is removed **only after** the upload
+  succeeds; one bad row leaves that plan local and the rest still move.
+- ⚠️ **`persist(id, name)` takes the id as a PARAMETER.** Caught in review: the retry re-read
+  `planId` from a closure captured before the first save, so it minted a **fresh uuid** and stored a
+  second plan under an id the URL did not name. `addressIt` compares `window.location.pathname` for
+  the same reason.
+- **The auth dialog had no sign-up at all** — sign-in only, so a visitor with no account had to leave
+  `/design` (losing the drawing) for `/login`. It is now two tabs reusing the login page's existing
+  strings, with an 8-character minimum matching that page, `autoComplete` switching between
+  `new-password` and `current-password`, and the form **replaced** by the "check your inbox" panel so
+  a second submit cannot send a second e-mail.
+- **The save button was one bare icon among seven view-control icons** and effectively invisible —
+  which is why it was asked for again after being built. It is a labelled contained `Button` now,
+  icon-only below `sm`.
+
+**Verified** against the real `PlanStore` with a stubbed Supabase client and `localStorage`
+(bundled with Vite, aliasing `../supabase/client`) — **26 checks, 0 failed**: signed out, the account
+save rejects and nothing reaches the backend while the plan stays readable locally; on sign-in both
+local plans move up carrying the signed-in `owner`, the local copies go, the listing does not
+duplicate and a second sync moves nothing; a refused row stays in the browser and off the account
+while its neighbours move; a missing table stops trying, keeps everything and flips
+`sharesAcrossDevices` to false; and the full sequence (local save under the URL's id → sign in →
+retry + sync) ends as **exactly one plan, under that same id, owned by the account**. `tsc -b`
+clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
+⚠️ **Not seen in a browser** — the dialog, the labelled button and the snackbars are unverified
+visually (Chrome's *Allow JavaScript from Apple Events* is off, so no tool here can read or drive the
+page).
+
+**`mailer_autoconfirm` is ON — done 2026-11-15** (the owner's call), so `signUp` hands back a
+session immediately and pressing save → signing up → the plan on the account is one unbroken step.
+Verified by reading `GET <project>/auth/v1/settings` straight after the save: `mailer_autoconfirm:
+True`, with `disable_signup` still false and no other auth setting touched.
+- **No code change is needed, and that was checked rather than assumed.** Both callers of `signUp`
+  already handle the `'signedIn'` outcome: the designer's modal falls through and lets
+  `onAuthStateChange` run the waiting save, and `LoginPage` lets its `user` redirect effect take
+  over. The two were written for a setting that could go either way, so the flip changes behaviour
+  without touching a line.
+- ⚠️ **The toggle is NOT in the Email provider dialog**, which is where every guide sends you and
+  where half an hour went. It is on the **Sign In / Providers page body**
+  (`/project/<ref>/auth/providers`), in the FIRST card, as the **4th of four switches** — after
+  *Allow new users to sign up*, *Allow manual linking*, *Allow anonymous sign-ins* — above that
+  card's own **Save changes** button. Found by reading the dashboard's own source
+  (`apps/studio/components/interfaces/Auth/BasicAuthSettingsForm.tsx`) rather than hunting the UI,
+  which also settles the inversion: the form field is `!authConfig.MAILER_AUTOCONFIRM`, so the
+  switch reading **off** is `mailer_autoconfirm: true`.
+- The other route is the **Management API** (`PATCH /v1/projects/{ref}/config/auth`), which needs a
+  *personal access token* — the service-role key in this repo does not reach project config.
+  Either way, confirm with `GET <project>/auth/v1/settings`, which reports the value live.
+- **The trade:** anyone can then register an address they do not own — spam accounts, and someone
+  could take a real customer's e-mail before that customer does. It does **not** weaken the back
+  office: a new account carries no role, so `is_staff()` in RLS still keeps it out of `/admin`, and
+  `plans` rows stay scoped to `owner = auth.uid()`.
+- ⚠️ **What it actually buys is smaller than it first looked.** The save-first ordering above already
+  means the drawing is never at risk and the save never waits on an e-mail; autoconfirm only moves
+  the plan from the browser to the account minutes sooner. Worth knowing before trading away e-mail
+  verification — the owner was told and chose to proceed.
+- ⚠️ **Nothing now proves an address belongs to the person who typed it.** A typo at sign-up makes
+  an account whose password can never be reset, and `contact_messages` / `leads` still carry the
+  e-mail people type into forms, which was never verified anyway. If sign-up spam appears, turning
+  the switch back on is the fix, and no code changes either way.
+- Password reset remains the account-recovery path, and it still e-mails, so a mistyped address at
+  sign-up is recoverable only by signing up again.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).

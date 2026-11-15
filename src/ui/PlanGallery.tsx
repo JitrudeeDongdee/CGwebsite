@@ -17,7 +17,7 @@ import { PlanFileError, parsePlanFile, parsePlanJson, planFileToJson } from '../
 import { IsoThumbnail } from './ItemPreview'
 import { useAuth } from '../auth/AuthProvider'
 import { useNavigate } from 'react-router-dom'
-import { planRepository } from '../plans/localStorageRepository'
+import { planRepository } from '../plans'
 
 interface GalleryPlan {
   key: string
