@@ -20,11 +20,14 @@ import Typography from '@mui/material/Typography'
 export function PlanNameDialog({
   open,
   initialName,
+  cloud,
   onClose,
   onSave,
 }: {
   open: boolean
   initialName: string
+  /** True when the plan goes to the account rather than this browser. */
+  cloud?: boolean
   onClose: () => void
   onSave: (name: string) => void
 }) {
@@ -60,7 +63,7 @@ export function PlanNameDialog({
         {/* Said plainly, because a link that only works on one machine is
             exactly the kind of thing people assume works everywhere. */}
         <Alert severity="info" variant="outlined" sx={{ mt: 2, py: 0 }}>
-          <Typography variant="caption">{t('plans.localOnly')}</Typography>
+          <Typography variant="caption">{t(cloud ? 'plans.cloud' : 'plans.localOnly')}</Typography>
         </Alert>
       </DialogContent>
       <DialogActions>

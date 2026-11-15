@@ -21,7 +21,7 @@ import { PlanNameDialog } from '../ui/PlanNameDialog'
 import { Scene3DLoading } from '../ui/Scene3DLoading'
 import { useSeo } from '../seo/useSeo'
 import { useNavigate, useParams } from 'react-router-dom'
-import { planRepository } from '../plans/localStorageRepository'
+import { planRepository } from '../plans'
 import type { Building3DOptions } from '../scene3d/Scene3D'
 import type { HouseFinish } from '../drawing/houseStyle'
 import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
@@ -116,7 +116,9 @@ export function DesignerPage() {
   const [planName, setPlanName] = useState('')
   const [naming, setNaming] = useState(false)
   const [planMissing, setPlanMissing] = useState(false)
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const [saveState, setSaveState] = useState<
+    'idle' | 'saving' | 'saved' | 'failed' | 'needsSignIn'
+  >('idle')
   /** What Delete would remove. Cleared by Escape, a click on empty ground,
       or the piece itself going away. */
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
@@ -354,8 +356,12 @@ export function DesignerPage() {
       // The URL becomes the plan's own address, replacing rather than
       // pushing: the editor you were already in is not a place to go back to.
       if (!planId) navigate(`/design/${id}`, { replace: true })
-    } catch {
-      setSaveState('failed')
+    } catch (error) {
+      // Being signed out is a different problem from storage refusing the
+      // write, and the two need different words.
+      setSaveState(
+        (error as Error)?.message === 'plan-save-needs-sign-in' ? 'needsSignIn' : 'failed',
+      )
     }
   }
 
@@ -498,7 +504,18 @@ export function DesignerPage() {
         onRedo={redo}
         onFit={() => setFitToken((n) => n + 1)}
         // Named once, on the first save; after that it just saves.
-        onSave={() => (planId && planName ? void handleSave(planName) : setNaming(true))}
+        onSave={() =>
+          // Signing in is only meaningful when the plan is going to an
+          // account. Gating a save to this browser behind a login that
+          // changes nothing would be theatre.
+          planRepository.sharesAcrossDevices
+            ? requireAuth(() =>
+                planId && planName ? void handleSave(planName) : setNaming(true),
+              )
+            : planId && planName
+              ? void handleSave(planName)
+              : setNaming(true)
+        }
         saving={saveState === 'saving'}
         onZoom={(factor) => zoomRef.current?.(factor)}
         canUndo={canUndo}
@@ -564,6 +581,7 @@ export function DesignerPage() {
       <PlanNameDialog
         open={naming}
         initialName={planName || t('plans.defaultName')}
+        cloud={planRepository.sharesAcrossDevices}
         onClose={() => setNaming(false)}
         onSave={(name) => void handleSave(name)}
       />
@@ -596,23 +614,32 @@ export function DesignerPage() {
       </Snackbar>
 
       <Snackbar
-        open={saveState === 'saved' || saveState === 'failed'}
+        open={saveState === 'saved' || saveState === 'failed' || saveState === 'needsSignIn'}
         autoHideDuration={4000}
         onClose={() => setSaveState('idle')}
       >
         <Alert
-          severity={saveState === 'failed' ? 'error' : 'success'}
+          severity={saveState === 'saved' ? 'success' : saveState === 'needsSignIn' ? 'warning' : 'error'}
           onClose={() => setSaveState('idle')}
         >
-          {t(saveState === 'failed' ? 'plans.saveFailed' : 'plans.saved')}
+          {t(
+            saveState === 'saved'
+              ? 'plans.saved'
+              : saveState === 'needsSignIn'
+                ? 'plans.needsSignIn'
+                : 'plans.saveFailed',
+          )}
         </Alert>
       </Snackbar>
 
-      {/* A link to a plan this browser has never seen. Said out loud, or an
-          empty sheet reads as "the plan was lost". */}
+      {/* A link to a plan that is not there. Said out loud, or an empty sheet
+          reads as "the plan was lost" — and which reason to give depends on
+          where plans are kept: with an account, a stranger's link or the
+          wrong account explains it, and "only in this browser" would be a
+          lie. */}
       <Snackbar open={planMissing} autoHideDuration={8000} onClose={() => setPlanMissing(false)}>
         <Alert severity="warning" onClose={() => setPlanMissing(false)}>
-          {t('plans.notFound')}
+          {t(planRepository.sharesAcrossDevices ? 'plans.notFoundCloud' : 'plans.notFound')}
         </Alert>
       </Snackbar>
     </Box>

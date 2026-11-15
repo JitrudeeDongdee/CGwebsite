@@ -318,7 +318,10 @@
     "defaultName": "My plan",
     "localOnly": "Saved on this computer only; the link opens in this browser alone.",
     "notFound": "No such plan on this computer — a saved plan opens only in the browser that saved it",
-    "mine": "Saved plans"
+    "notFoundCloud": "No such plan on this account — check you are signed in to the account that saved it",
+    "mine": "Saved plans",
+    "needsSignIn": "Sign in to save this plan to your account",
+    "cloud": "Saved to your account — opens on any device you sign in on."
   },
   "view": {
     "plan": "2D plan",

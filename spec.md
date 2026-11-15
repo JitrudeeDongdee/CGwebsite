@@ -1428,11 +1428,10 @@ a uuid, that uuid is the URL (`/design/<id>`), and there is a save button.
   than loading it into the current editor, so the address bar always says which plan is on screen.
 - An id this browser has never seen says so. An empty sheet would read as "the plan was lost".
 
-⚠️ **A saved plan lives in this browser only, so the link opens on no other machine.** That is a
-real limitation of this step, stated in the save dialog and in the not-found message rather than
-left to be discovered — a URL with a uuid in it is exactly the kind of thing people assume they
-can send to someone. The id and the route are what a backend needs anyway, so the next step is a
-`plans` table with RLS and the save gated behind sign-in; everything else stays as it is.
+~~⚠️ **A saved plan lives in this browser only, so the link opens on no other machine.**~~ —
+**superseded the same day by the `plans` table below**, which is exactly the next step this
+paragraph named. localStorage is still the fallback, so the caveat holds wherever Supabase is not
+configured or the migration has not been run.
 
 Verified headlessly against the repository with a stubbed storage (15 checks): an unknown id
 returns null rather than throwing; floors, finishes and the measured area all survive a
@@ -1442,6 +1441,50 @@ than reporting success**; and corrupt stored data reads as empty instead of taki
 down. `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` passes. **Not seen in a
 browser.**
 
+
+## Each account keeps its own designs — `public.plans` (2026-11-15)
+A saved plan now lives in Postgres against the account that saved it, so `/design/<id>` opens on
+any machine that signs in, and one person's designs are never another's.
+
+- **`owner uuid not null references auth.users(id) on delete cascade` IS the access rule.** RLS
+  `plans_owner_all` is `for all` with the check on **both** sides (`using` and `with check`) — with
+  `using` alone a signed-in account could insert a row owned by someone else and then not be able
+  to see what it had created. NOT NULL matters for the same reason: a row with no owner would be
+  readable by whichever policy asked first. The app filters nothing; `select *` returns that
+  person's plans because the policy says so.
+- **Staff may READ and deliberately cannot write.** `plans_staff_read` is `for select` only, so the
+  team can open a design a customer is asking about and nobody on the team can edit, or silently
+  delete, somebody's drawing.
+- **`src/plans/index.ts` is a `PlanStore` wrapper, not a straight choice between the two
+  repositories**, because two things have to survive at once: the code may deploy before anyone
+  runs the SQL, and plans saved before any of this existed are sitting in localStorage. A missing
+  table (`PGRST205` / `42P01`) drops the session to localStorage — the order-independent rollout
+  `CompanyProvider` uses — and local plans are **merged into** the listing rather than hidden, the
+  backend winning on an id collision because it is the copy that is shared.
+- ⚠️ **Only a missing table falls back.** Signed out, offline or refused **rethrows**: quietly
+  writing to localStorage instead would tell someone their design is safe on their account when it
+  is not. `sharesAcrossDevices` is what the editor reads to decide whether to ask for a sign-in
+  first (`requireAuth`) and which sentence the save dialog shows.
+- `options` (the 3D finishes) is stored as well as `floors`. A house reopened in the default
+  plaster and tile is not the house that was saved. It stays typed as `Record<string, unknown>` —
+  `plans/` must not import from `scene3d/`, which pulls in three.js.
+- Save upserts on the primary key, since the editor mints the id on the first save and re-sends it
+  afterwards; `touch_updated_at` keeps `updated_at` current, so the gallery's "newest first" needs
+  nothing from the client.
+
+**Verified on a throwaway local Postgres** (the migration applied twice — the second run's
+"already exists, skipping" notices are the proof it is re-runnable — with the `authenticated` /
+`anon` / `service_role` roles created to stand in for Supabase's): as Alice, 1 plan; as Bob, **0 of
+Alice's**; Bob's insert of a row owned by Alice **refused** (`insufficient_privilege`); his delete
+of her row matched **0 rows**; he then saw only his own; with `is_staff` on, **2 rows readable** and
+a staff `UPDATE` matched **nothing**; `updated_at` equal to `created_at` on insert and greater after
+an update. The database was dropped afterwards. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
+`pnpm run build` exit 0.
+
+⚠️ **The migration must be run by hand in the Supabase SQL editor** — nothing in the build applies
+it, and until it is, saving stays in the browser exactly as before. **Not seen in a browser**, and
+the sign-in gate and cross-device open are the parts that can only be confirmed against a real
+project.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
