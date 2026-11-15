@@ -309,6 +309,17 @@
     "armed": "Colour ready — click a wall on the plan to paint it",
     "reset": "Clear every painted wall"
   },
+  "plans": {
+    "save": "Save plan",
+    "saved": "Saved",
+    "saveFailed": "Could not save — this browser may be blocking site data, or storage is full",
+    "nameTitle": "Name this plan",
+    "nameLabel": "Plan name",
+    "defaultName": "My plan",
+    "localOnly": "Saved on this computer only; the link opens in this browser alone.",
+    "notFound": "No such plan on this computer — a saved plan opens only in the browser that saved it",
+    "mine": "Saved plans"
+  },
   "view": {
     "plan": "2D plan",
     "three": "3D"
