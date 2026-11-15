@@ -12,6 +12,7 @@ import Redo from '@mui/icons-material/Redo'
 import CenterFocusStrong from '@mui/icons-material/CenterFocusStrong'
 import ZoomIn from '@mui/icons-material/ZoomIn'
 import ZoomOut from '@mui/icons-material/ZoomOut'
+import Save from '@mui/icons-material/Save'
 import type { ToolMode } from '../drawing/tools'
 
 interface BottomToolbarProps {
@@ -22,6 +23,9 @@ interface BottomToolbarProps {
   onFit: () => void
   /** Scales the plan view about its centre. */
   onZoom: (factor: number) => void
+  onSave: () => void
+  /** True while a save is in flight, so the button cannot be double-fired. */
+  saving?: boolean
   canUndo: boolean
   canRedo: boolean
 }
@@ -39,6 +43,8 @@ export function BottomToolbar({
   onRedo,
   onFit,
   onZoom,
+  onSave,
+  saving,
   canUndo,
   canRedo,
 }: BottomToolbarProps) {
@@ -116,6 +122,16 @@ export function BottomToolbar({
         <IconButton size="small" onClick={() => onZoom(1 / 1.25)}>
           <ZoomIn fontSize="small" />
         </IconButton>
+      </Tooltip>
+
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+      <Tooltip title={t('plans.save')}>
+        <span>
+          <IconButton size="small" onClick={onSave} disabled={saving} color="primary">
+            <Save fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
     </Paper>
   )

@@ -16,6 +16,8 @@ import type { DrawingState } from '../drawing/types'
 import { PlanFileError, parsePlanFile, parsePlanJson, planFileToJson } from '../drawing/planFile'
 import { IsoThumbnail } from './ItemPreview'
 import { useAuth } from '../auth/AuthProvider'
+import { useNavigate } from 'react-router-dom'
+import { planRepository } from '../plans/localStorageRepository'
 
 interface GalleryPlan {
   key: string
@@ -28,6 +30,12 @@ interface GalleryPlan {
   state: DrawingState
   /** Every storey. A built-in template is one. */
   floors?: DrawingState[]
+  /**
+   * Set on a plan this browser has saved. Clicking it OPENS it by URL rather
+   * than loading it into the current editor, so the address bar always says
+   * which plan is on screen.
+   */
+  savedId?: string
   /** Built-in plans can also carry the finishes they are meant to wear. */
   finish?: HouseFinish
 }
@@ -116,8 +124,10 @@ function PlanCard({
 export function PlanGallery({ currentFloors, onLoadPlan }: PlanGalleryProps) {
   const { t } = useTranslation()
   const { requireAuth } = useAuth()
+  const navigate = useNavigate()
   const fileInput = useRef<HTMLInputElement>(null)
   const [customPlans, setCustomPlans] = useState<GalleryPlan[]>([])
+  const [savedPlans, setSavedPlans] = useState<GalleryPlan[]>([])
   const [error, setError] = useState<string | null>(null)
   const [view, setViewState] = useState<GalleryView>(() => {
     try {
@@ -169,6 +179,33 @@ export function PlanGallery({ currentFloors, onLoadPlan }: PlanGalleryProps) {
       })),
     [],
   )
+
+  // The plans this browser has saved. Reloaded whenever the gallery mounts,
+  // which covers coming back to the editor after saving one.
+  useEffect(() => {
+    let cancelled = false
+    void planRepository
+      .list()
+      .then((plans) => {
+        if (cancelled) return
+        setSavedPlans(
+          plans.map((plan) => ({
+            key: `saved:${plan.id}`,
+            name: plan.name,
+            translate: false,
+            state: plan.floors[0],
+            floors: plan.floors,
+            savedId: plan.id,
+          })),
+        )
+      })
+      .catch(() => {
+        /* blocked site data — the built-in plans still show */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Drop-in plans: whatever the team lists in public/plans/manifest.json.
   // Fetched at runtime so files can be added without a rebuild.
@@ -344,12 +381,16 @@ export function PlanGallery({ currentFloors, onLoadPlan }: PlanGalleryProps) {
                 }
           }
         >
-          {[...customPlans, ...builtInPlans].map((plan) => (
+          {[...savedPlans, ...customPlans, ...builtInPlans].map((plan) => (
             <PlanCard
               key={plan.key}
               plan={plan}
               label={plan.translate ? t(plan.name) : plan.name}
-              onClick={() => onLoadPlan(plan.floors ?? plan.state, plan.finish)}
+              onClick={() =>
+                plan.savedId
+                  ? navigate(`/design/${plan.savedId}`)
+                  : onLoadPlan(plan.floors ?? plan.state, plan.finish)
+              }
             />
           ))}
         </Box>

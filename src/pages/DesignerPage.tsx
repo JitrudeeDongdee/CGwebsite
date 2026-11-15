@@ -17,8 +17,11 @@ import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
 import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
+import { PlanNameDialog } from '../ui/PlanNameDialog'
 import { Scene3DLoading } from '../ui/Scene3DLoading'
 import { useSeo } from '../seo/useSeo'
+import { useNavigate, useParams } from 'react-router-dom'
+import { planRepository } from '../plans/localStorageRepository'
 import type { Building3DOptions } from '../scene3d/Scene3D'
 import type { HouseFinish } from '../drawing/houseStyle'
 import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
@@ -46,11 +49,21 @@ import type { DrawingState } from '../drawing/types'
 export function DesignerPage() {
   const { t } = useTranslation()
   const { requireAuth } = useAuth()
+  const { planId } = useParams<{ planId?: string }>()
+  const navigate = useNavigate()
   // /design is in the sitemap, so Google is actively invited here — but the page
   // carried index.html's site-wide title and no canonical, which made it a
   // duplicate of the home page. It is not prerendered (three.js), so this is the
   // only place the head gets set.
-  useSeo({ title: t('app.seoTitle'), description: t('app.seoDesc') })
+  //
+  // A SAVED plan is a different matter: `/design/<uuid>` is somebody's working
+  // document, so it is `noindex`. Without that every plan anyone saved and
+  // shared would become its own thin, near-duplicate page of the designer.
+  useSeo({
+    title: t('app.seoTitle'),
+    description: t('app.seoDesc'),
+    index: planId === undefined,
+  })
   const {
     state,
     floors,
@@ -100,6 +113,10 @@ export function DesignerPage() {
   const [tool, setTool] = useState<ToolMode>(DRAW_TOOL)
   const [fitToken, setFitToken] = useState(0)
   const [renaming, setRenaming] = useState(false)
+  const [planName, setPlanName] = useState('')
+  const [naming, setNaming] = useState(false)
+  const [planMissing, setPlanMissing] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   /** What Delete would remove. Cleared by Escape, a click on empty ground,
       or the piece itself going away. */
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
@@ -285,6 +302,63 @@ export function DesignerPage() {
 
   // A plan arrives either as a template id (sidebar) or a full state (gallery
   // card / uploaded file); both funnel through here so loading behaves the same.
+  /**
+   * Opening `/design/<id>` loads that plan — floors AND the finishes it was
+   * last seen in, because a house reopened in the plaster-and-tile defaults
+   * is not the house that was saved.
+   *
+   * Keyed on the id alone: re-running this on every render would stamp the
+   * stored plan back over whatever is being drawn. `loadedId` guards the
+   * case where someone saves, edits, and the effect would otherwise reload.
+   */
+  const loadedId = useRef<string | null>(null)
+  useEffect(() => {
+    if (!planId || loadedId.current === planId) return
+    let cancelled = false
+    loadedId.current = planId
+    void planRepository
+      .get(planId)
+      .then((plan) => {
+        if (cancelled || !plan) {
+          // A link to a plan this browser has never seen. Say so rather than
+          // showing an empty sheet that looks like the plan was lost.
+          if (!cancelled && !plan) setPlanMissing(true)
+          return
+        }
+        applyTemplate(plan.floors)
+        if (plan.options) {
+          setBuilding3d((current) => ({ ...current, ...(plan.options as Partial<Building3DOptions>) }))
+        }
+        setPlanName(plan.name)
+        setTool(SELECT_TOOL)
+        setFitToken((n) => n + 1)
+      })
+      .catch(() => setPlanMissing(true))
+    return () => {
+      cancelled = true
+    }
+  }, [planId, applyTemplate])
+
+  const handleSave = async (name: string) => {
+    const id = planId ?? crypto.randomUUID()
+    setSaveState('saving')
+    try {
+      await planRepository.save({
+        id,
+        name,
+        floors: structuredClone(floors),
+        options: { ...building3d },
+      })
+      setPlanName(name)
+      setSaveState('saved')
+      // The URL becomes the plan's own address, replacing rather than
+      // pushing: the editor you were already in is not a place to go back to.
+      if (!planId) navigate(`/design/${id}`, { replace: true })
+    } catch {
+      setSaveState('failed')
+    }
+  }
+
   const handleLoadPlanState = (next: DrawingState | DrawingState[], finish?: HouseFinish) => {
     applyTemplate(next)
     // A sample plan carries the finishes it is meant to be seen in.
@@ -423,6 +497,9 @@ export function DesignerPage() {
         onUndo={undo}
         onRedo={redo}
         onFit={() => setFitToken((n) => n + 1)}
+        // Named once, on the first save; after that it just saves.
+        onSave={() => (planId && planName ? void handleSave(planName) : setNaming(true))}
+        saving={saveState === 'saving'}
         onZoom={(factor) => zoomRef.current?.(factor)}
         canUndo={canUndo}
         canRedo={canRedo}
@@ -484,6 +561,13 @@ export function DesignerPage() {
         hasGeometry={state.walls.length > 0}
       />
 
+      <PlanNameDialog
+        open={naming}
+        initialName={planName || t('plans.defaultName')}
+        onClose={() => setNaming(false)}
+        onSave={(name) => void handleSave(name)}
+      />
+
       <RoomNameDialog
         open={renaming}
         initialName={
@@ -508,6 +592,27 @@ export function DesignerPage() {
       <Snackbar open={sent} autoHideDuration={5000} onClose={() => setSent(false)}>
         <Alert severity="success" onClose={() => setSent(false)}>
           {t('lead.success')}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={saveState === 'saved' || saveState === 'failed'}
+        autoHideDuration={4000}
+        onClose={() => setSaveState('idle')}
+      >
+        <Alert
+          severity={saveState === 'failed' ? 'error' : 'success'}
+          onClose={() => setSaveState('idle')}
+        >
+          {t(saveState === 'failed' ? 'plans.saveFailed' : 'plans.saved')}
+        </Alert>
+      </Snackbar>
+
+      {/* A link to a plan this browser has never seen. Said out loud, or an
+          empty sheet reads as "the plan was lost". */}
+      <Snackbar open={planMissing} autoHideDuration={8000} onClose={() => setPlanMissing(false)}>
+        <Alert severity="warning" onClose={() => setPlanMissing(false)}>
+          {t('plans.notFound')}
         </Alert>
       </Snackbar>
     </Box>

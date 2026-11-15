@@ -1402,6 +1402,47 @@ at all for a plan with no exterior door. `tsc -b` clean, `oxlint` 26 warnings �
 what the rule actually asks for). `pnpm run build` passes. **Not seen in a browser.**
 
 
+## Saving a plan, and its own URL — `src/plans/` (2026-11-15)
+`/design` was a scratchpad: there was no way to keep a design or come back to it. A plan now has
+a uuid, that uuid is the URL (`/design/<id>`), and there is a save button.
+
+- **`PlanRepository`** is async behind a `localStorage` implementation — the same shape
+  `LeadRepository` uses, for the same reason: swapping in a backend becomes a one-file change
+  with no UI churn.
+- **It stores the FINISHES as well as the floors.** A house reopened in the plaster-and-tile
+  defaults is not the house that was saved, and finding it as you left it is the whole point of
+  coming back. `options` is typed loosely (`Record<string, unknown>`) on purpose: `plans/` must not
+  import from `scene3d/`, which pulls in three.js, and a saved plan should survive a field being
+  added to `Building3DOptions`.
+- **The name is asked for once**, on the first save; later saves just save. A plan called
+  "Untitled" is one nobody finds again, and being prompted every time is what stops people saving
+  at all.
+- The first save mints the uuid and **replaces** the URL rather than pushing it: the editor you
+  were already in is not a place to go Back to.
+- Loading is keyed on the id and guarded by `loadedId`, or the effect would stamp the stored plan
+  back over whatever is being drawn after every save.
+- ⚠️ **`/design/<id>` is `noindex`.** `/design` is deliberately in the sitemap, but a saved plan is
+  somebody's working document — without this, every plan anyone saved and shared would become its
+  own thin, near-duplicate page of the designer.
+- Saved plans appear first in the plan gallery, and clicking one **navigates to its URL** rather
+  than loading it into the current editor, so the address bar always says which plan is on screen.
+- An id this browser has never seen says so. An empty sheet would read as "the plan was lost".
+
+⚠️ **A saved plan lives in this browser only, so the link opens on no other machine.** That is a
+real limitation of this step, stated in the save dialog and in the not-found message rather than
+left to be discovered — a URL with a uuid in it is exactly the kind of thing people assume they
+can send to someone. The id and the route are what a backend needs anyway, so the next step is a
+`plans` table with RLS and the save gated behind sign-in; everything else stays as it is.
+
+Verified headlessly against the repository with a stubbed storage (15 checks): an unknown id
+returns null rather than throwing; floors, finishes and the measured area all survive a
+round trip; re-saving updates rather than duplicating and keeps `createdAt` while moving
+`updatedAt`; two plans list newest first; remove takes one away; **a refused write rejects rather
+than reporting success**; and corrupt stored data reads as empty instead of taking the editor
+down. `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` passes. **Not seen in a
+browser.**
+
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

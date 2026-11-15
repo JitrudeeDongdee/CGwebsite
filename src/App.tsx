@@ -120,6 +120,10 @@ function App() {
 
       <Route element={<AppShell />}>
         <Route path="/design" element={<DesignerPage />} />
+        {/* The same editor, opened on a saved plan. The id is in the URL so
+            a design can be reopened rather than redrawn, and so the browser's
+            own back/forward move between plans. */}
+        <Route path="/design/:planId" element={<DesignerPage />} />
         <Route path="/login" element={<LoginPage />} />
         {/* Staff sign-in sits OUTSIDE AdminGuard on purpose: inside it, the
             guard would redirect to a page it is itself guarding. */}
