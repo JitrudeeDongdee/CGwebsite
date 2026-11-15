@@ -103,6 +103,50 @@ class PlanStore implements PlanRepository {
     await local.remove(id)
   }
 
+  /**
+   * Keep a plan in this browser even though an account is where it belongs.
+   *
+   * The safety net under the sign-up gate: someone who has just drawn a house
+   * and pressed save must not lose it because they do not have an account yet.
+   * The work is stored first, the account is asked for second, and
+   * `syncLocalToAccount` moves it up afterwards.
+   */
+  saveLocally(input: Omit<SavedPlan, 'createdAt' | 'updatedAt'>): Promise<SavedPlan> {
+    return local.save(input)
+  }
+
+  /**
+   * Move every plan held in this browser onto the signed-in account.
+   *
+   * Called when a session appears, which is also when a plan saved before
+   * signing up should stop being a local-only copy. Returns how many moved.
+   *
+   * ⚠️ The local copy is removed only **after** the upload succeeds. The other
+   * order loses the plan on any failure, and the whole reason this exists is
+   * not to lose plans.
+   */
+  async syncLocalToAccount(): Promise<number> {
+    const backend = this.backend
+    if (!backend) return 0
+    let moved = 0
+    for (const plan of await local.list()) {
+      try {
+        await backend.save(plan)
+        await local.remove(plan.id)
+        moved += 1
+      } catch (error) {
+        // No table: nothing will work, so stop asking. Anything else (one bad
+        // row, a dropped connection) leaves that plan local and tries the
+        // rest — a single failure must not strand the others.
+        if (tableMissing(error)) {
+          this.backendOff = true
+          return moved
+        }
+      }
+    }
+    return moved
+  }
+
   /** True when saving will go to the account rather than this browser. */
   get sharesAcrossDevices(): boolean {
     return this.backend !== null

@@ -1486,6 +1486,58 @@ it, and until it is, saving stays in the browser exactly as before. **Not seen i
 the sign-in gate and cross-device open are the parts that can only be confirmed against a real
 project.
 
+### Saving asks for an account, and never holds the drawing hostage (2026-11-15)
+The owner's ask: anyone may edit without an account, but saving should require signing up, with the
+sign-up as a modal that saves straight afterwards.
+
+**The constraint that shapes it:** this project has `mailer_autoconfirm = false` (read off
+`/auth/v1/settings`), so `signUp` returns a user and **no session**. "Sign up and it saves" cannot
+be one step — there is nothing to save with until the e-mail link is clicked, which can be minutes
+later and in another tab. A hard gate here would be a dialog that stands between someone and the
+house they just drew, and loses it if they close the tab.
+
+So the order is: **keep the work, then ask.**
+- Pressing save always saves. `persist()` tries the account; on `plan-save-needs-sign-in` it writes
+  the plan into **this browser** (`PlanStore.saveLocally`), puts the id in the URL, says
+  `plans.savedLocalSignUp`, and only then opens the dialog on its **sign-up** tab.
+- The dialog keeps the save as its pending action, and `AuthProvider` runs it **the moment a session
+  exists — from any source**. The resume moved out of the submit handler into `onAuthStateChange`,
+  because confirming the e-mail **in another tab signs this one in too** (supabase-js keeps the
+  session in localStorage and broadcasts it). Press save → sign up → click the link → come back to
+  find the save already done.
+- `PlanStore.syncLocalToAccount()` moves every browser-held plan up when an account appears (an
+  effect keyed on the account **id** — `setUser` builds a fresh object on every token refresh, so
+  keying on the object would run it hourly). The local copy is removed **only after** the upload
+  succeeds; one bad row leaves that plan local and the rest still move.
+- ⚠️ **`persist(id, name)` takes the id as a PARAMETER.** Caught in review: the retry re-read
+  `planId` from a closure captured before the first save, so it minted a **fresh uuid** and stored a
+  second plan under an id the URL did not name. `addressIt` compares `window.location.pathname` for
+  the same reason.
+- **The auth dialog had no sign-up at all** — sign-in only, so a visitor with no account had to leave
+  `/design` (losing the drawing) for `/login`. It is now two tabs reusing the login page's existing
+  strings, with an 8-character minimum matching that page, `autoComplete` switching between
+  `new-password` and `current-password`, and the form **replaced** by the "check your inbox" panel so
+  a second submit cannot send a second e-mail.
+- **The save button was one bare icon among seven view-control icons** and effectively invisible —
+  which is why it was asked for again after being built. It is a labelled contained `Button` now,
+  icon-only below `sm`.
+
+**Verified** against the real `PlanStore` with a stubbed Supabase client and `localStorage`
+(bundled with Vite, aliasing `../supabase/client`) — **26 checks, 0 failed**: signed out, the account
+save rejects and nothing reaches the backend while the plan stays readable locally; on sign-in both
+local plans move up carrying the signed-in `owner`, the local copies go, the listing does not
+duplicate and a second sync moves nothing; a refused row stays in the browser and off the account
+while its neighbours move; a missing table stops trying, keeps everything and flips
+`sharesAcrossDevices` to false; and the full sequence (local save under the URL's id → sign in →
+retry + sync) ends as **exactly one plan, under that same id, owned by the account**. `tsc -b`
+clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
+⚠️ **Not seen in a browser** — the dialog, the labelled button and the snackbars are unverified
+visually (Chrome's *Allow JavaScript from Apple Events* is off, so no tool here can read or drive the
+page). **Turning on `mailer_autoconfirm` in Supabase would make sign-up hand back a session
+immediately**, and the flow then collapses to the literal ask with no code change — the trade is that
+anyone could then create an account on an address they do not own.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

@@ -48,7 +48,7 @@ import type { DrawingState } from '../drawing/types'
 
 export function DesignerPage() {
   const { t } = useTranslation()
-  const { requireAuth } = useAuth()
+  const { requireAuth, user } = useAuth()
   const { planId } = useParams<{ planId?: string }>()
   const navigate = useNavigate()
   // /design is in the sitemap, so Google is actively invited here — but the page
@@ -117,7 +117,7 @@ export function DesignerPage() {
   const [naming, setNaming] = useState(false)
   const [planMissing, setPlanMissing] = useState(false)
   const [saveState, setSaveState] = useState<
-    'idle' | 'saving' | 'saved' | 'failed' | 'needsSignIn'
+    'idle' | 'saving' | 'saved' | 'savedLocal' | 'savedToAccount' | 'failed'
   >('idle')
   /** What Delete would remove. Cleared by Escape, a click on empty ground,
       or the piece itself going away. */
@@ -341,29 +341,89 @@ export function DesignerPage() {
     }
   }, [planId, applyTemplate])
 
-  const handleSave = async (name: string) => {
-    const id = planId ?? crypto.randomUUID()
-    setSaveState('saving')
-    try {
-      await planRepository.save({
-        id,
-        name,
-        floors: structuredClone(floors),
-        options: { ...building3d },
-      })
+  /**
+   * Save, and ask for an account only once the drawing is already safe.
+   *
+   * Anyone may draw here without an account; keeping the result is what needs
+   * one. So the order is deliberate: try the account, and if there is none,
+   * **write the plan into this browser first** and only then open the sign-up
+   * dialog. A gate that asks for an account while the house is still only in
+   * the page is a gate that loses houses — this project's own sign-up needs an
+   * e-mail confirmation (`mailer_autoconfirm = false`), so "sign up and it
+   * saves" can be minutes apart, or a different tab.
+   *
+   * The dialog keeps the save as its pending action, and `AuthProvider` runs it
+   * the moment a session exists — from this dialog, or from the confirmation
+   * link opened in another tab. `syncLocalToAccount` then moves the local copy
+   * up, so the plan ends up on the account either way and never twice.
+   */
+  const handleSave = (name: string) => persist(planId ?? crypto.randomUUID(), name)
+
+  /**
+   * Write the plan under an id that is already decided.
+   *
+   * ⚠️ The id is a PARAMETER, not minted in here. The sign-up path calls this
+   * again once there is a session, and a second call that re-read `planId`
+   * from the closure would see the value from before the first save — minting
+   * a FRESH uuid and storing a second plan under an id the URL does not name.
+   */
+  const persist = async (id: string, name: string) => {
+    const input = () => ({ id, name, floors: structuredClone(floors), options: { ...building3d } })
+
+    const addressIt = () => {
       setPlanName(name)
-      setSaveState('saved')
       // The URL becomes the plan's own address, replacing rather than
       // pushing: the editor you were already in is not a place to go back to.
-      if (!planId) navigate(`/design/${id}`, { replace: true })
+      // `window.location` rather than `planId`, which is stale in the retry.
+      if (!window.location.pathname.endsWith(`/${id}`)) {
+        navigate(`/design/${id}`, { replace: true })
+      }
+    }
+
+    setSaveState('saving')
+    try {
+      await planRepository.save(input())
+      addressIt()
+      setSaveState('saved')
     } catch (error) {
-      // Being signed out is a different problem from storage refusing the
-      // write, and the two need different words.
-      setSaveState(
-        (error as Error)?.message === 'plan-save-needs-sign-in' ? 'needsSignIn' : 'failed',
-      )
+      if ((error as Error)?.message !== 'plan-save-needs-sign-in') {
+        setSaveState('failed')
+        return
+      }
+      // No account. Keep the work, say so, then ask — in that order.
+      try {
+        await planRepository.saveLocally(input())
+        addressIt()
+        setSaveState('savedLocal')
+      } catch {
+        setSaveState('failed')
+        return
+      }
+      requireAuth(() => void persist(id, name), 'signUp')
     }
   }
+
+  /**
+   * A plan saved before signing up belongs to the account once there is one.
+   *
+   * Keyed on the account id, so it runs on sign-in and on a switch of account,
+   * and not on every render. Silent when it moves nothing — most sign-ins have
+   * nothing waiting — and it reports rather than throwing, because failing to
+   * move a copy that is still safely in the browser is not worth an error.
+   */
+  const accountId = user?.id
+  useEffect(() => {
+    if (!accountId) return
+    let cancelled = false
+    void planRepository.syncLocalToAccount().then((moved) => {
+      if (!cancelled && moved > 0) setSaveState('savedToAccount')
+    })
+    return () => {
+      cancelled = true
+    }
+    // The id, not the user object: `setUser` builds a fresh object on every
+    // auth event, token refreshes included, and this should not run hourly.
+  }, [accountId])
 
   const handleLoadPlanState = (next: DrawingState | DrawingState[], finish?: HouseFinish) => {
     applyTemplate(next)
@@ -504,18 +564,10 @@ export function DesignerPage() {
         onRedo={redo}
         onFit={() => setFitToken((n) => n + 1)}
         // Named once, on the first save; after that it just saves.
-        onSave={() =>
-          // Signing in is only meaningful when the plan is going to an
-          // account. Gating a save to this browser behind a login that
-          // changes nothing would be theatre.
-          planRepository.sharesAcrossDevices
-            ? requireAuth(() =>
-                planId && planName ? void handleSave(planName) : setNaming(true),
-              )
-            : planId && planName
-              ? void handleSave(planName)
-              : setNaming(true)
-        }
+        // No gate here: pressing save always saves. `handleSave` keeps the
+        // plan first and asks for an account second, so the dialog never
+        // stands between someone and their own drawing.
+        onSave={() => (planId && planName ? void handleSave(planName) : setNaming(true))}
         saving={saveState === 'saving'}
         onZoom={(factor) => zoomRef.current?.(factor)}
         canUndo={canUndo}
@@ -614,20 +666,24 @@ export function DesignerPage() {
       </Snackbar>
 
       <Snackbar
-        open={saveState === 'saved' || saveState === 'failed' || saveState === 'needsSignIn'}
-        autoHideDuration={4000}
+        open={saveState !== 'idle' && saveState !== 'saving'}
+        // The local-save message has to be read, not glimpsed: it is the one
+        // that explains why a dialog is about to appear over it.
+        autoHideDuration={saveState === 'savedLocal' ? 8000 : 4000}
         onClose={() => setSaveState('idle')}
       >
         <Alert
-          severity={saveState === 'saved' ? 'success' : saveState === 'needsSignIn' ? 'warning' : 'error'}
+          severity={saveState === 'failed' ? 'error' : saveState === 'savedLocal' ? 'info' : 'success'}
           onClose={() => setSaveState('idle')}
         >
           {t(
-            saveState === 'saved'
-              ? 'plans.saved'
-              : saveState === 'needsSignIn'
-                ? 'plans.needsSignIn'
-                : 'plans.saveFailed',
+            saveState === 'failed'
+              ? 'plans.saveFailed'
+              : saveState === 'savedLocal'
+                ? 'plans.savedLocalSignUp'
+                : saveState === 'savedToAccount'
+                  ? 'plans.movedToAccount'
+                  : 'plans.saved',
           )}
         </Alert>
       </Snackbar>
