@@ -1534,9 +1534,31 @@ clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
 
 ⚠️ **Not seen in a browser** — the dialog, the labelled button and the snackbars are unverified
 visually (Chrome's *Allow JavaScript from Apple Events* is off, so no tool here can read or drive the
-page). **Turning on `mailer_autoconfirm` in Supabase would make sign-up hand back a session
-immediately**, and the flow then collapses to the literal ask with no code change — the trade is that
-anyone could then create an account on an address they do not own.
+page).
+
+**Decided 2026-11-15: turn `mailer_autoconfirm` ON** (the owner's call). It makes `signUp` hand back
+a session immediately, so pressing save → signing up → the plan on the account is one unbroken step.
+- **No code change is needed, and that was checked rather than assumed.** Both callers of `signUp`
+  already handle the `'signedIn'` outcome: the designer's modal falls through and lets
+  `onAuthStateChange` run the waiting save, and `LoginPage` lets its `user` redirect effect take
+  over. The two were written for a setting that could go either way, so the flip changes behaviour
+  without touching a line.
+- ⚠️ **It is a dashboard change nobody here can make.** It lives in the **Management API**
+  (`PATCH /v1/projects/{ref}/config/auth`), which needs a *personal access token*; this repo holds
+  only the service-role key, which does not reach project config. In the dashboard:
+  **Authentication → Sign In / Providers → Email → turn OFF "Confirm email"** (the toggle is the
+  inverse of `mailer_autoconfirm`). Confirm afterwards by reading
+  `GET <project>/auth/v1/settings` — it reports `mailer_autoconfirm` live.
+- **The trade:** anyone can then register an address they do not own — spam accounts, and someone
+  could take a real customer's e-mail before that customer does. It does **not** weaken the back
+  office: a new account carries no role, so `is_staff()` in RLS still keeps it out of `/admin`, and
+  `plans` rows stay scoped to `owner = auth.uid()`.
+- ⚠️ **What it actually buys is smaller than it first looked.** The save-first ordering above already
+  means the drawing is never at risk and the save never waits on an e-mail; autoconfirm only moves
+  the plan from the browser to the account minutes sooner. Worth knowing before trading away e-mail
+  verification — the owner was told and chose to proceed.
+- Password reset remains the account-recovery path, and it still e-mails, so a mistyped address at
+  sign-up is recoverable only by signing up again.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
