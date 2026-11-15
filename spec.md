@@ -1536,19 +1536,26 @@ clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
 visually (Chrome's *Allow JavaScript from Apple Events* is off, so no tool here can read or drive the
 page).
 
-**Decided 2026-11-15: turn `mailer_autoconfirm` ON** (the owner's call). It makes `signUp` hand back
-a session immediately, so pressing save → signing up → the plan on the account is one unbroken step.
+**`mailer_autoconfirm` is ON — done 2026-11-15** (the owner's call), so `signUp` hands back a
+session immediately and pressing save → signing up → the plan on the account is one unbroken step.
+Verified by reading `GET <project>/auth/v1/settings` straight after the save: `mailer_autoconfirm:
+True`, with `disable_signup` still false and no other auth setting touched.
 - **No code change is needed, and that was checked rather than assumed.** Both callers of `signUp`
   already handle the `'signedIn'` outcome: the designer's modal falls through and lets
   `onAuthStateChange` run the waiting save, and `LoginPage` lets its `user` redirect effect take
   over. The two were written for a setting that could go either way, so the flip changes behaviour
   without touching a line.
-- ⚠️ **It is a dashboard change nobody here can make.** It lives in the **Management API**
-  (`PATCH /v1/projects/{ref}/config/auth`), which needs a *personal access token*; this repo holds
-  only the service-role key, which does not reach project config. In the dashboard:
-  **Authentication → Sign In / Providers → Email → turn OFF "Confirm email"** (the toggle is the
-  inverse of `mailer_autoconfirm`). Confirm afterwards by reading
-  `GET <project>/auth/v1/settings` — it reports `mailer_autoconfirm` live.
+- ⚠️ **The toggle is NOT in the Email provider dialog**, which is where every guide sends you and
+  where half an hour went. It is on the **Sign In / Providers page body**
+  (`/project/<ref>/auth/providers`), in the FIRST card, as the **4th of four switches** — after
+  *Allow new users to sign up*, *Allow manual linking*, *Allow anonymous sign-ins* — above that
+  card's own **Save changes** button. Found by reading the dashboard's own source
+  (`apps/studio/components/interfaces/Auth/BasicAuthSettingsForm.tsx`) rather than hunting the UI,
+  which also settles the inversion: the form field is `!authConfig.MAILER_AUTOCONFIRM`, so the
+  switch reading **off** is `mailer_autoconfirm: true`.
+- The other route is the **Management API** (`PATCH /v1/projects/{ref}/config/auth`), which needs a
+  *personal access token* — the service-role key in this repo does not reach project config.
+  Either way, confirm with `GET <project>/auth/v1/settings`, which reports the value live.
 - **The trade:** anyone can then register an address they do not own — spam accounts, and someone
   could take a real customer's e-mail before that customer does. It does **not** weaken the back
   office: a new account carries no role, so `is_staff()` in RLS still keeps it out of `/admin`, and
@@ -1557,6 +1564,10 @@ a session immediately, so pressing save → signing up → the plan on the accou
   means the drawing is never at risk and the save never waits on an e-mail; autoconfirm only moves
   the plan from the browser to the account minutes sooner. Worth knowing before trading away e-mail
   verification — the owner was told and chose to proceed.
+- ⚠️ **Nothing now proves an address belongs to the person who typed it.** A typo at sign-up makes
+  an account whose password can never be reset, and `contact_messages` / `leads` still carry the
+  e-mail people type into forms, which was never verified anyway. If sign-up spam appears, turning
+  the switch back on is the fix, and no code changes either way.
 - Password reset remains the account-recovery path, and it still e-mails, so a mistyped address at
   sign-up is recoverable only by signing up again.
 
