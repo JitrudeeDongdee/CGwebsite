@@ -1481,10 +1481,16 @@ a staff `UPDATE` matched **nothing**; `updated_at` equal to `created_at` on inse
 an update. The database was dropped afterwards. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
 `pnpm run build` exit 0.
 
-⚠️ **The migration must be run by hand in the Supabase SQL editor** — nothing in the build applies
-it, and until it is, saving stays in the browser exactly as before. **Not seen in a browser**, and
-the sign-in gate and cross-device open are the parts that can only be confirmed against a real
-project.
+**The migration is applied — 2026-11-15.** Run through the dashboard's SQL editor against the live
+project (it warns "destructive operations" on the three `drop ... if exists` lines; all three target
+only the new `public.plans`, which did not exist yet, so they were no-ops). Verified against the
+live REST API straight afterwards: `/rest/v1/plans` answers **200** where it was `PGRST205` before,
+a signed-out `select` returns **`[]`** rather than rows, and a signed-out `insert` is refused
+**42501 — "new row violates row-level security policy"**. So the table is there and `owner` is doing
+its job from the first request.
+
+⚠️ **Still not seen in a browser**: the sign-up modal, the labelled save button and a plan actually
+opening on a second device are unverified visually.
 
 ### Saving asks for an account, and never holds the drawing hostage (2026-11-15)
 The owner's ask: anyone may edit without an account, but saving should require signing up, with the
