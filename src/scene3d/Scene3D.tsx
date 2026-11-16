@@ -37,7 +37,11 @@ import {
 } from './Surfaces'
 import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
+import { resolveMove, type CameraMove } from './cameraMoves'
 import { useFixtureDrag } from './useFixtureDrag'
+
+/** How far a button-driven move closes the gap each frame. */
+const CAMERA_EASE = 0.16
 import type { Point } from '../drawing/types'
 import { Planting, SUN_DIRECTION, SkyDome, SkyEnvironment } from './Scenery'
 import {
@@ -143,6 +147,7 @@ function Orbit({
   eaves,
   cutaway,
   controls,
+  move,
 }: {
   target: [number, number, number]
   span: number
@@ -150,6 +155,8 @@ function Orbit({
   cutaway: boolean
   /** Handed out so a furniture drag can switch the camera off imperatively. */
   controls?: React.RefObject<OrbitControls | null>
+  /** The latest request from the camera buttons, or null. */
+  move?: CameraMove | null
 }) {
   const { camera, gl } = useThree()
   // Kept as its own stable ref and the outside one is MIRRORED onto it: a
@@ -157,17 +164,58 @@ function Orbit({
   // the effect below depend on something that always changes.
   const ref = useRef<OrbitControls>(null)
   const wasCutaway = useRef(cutaway)
+  /** Where a button press is taking the camera, or null when it is resting. */
+  const goal = useRef<THREE.Vector3 | null>(null)
+  const lastMove = useRef(0)
 
-  useFrame(() => ref.current?.update())
+  useFrame(() => {
+    if (goal.current) {
+      // Eased rather than snapped: a cut from one side of the house to the
+      // other tells you nothing about how the two relate, where a turn does.
+      camera.position.lerp(goal.current, CAMERA_EASE)
+      if (camera.position.distanceTo(goal.current) < 0.02) {
+        camera.position.copy(goal.current)
+        goal.current = null
+      }
+    }
+    ref.current?.update()
+  })
 
   // Move only when the customer takes the roof off or puts it back — never
   // on a plan edit, which would yank the view out from under them mid-orbit.
   useEffect(() => {
     if (wasCutaway.current === cutaway) return
     wasCutaway.current = cutaway
+    goal.current = null
     camera.position.set(...cameraFor(span, eaves, cutaway))
     ref.current?.update()
   }, [camera, cutaway, span, eaves])
+
+  // ⚠️ A drag must win over a button. Without this the eased move keeps
+  // pulling towards its goal while the pointer is dragging the other way,
+  // and the camera fights the hand holding it.
+  useEffect(() => {
+    const instance = ref.current
+    if (!instance) return
+    const stop = () => {
+      goal.current = null
+    }
+    instance.addEventListener('start', stop)
+    return () => instance.removeEventListener('start', stop)
+  }, [])
+
+  useEffect(() => {
+    if (!move || move.seq === lastMove.current) return
+    lastMove.current = move.seq
+    const next = resolveMove(
+      move,
+      [camera.position.x, camera.position.y, camera.position.z],
+      target,
+      span,
+      cameraFor(span, eaves, cutaway),
+    )
+    goal.current = new THREE.Vector3(...next)
+  }, [move, camera, target, span, eaves, cutaway])
 
   return (
     <orbitControls
@@ -580,6 +628,7 @@ export function Scene3D({
   onFixtureDragStart,
   onFixtureDrag,
   onFixtureDrop,
+  cameraMove,
 }: {
   /** One entry per storey, ground floor first — each with its own plan. */
   floors: FloorPlan[]
@@ -596,6 +645,8 @@ export function Scene3D({
   onFixtureDragStart?: () => void
   onFixtureDrag?: (fixtureId: string, point: Point) => void
   onFixtureDrop?: (fixtureId: string, point: Point) => void
+  /** The latest press from the camera buttons; null when none yet. */
+  cameraMove?: CameraMove | null
 }) {
   const { scene: sceneColors } = useTheme()
   const orbitRef = useRef<OrbitControls>(null)
@@ -685,6 +736,7 @@ export function Scene3D({
         eaves={eaves}
         cutaway={!options.showRoof}
         controls={orbitRef}
+        move={cameraMove}
       />
 
       {/* Centred on the origin, so the light, its shadow camera and the orbit

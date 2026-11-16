@@ -277,7 +277,11 @@
     "curtains": "Show curtains",
     "wallLights": "Show wall lights",
     "fence": "Show the fence",
-    "raiseOpt": { "none": "On the ground", "low": "Raised 45 cm", "high": "Raised 90 cm" }
+    "raiseOpt": {
+      "none": "On the ground",
+      "low": "Raised 45 cm",
+      "high": "Raised 90 cm"
+    }
   },
   "dock": {
     "walls": "Walls",
@@ -418,5 +422,15 @@
     "save": "Save",
     "saved": "Saved",
     "localNote": "Profile data is stored on this device for now (it will move to the server later)."
+  },
+  "camera": {
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "turnLeft": "Turn left",
+    "turnRight": "Turn right",
+    "tiltUp": "Look from higher",
+    "tiltDown": "Look from lower",
+    "top": "Top view",
+    "home": "Reset the view"
   }
 }

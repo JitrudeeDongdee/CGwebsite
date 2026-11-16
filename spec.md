@@ -1577,6 +1577,56 @@ True`, with `disable_signup` still false and no other auth setting touched.
 - Password reset remains the account-recovery path, and it still e-mails, so a mistyped address at
   sign-up is recoverable only by signing up again.
 
+### Camera buttons for the 3D view — `src/scene3d/cameraMoves.ts`, `src/ui/CameraButtons.tsx` (2026-11-16)
+The 3D view could only be moved by dragging. That is fine with a mouse, awkward on a trackpad, and
+offers no way back once the house ends up edge-on or off screen. The same moves are now buttons, in
+the **top-right** — the one free corner (floor switcher top-left, toolbar bottom-left, dock
+bottom-right).
+
+Eight, in a 2×4 grid: zoom out / in, turn left / right (45°), tilt down / up (12°), top view, and
+reset.
+- **`cameraMoves.ts` imports no three.js**, deliberately: the buttons live in `src/ui/` and are
+  rendered by the designer page, so importing anything else from `scene3d/` would pull the ~240 kB
+  three chunk into the 2D editor. It holds plain spherical maths — azimuth around +Y with 0 looking
+  from +Z, elevation above the horizon — and `resolveMove` is pure, so the whole button set is
+  checkable without a renderer.
+- ⚠️ **`CameraMove` is `CameraRequest & { seq }`, not `Omit<CameraMove, 'seq'>`.** `Omit` over a
+  union keeps only the keys every member shares, so the omitted type lost `factor`, `degrees` and
+  `view` and accepted none of them — eight type errors that all pointed at the call sites rather
+  than the cause.
+- **`seq` is what lets the same button be pressed twice.** The effect compares sequence numbers; an
+  identical object would otherwise never re-fire.
+- ⚠️ **A drag must win over a button.** `Orbit` listens for OrbitControls' `start` event and drops
+  the pending goal, or the eased move keeps pulling toward its target while the pointer drags the
+  other way and the camera fights the hand holding it. Taking the roof off clears it too.
+- ⚠️ **Reset returns the default POSITION, not angles that approximate it.** The default camera's
+  elevation depends on the eaves-to-span ratio, so a fixed pair of angles is right for one house and
+  wrong for the next — on the 12 m cabin a nominal 15° is really 11.3°. `resolveMove` takes
+  `cameraFor(...)` and returns it verbatim.
+- Tilt is clamped to 4–85°. At 90° the view direction is parallel to the camera's up vector,
+  OrbitControls gimbal-locks and the house spins on the next turn; the low end keeps the camera off
+  the ground, from under which a house is a floor slab and nothing else. Zoom is clamped to
+  0.5–4.5 × the plan's **span**, not a fixed number of metres, so a 4 m plan and a 12 m one both
+  stop somewhere sensible.
+- Top view keeps the azimuth you were at, so the roof plan faces the same way as the view you left.
+
+**Verified.** The maths headlessly against the real module (22 checks, 0 failed): the angle
+conversions round-trip; azimuth 0 is +Z and 90 is +X; zoom scales the radius by exactly the step and
+40 presses either way stop on the limit instead of passing through the house; a turn changes only
+the azimuth and eight of them return to the start position; tilt clamps at both ends and never puts
+the camera below the target; **reset lands exactly on the default position** after turning, zooming
+and tilting away; top reaches 85° and keeps the azimuth; and a 4 m plan clamps against its own span.
+Then in the browser: the cluster appears in 3D only (the two zoom buttons in 2D are the existing
+toolbar's), all eight render at the top-right clear of the other overlays, and clicking all eight in
+sequence left the canvas alive with **no console errors**. `tsc -b` clean, `oxlint` 26 pre-existing
+warnings, `pnpm run build` exit 0.
+
+⚠️ **The movement itself is not visually confirmed.** Nothing in this environment can read the
+rendered frame: `screencapture` needs Screen Recording permission, a WebGL canvas readback comes back
+transparent even with `preserveDrawingBuffer` (tried, and reverted since it bought nothing), and this
+r3f version exposes no `__r3f` store on the canvas to read the camera from. The maths and the wiring
+are proven; that the house visibly turns is not.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

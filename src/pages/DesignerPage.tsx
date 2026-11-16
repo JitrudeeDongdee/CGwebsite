@@ -19,6 +19,8 @@ import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
 import { PlanNameDialog } from '../ui/PlanNameDialog'
 import { Scene3DLoading } from '../ui/Scene3DLoading'
+import { CameraButtons } from '../ui/CameraButtons'
+import type { CameraMove, CameraRequest } from '../scene3d/cameraMoves'
 import { useSeo } from '../seo/useSeo'
 import { useNavigate, useParams } from 'react-router-dom'
 import { planRepository } from '../plans'
@@ -116,6 +118,15 @@ export function DesignerPage() {
   const [planName, setPlanName] = useState('')
   const [naming, setNaming] = useState(false)
   const [planMissing, setPlanMissing] = useState(false)
+  /** The last camera-button press. The `seq` is what lets the SAME button be
+      pressed twice: without it the second press is an identical object and
+      the effect that reads it never runs. */
+  const [cameraMove, setCameraMove] = useState<CameraMove | null>(null)
+  const cameraSeq = useRef(0)
+  const requestCameraMove = useCallback((move: CameraRequest) => {
+    cameraSeq.current += 1
+    setCameraMove({ ...move, seq: cameraSeq.current })
+  }, [])
   const [saveState, setSaveState] = useState<
     'idle' | 'saving' | 'saved' | 'savedLocal' | 'savedToAccount' | 'failed'
   >('idle')
@@ -499,10 +510,14 @@ export function DesignerPage() {
 
       {view === 'three' ? (
         <>
+          {/* Only in 3D: the plan view has its own zoom on the toolbar, and
+              there is no angle to turn. */}
+          <CameraButtons onMove={requestCameraMove} />
           <Suspense fallback={null}>
             <Scene3D
               floors={shownFloors}
               options={building3d}
+              cameraMove={cameraMove}
               onReady={() => setSceneReady(true)}
               activeFloor={activeFloor}
               // The same three calls the 2D editor uses, so a drag in either
