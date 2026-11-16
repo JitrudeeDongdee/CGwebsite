@@ -150,6 +150,7 @@ interface CatalogDockProps {
   onSelectFixture: (kind: FixtureKind | null) => void
   /** Arms the brush with a finish, or disarms it with null. */
   onSelectPaint: (paint: { finish: WallFinish; face: 'outside' | 'inside' } | null) => void
+  onSelectPanel: (panel: { finish: WallFinish; width: number } | null) => void
   onResetPaint: () => void
   /** 3D: the house's finishes. */
   options: Building3DOptions
@@ -251,6 +252,7 @@ export function CatalogDock({
   onSelectOpening,
   onSelectFixture,
   onSelectPaint,
+  onSelectPanel,
   onResetPaint,
   options,
   onOptionsChange,
@@ -269,6 +271,7 @@ export function CatalogDock({
   const [tab, setTab] = useState<TabId>('walls')
   const [paintFace, setPaintFace] = useState<'outside' | 'inside'>('outside')
   const [paintMaterial, setPaintMaterial] = useState<WallMaterial>('wood')
+  const [panelWidth, setPanelWidth] = useState<number>(1)
   const [open, setOpenState] = useState<boolean>(() => remembered(OPEN_KEY, true))
   /** Expanded: a full-height column down the side instead of a corner box. */
   const [big, setBigState] = useState<boolean>(() => remembered(BIG_KEY, false))
@@ -621,9 +624,56 @@ export function CatalogDock({
                   </SwatchGrid>
                 </DockSection>
 
+                {/* A band across PART of a wall, which is what the whole
+                    elevation brush above cannot do: the reference's timber
+                    sits between the glazing, not over a whole 12 m side. */}
+                <DockSection label={t('panel.section')}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    {t('panel.hint')}
+                  </Typography>
+                  <PillRow
+                    label={t('panel.width')}
+                    value={panelWidth}
+                    values={[0.6, 1, 1.5] as const}
+                    render={(item) => `${item} ม.`}
+                    onChange={setPanelWidth}
+                  />
+                  <SwatchGrid>
+                    {WALL_COLORS.map((option) => {
+                      const armed =
+                        tool.type === 'panel' &&
+                        tool.finish.color?.toLowerCase() === option.hex.toLowerCase()
+                      return (
+                        <Swatch
+                          key={option.id}
+                          size={SWATCH_SMALL}
+                          label={t(`building3d.color.${option.id}`)}
+                          color={option.hex}
+                          selected={armed}
+                          onClick={() =>
+                            onSelectPanel(
+                              armed
+                                ? null
+                                : {
+                                    width: panelWidth,
+                                    finish: { color: option.hex, material: paintMaterial },
+                                  },
+                            )
+                          }
+                        />
+                      )
+                    })}
+                  </SwatchGrid>
+                </DockSection>
+
                 {tool.type === 'paint' && (
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
                     {t('paint.armed')}
+                  </Typography>
+                )}
+                {tool.type === 'panel' && (
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
+                    {t('panel.armed')}
                   </Typography>
                 )}
 

@@ -101,6 +101,7 @@ export function DesignerPage() {
     finalizeWallMove,
     nameRoom,
     paintWall,
+    toggleWallPanel,
     resetWallFinishes,
     undo,
     redo,
@@ -558,6 +559,7 @@ export function DesignerPage() {
         dragWallBy={dragWallBy}
         finalizeWallMove={finalizeWallMove}
         paintWall={paintWall}
+        toggleWallPanel={toggleWallPanel}
       />
 
       <Typography
@@ -602,6 +604,7 @@ export function DesignerPage() {
         onSelectOpening={(next) => setTool(next ? { type: 'opening', ...next } : DRAW_TOOL)}
         onSelectFixture={(kind) => setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)}
         onSelectPaint={(paint) => setTool(paint ? { type: 'paint', ...paint } : SELECT_TOOL)}
+        onSelectPanel={(panel) => setTool(panel ? { type: 'panel', ...panel } : SELECT_TOOL)}
         onResetPaint={() => {
           resetWallFinishes()
           setTool(SELECT_TOOL)

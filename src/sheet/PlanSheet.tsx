@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@mui/material/styles'
 import type { DrawingState, Point } from '../drawing/types'
-import { computeWallOutlines } from '../drawing/wallOutline'
+import { DEFAULT_WALL_THICKNESS, computeWallOutlines } from '../drawing/wallOutline'
 import { placeOpenings } from '../drawing/openings'
 import { pointInPolygon, type Room } from '../drawing/rooms'
 import { FixtureSymbol } from './fixtureSymbols'
@@ -152,6 +152,53 @@ function Walls({
 }
 
 /** Doors (leaf + swing arc) and windows (glazing line), gaps punched white. */
+/**
+ * Cladding bands, drawn ON the wall as a thick stroke in the band's own
+ * colour.
+ *
+ * Its actual colour rather than a hatch, because the whole point of a panel
+ * is which material it is — a plan that showed every band the same way would
+ * not tell you the timber from the render's dark accent. Drawn before the
+ * openings so a band crossing one does not paint over the door symbol.
+ */
+function WallPanels({ state }: { state: DrawingState }) {
+  const palette = usePalette()
+  const panels = state.panels ?? []
+  if (panels.length === 0) return null
+
+  return (
+    <g>
+      {panels.map((panel) => {
+        const wall = state.walls.find((one) => one.id === panel.wallId)
+        if (!wall) return null
+        const a = state.nodes[wall.a]
+        const b = state.nodes[wall.b]
+        if (!a || !b) return null
+        const length = Math.hypot(b.x - a.x, b.y - a.y)
+        if (length === 0) return null
+        const ux = (b.x - a.x) / length
+        const uy = (b.y - a.y) / length
+        const from = Math.max(0, panel.offset - panel.width / 2)
+        const to = Math.min(length, panel.offset + panel.width / 2)
+        const thickness = wall.thickness ?? DEFAULT_WALL_THICKNESS
+        return (
+          <line
+            key={panel.id}
+            x1={a.x + ux * from}
+            y1={a.y + uy * from}
+            x2={a.x + ux * to}
+            y2={a.y + uy * to}
+            stroke={panel.finish.color ?? palette.accent}
+            strokeWidth={thickness}
+            strokeLinecap="butt"
+            opacity={0.85}
+          />
+        )
+      })}
+    </g>
+  )
+}
+
 function Openings({
   state,
   exteriorWallIds,
@@ -537,6 +584,7 @@ export function PlanSheet({
           <>
             <Grid state={state} bounds={bounds} />
             <Walls state={state} exteriorWallIds={exteriorWallIds} hoverId={hoverWallId} />
+            <WallPanels state={state} />
             <Openings state={state} exteriorWallIds={exteriorWallIds} />
             <Fixtures state={state} selectedId={selectedFixtureId} hoverId={hoverFixtureId} />
             <RoomLabels state={state} rooms={rooms} />

@@ -58,6 +58,7 @@ interface UseInteractionOptions {
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
   paintWall: (wallId: string, patch: WallFinish) => void
+  toggleWallPanel: (wallId: string, offset: number, width: number, finish: WallFinish) => void
   /**
    * A plain click in select mode: the fixture under the cursor, or null for
    * empty ground. The editor has no selection of its own — this is where one
@@ -91,6 +92,7 @@ export function useInteraction({
   placeOpening,
   placeFixture,
   paintWall,
+  toggleWallPanel,
   onPick,
   updateFixturePosition,
   finalizeFixtureMove,
@@ -171,7 +173,7 @@ export function useInteraction({
             ? current
             : { fixtureId: over?.id ?? null, wallId: null },
         )
-      } else if (tool.type === 'paint' || tool.type === 'opening') {
+      } else if (tool.type === 'paint' || tool.type === 'panel' || tool.type === 'opening') {
         const over = findWallAt(state, point)
         setHover((current) =>
           current.wallId === (over?.id ?? null) && current.fixtureId === null
@@ -269,6 +271,18 @@ export function useInteraction({
         return
       }
 
+      // A band of different cladding across part of the wall. The same click
+      // takes one away again, so removing a band needs no second tool and no
+      // selection — click bare wall to add, click the band to remove.
+      if (tool.type === 'panel') {
+        const wall = findWallAt(state, point)
+        if (wall) {
+          const offset = offsetAlongWall(state, wall.id, point)
+          if (offset !== null) toggleWallPanel(wall.id, offset, tool.width, tool.finish)
+        }
+        return
+      }
+
       // With a door/window selected, a click drops it on the wall under the
       // cursor rather than drawing.
       if (tool.type === 'opening') {
@@ -312,6 +326,7 @@ export function useInteraction({
       finalizeFixtureMove,
       placeFixture,
       paintWall,
+      toggleWallPanel,
       onPick,
       resolve,
       state,

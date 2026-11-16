@@ -1685,9 +1685,33 @@ charcoal** — it is an accent, not a repaint; the plan behind it is untouched a
 9 openings; and panels survive a save/load round trip while a file with none still opens.
 `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
 
-⚠️ **The editing tool is not built yet** — panels can be authored in a template and they render,
-save and load, but there is no way for a customer to place one. The paint brush is where it
-belongs. And this is **not seen in a browser**: nothing here can read the rendered frame.
+#### Placing one — the panel brush
+A second tool in the **ทาสีผนัง** tab, beside the whole-wall brush. Pick a colour and a width
+(0.6 / 1 / 1.5 m), then click a wall.
+
+- **The same click removes it.** Clicking bare wall adds a band; clicking an existing band takes it
+  away (`findWallPanelAt` → `deleteWallPanel`). So deleting needs no second tool, no selection and
+  no context menu — the thing you click is the thing you act on.
+- Separate from `paint` in `ToolMode` rather than a mode of it: paint takes a WHOLE wall and needs
+  no width, and its click repaints where this one toggles.
+- `addWallPanel` is shaped on `addOpening`, clamp included — the band is pulled fully inside the
+  wall, and a wall too short to hold it is left alone rather than given one hanging off its end.
+- `clearWallFinishes` ("back to default") now drops the panels too: leaving a row of timber
+  standing would not be back to default.
+- In plan, a band is drawn **in its own colour** at wall thickness, under the opening symbols —
+  a hatch would hide which material it is, which is the only thing a panel is.
+- ⚠️ `scene/DrawingCanvas.tsx` needed a no-op to keep compiling. Nothing imports it; the SVG
+  `sheet/PlanEditor` replaced it, and deleting it is already TODO 3.
+
+**Verified in the browser** on the real page: the section renders with its hint and all three width
+pills; the cabin draws **7 bands in the 2D plan**, matching its 7 template panels; clicking the
+timber swatch arms the panel tool (and not the paint tool); a synthetic click on bare wall took the
+plan **7 → 8**, a second click on that band took it **8 → 7**, and after a fresh load
+**7 → add → 8 → one undo → 7**, so an edit is one history step. `tsc -b` clean, `oxlint` 26
+pre-existing warnings, `pnpm run build` exit 0.
+
+⚠️ Still **not seen as pixels** — nothing here can read the rendered 3D frame, so the look of the
+timber on the house is confirmed only by the owner's screenshots.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).

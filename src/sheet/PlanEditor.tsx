@@ -31,6 +31,7 @@ interface PlanEditorProps {
   dragWallBy: (wallId: string, delta: Point) => void
   finalizeWallMove: (wallId: string) => void
   paintWall: (wallId: string, patch: WallFinish) => void
+  toggleWallPanel: (wallId: string, offset: number, width: number, finish: WallFinish) => void
   cancelRef: React.RefObject<(() => void) | null>
   /**
    * Filled in by the editor with a zoom-by-factor function, the same way
@@ -74,6 +75,7 @@ export function PlanEditor({
   dragWallBy,
   finalizeWallMove,
   paintWall,
+  toggleWallPanel,
   cancelRef,
   zoomRef,
   selectedFixtureId,
@@ -96,6 +98,7 @@ export function PlanEditor({
     dragWallBy,
     finalizeWallMove,
     paintWall,
+    toggleWallPanel,
     onPick,
   })
   cancelRef.current = cancelDrawing

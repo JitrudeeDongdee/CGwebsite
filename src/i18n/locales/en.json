@@ -432,5 +432,11 @@
     "tiltDown": "Look from lower",
     "top": "Top view",
     "home": "Reset the view"
+  },
+  "panel": {
+    "section": "Cladding panels",
+    "hint": "Pick a colour, then click a wall to place a band. Click the band again to remove it.",
+    "width": "Width",
+    "armed": "Panel tool — click a wall to place, click a band to remove"
   }
 }

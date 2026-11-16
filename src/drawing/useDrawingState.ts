@@ -26,7 +26,10 @@ import {
   rotateFixture,
   setRoomLabel,
   setWallFinish,
+  addWallPanel,
   clearWallFinishes,
+  deleteWallPanel,
+  findWallPanelAt,
 } from './state'
 import type { FixtureKind, OpeningKind, Point as PointType, WallFinish } from './types'
 import { findRooms } from './rooms'
@@ -224,6 +227,17 @@ export function useDrawingState() {
     () => commit((prev) => clearWallFinishes(prev)),
     [commit],
   )
+  /** Add a cladding band, or take away the one already under the click. */
+  const toggleWallPanel = useCallback(
+    (wallId: string, offset: number, width: number, finish: WallFinish) =>
+      commit((prev) => {
+        const existing = findWallPanelAt(prev, wallId, offset)
+        return existing
+          ? deleteWallPanel(prev, existing.id)
+          : addWallPanel(prev, wallId, offset, width, finish)
+      }),
+    [commit],
+  )
 
   const nameRoom = useCallback(
     (point: PointType, name: string, existingId?: string) =>
@@ -334,6 +348,7 @@ export function useDrawingState() {
     finalizeWallMove,
     nameRoom,
     paintWall,
+    toggleWallPanel,
     resetWallFinishes,
     undo,
     redo,
