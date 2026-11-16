@@ -1653,11 +1653,41 @@ frames, the timber gable AND deep eaves, while the plan behind it is untouched �
 9 openings, 3 sliders all floor-to-head. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
 `pnpm run build` exit 0.
 
-⚠️ **Still not matched, and the next thing to look at:** the render's timber runs as PANELS BETWEEN
-the glazing along the long elevation, and finishes here are per WALL — the 12 m elevation is one
-wall, so it can only be all charcoal or all timber. The pieces between openings are already
-separate boxes in `building3d` (the wall is split around each opening), so accenting those piers is
-reachable, but it is a change to the per-wall finish model rather than a template tweak.
+### Timber panels — `DrawWallPanel` (2026-11-16)
+The render's defining feature is warm timber set BETWEEN the glazing of a charcoal elevation.
+`DrawWall.finish` could not say that: it is per wall, so a 12 m elevation was all charcoal or all
+timber with nothing in between.
+
+- **A panel is a band of different cladding on part of one wall** — `{ wallId, offset, width,
+  finish }`, bound by a centre offset exactly like an opening so it survives the same edits.
+  Deliberately **not** an opening: `kind` drives pricing, the plan-file validator and the context
+  menu, and a panel cuts no hole and costs nothing.
+- **It cost one function.** Every solid, header and sill already goes through one `push` in
+  `building3d`, so `push` now cuts its stretch again at any panel edge inside it and stamps the
+  pieces that fall within a panel with its finish. The loop above it never learns panels exist, and
+  a panel that crosses an opening still clads the wall over and under it. A panel's own fields win
+  and the rest fall back to the wall's, so a band can change only the colour.
+- ⚠️ **`DrawingState` is rebuilt field by field in three places** — `createInitialState`,
+  `loadPlan` and `planFile`'s validator — so a new array has to be added to each or it is silently
+  dropped on load. `panels` is optional, and a file written before it existed loads as an empty
+  list rather than an error.
+- ⚠️ **Planarization splits an elevation at every partition**, so a panel's offset runs along its
+  OWN segment, not from the corner of the house — and one placed past a segment's end is CLAMPED
+  inward. That is how the first attempt slid a panel 0.11 m into the big slider. The cabin's seven
+  panels were then placed against the built walls rather than computed from spec coordinates.
+- A panel MAY cover a whole wall on purpose: the cabin's porch back wall is timber end to end with
+  its slider punched through it, which is what the render shows.
+
+**Verified** against the real modules (15 checks, 0 failed): all seven panels find a host wall and
+fit inside it; none lands partly over an opening (a full-wall one is allowed); `loadPlan` keeps
+them; the 3D build emits timber boxes carrying the right colour while **most boxes are still
+charcoal** — it is an accent, not a repaint; the plan behind it is untouched at 3 rooms, 36.21 m²,
+9 openings; and panels survive a save/load round trip while a file with none still opens.
+`tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
+⚠️ **The editing tool is not built yet** — panels can be authored in a template and they render,
+save and load, but there is no way for a customer to place one. The paint brush is where it
+belongs. And this is **not seen in a browser**: nothing here can read the rendered frame.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).

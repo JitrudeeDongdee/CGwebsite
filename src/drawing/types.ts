@@ -130,12 +130,37 @@ export interface DrawRoomLabel {
   name: string
 }
 
+/**
+ * A band of a DIFFERENT cladding across part of one wall.
+ *
+ * The reference render's defining feature is warm timber panels set between
+ * the glazing of a charcoal elevation. `DrawWall.finish` could not express
+ * that: it is per WALL, and the long elevation is one 12 m wall, so it was
+ * all charcoal or all timber with nothing in between.
+ *
+ * Bound to a wall by a centre `offset` exactly like an opening, so it moves
+ * and survives the same edits — and deliberately NOT an opening, because
+ * `kind` drives pricing, the plan-file validator and the context menu, and a
+ * panel is a finish rather than a hole. It cuts no hole and costs nothing.
+ */
+export interface DrawWallPanel {
+  id: string
+  wallId: string
+  /** Centre of the panel, metres along the wall from its start. */
+  offset: number
+  width: number
+  /** What the band is clad in. Fields left out fall back to the wall's own. */
+  finish: WallFinish
+}
+
 export interface DrawingState {
   nodes: Record<string, DrawNode>
   walls: DrawWall[]
   openings: DrawOpening[]
   fixtures: DrawFixture[]
   roomLabels: DrawRoomLabel[]
+  /** Optional so every older plan, saved file and test fixture still loads. */
+  panels?: DrawWallPanel[]
 }
 
 export type SnapTarget =

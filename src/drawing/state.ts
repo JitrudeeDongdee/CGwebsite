@@ -14,7 +14,7 @@ import { fixtureSpec } from './fixtures'
 import { GRID_SIZE, distance, findSnapTarget, snapToGrid } from './geometry'
 
 export function createInitialState(): DrawingState {
-  return { nodes: {}, walls: [], openings: [], fixtures: [], roomLabels: [] }
+  return { nodes: {}, walls: [], openings: [], fixtures: [], roomLabels: [], panels: [] }
 }
 
 function nextId(prefix: string): string {
@@ -319,6 +319,9 @@ export function loadPlan(plan: DrawingState): DrawingState {
     openings: [...plan.openings],
     fixtures: [...plan.fixtures],
     roomLabels: [...plan.roomLabels],
+    // ⚠️ Rebuilt field by field, so anything added to DrawingState has to be
+    // listed here too or loading a plan silently drops it.
+    panels: [...(plan.panels ?? [])],
   })
 }
 
