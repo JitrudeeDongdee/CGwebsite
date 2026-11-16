@@ -1713,6 +1713,27 @@ pre-existing warnings, `pnpm run build` exit 0.
 ⚠️ Still **not seen as pixels** — nothing here can read the rendered 3D frame, so the look of the
 timber on the house is confirmed only by the owner's screenshots.
 
+### Placing furniture in the 3D view (2026-11-16)
+The palette only ever armed a tool the 2D editor could act on, so a sofa had to be added on the
+plan even while looking at the room in 3D. The furniture tab is now in BOTH tab sets, and the 3D
+view takes the drop.
+
+- **`PlacementPlane`** is an invisible floor-level plane that converts a click to plan coordinates:
+  everything plan-shaped is drawn inside a group translated by `-centre`, so `world = plan − centre`
+  and the way back is `plan = world + centre`. The point is then snapped with the same
+  `snapToGrid` the plan editor uses, so the two views agree.
+- ⚠️ **Mounted only while a fixture is armed.** It spans the view, so if it were always there it
+  would swallow every pointer event before the furniture underneath saw one — and dragging a piece
+  in 3D would stop working.
+- ⚠️ **A click has to be told from an ORBIT.** r3f fires `onClick` whenever pointerdown and
+  pointerup land on the same object however far the pointer travelled, and an orbit drag does
+  exactly that — every attempt to turn the house would drop a sofa. The pointer's screen travel is
+  measured instead (`PLACE_SLOP`), the same idea as the 2D editor's `DRAG_THRESHOLD`.
+
+`tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0. ⚠️ **Not verified in
+the browser** — the session's usage limit was reached right after it compiled, so the tab appearing
+in 3D, the drop landing where clicked, and the orbit guard are all unconfirmed.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

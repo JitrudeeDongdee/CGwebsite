@@ -433,6 +433,61 @@ function shoelace(polygon: { x: number; y: number }[]): number {
   return total / 2
 }
 
+/**
+ * An invisible floor the armed fixture is dropped onto.
+ *
+ * ⚠️ Mounted ONLY while a fixture is armed. It spans the whole view, so if it
+ * were always there it would swallow every pointer event before the furniture
+ * underneath could see one — and dragging a piece in 3D would stop working.
+ *
+ * ⚠️ A click has to be told from an ORBIT. r3f fires `onClick` whenever
+ * pointerdown and pointerup land on the same object however far the pointer
+ * travelled between, and an orbit drag does exactly that — so every attempt
+ * to turn the house would drop a sofa. The pointer's screen travel is
+ * measured instead, the same idea as the 2D editor's DRAG_THRESHOLD.
+ */
+const PLACE_SLOP = 5
+
+function PlacementPlane({
+  y,
+  centre,
+  reach,
+  onPlace,
+}: {
+  y: number
+  centre: [number, number, number]
+  reach: number
+  onPlace: (point: Point) => void
+}) {
+  const down = useRef<{ x: number; y: number } | null>(null)
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, y, 0]}
+      onPointerDown={(event) => {
+        down.current = { x: event.nativeEvent.clientX, y: event.nativeEvent.clientY }
+      }}
+      onPointerUp={(event) => {
+        const start = down.current
+        down.current = null
+        if (!start) return
+        const travelled = Math.hypot(
+          event.nativeEvent.clientX - start.x,
+          event.nativeEvent.clientY - start.y,
+        )
+        if (travelled > PLACE_SLOP) return
+        // Everything in plan coordinates is drawn inside a group translated
+        // by -centre, so world = plan - centre and the way back is this.
+        onPlace({ x: event.point.x + centre[0], y: event.point.z + centre[2] })
+      }}
+    >
+      <planeGeometry args={[reach, reach]} />
+      <meshBasicMaterial visible={false} />
+    </mesh>
+  )
+}
+
 /** One storey's slab, with its voids cut out. */
 function FloorSlab({
   width,
@@ -634,6 +689,8 @@ export function Scene3D({
   onFixtureDrag,
   onFixtureDrop,
   cameraMove,
+  placingFixture,
+  onPlaceFixture,
 }: {
   /** One entry per storey, ground floor first — each with its own plan. */
   floors: FloorPlan[]
@@ -652,6 +709,9 @@ export function Scene3D({
   onFixtureDrop?: (fixtureId: string, point: Point) => void
   /** The latest press from the camera buttons; null when none yet. */
   cameraMove?: CameraMove | null
+  /** The fixture the palette has armed, or null. Placing is off when null. */
+  placingFixture?: string | null
+  onPlaceFixture?: (point: Point) => void
 }) {
   const { scene: sceneColors } = useTheme()
   const orbitRef = useRef<OrbitControls>(null)
@@ -743,6 +803,10 @@ export function Scene3D({
         controls={orbitRef}
         move={cameraMove}
       />
+
+      {placingFixture && onPlaceFixture && (
+        <PlacementPlane y={raise} centre={centre} reach={span * 8 + 40} onPlace={onPlaceFixture} />
+      )}
 
       {/* Centred on the origin, so the light, its shadow camera and the orbit
           target all work from one place whatever the plan's coordinates. */}

@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import { useDrawingState } from '../drawing/useDrawingState'
-import { findNodeAt, findWallAt } from '../drawing/geometry'
+import { findNodeAt, findWallAt, snapToGrid } from '../drawing/geometry'
 import type { Point } from '../drawing/types'
 import { PlanEditor } from '../sheet/PlanEditor'
 import { LeadFormDialog } from '../ui/LeadFormDialog'
@@ -519,6 +519,13 @@ export function DesignerPage() {
               floors={shownFloors}
               options={building3d}
               cameraMove={cameraMove}
+              // Clicking the floor in 3D drops the armed piece, snapped to
+              // the same grid the plan editor uses so the two agree.
+              placingFixture={tool.type === 'fixture' ? tool.kind : null}
+              onPlaceFixture={(point) => placeFixture(
+                (tool.type === 'fixture' ? tool.kind : 'chair'),
+                snapToGrid(point),
+              )}
               onReady={() => setSceneReady(true)}
               activeFloor={activeFloor}
               // The same three calls the 2D editor uses, so a drag in either

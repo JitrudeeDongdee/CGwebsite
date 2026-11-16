@@ -99,6 +99,10 @@ const THREE_TABS: Tab[] = [
   { id: 'style', labelKey: 'dock.style', Icon: VillaIcon },
   { id: 'roof', labelKey: 'dock.roof', Icon: RoofingIcon },
   { id: 'surfaces', labelKey: 'dock.surfaces', Icon: FormatPaintIcon },
+  // Furniture is in BOTH tab sets: the palette only arms a tool, and the 3D
+  // view can now take the drop as well, so there is no reason to make
+  // someone go back to the plan to add a sofa to a room they are looking at.
+  { id: 'furniture', labelKey: 'dock.furniture', Icon: ChairIcon },
   { id: 'paint', labelKey: 'dock.paint', Icon: BrushIcon },
   { id: 'summary', labelKey: 'dock.summary', Icon: CalculateIcon },
 ]
