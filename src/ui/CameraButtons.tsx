@@ -2,8 +2,6 @@ import { useTranslation } from 'react-i18next'
 import Paper from '@mui/material/Paper'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
-import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
 import ZoomIn from '@mui/icons-material/ZoomIn'
 import ZoomOut from '@mui/icons-material/ZoomOut'
 import RotateLeft from '@mui/icons-material/RotateLeft'
@@ -30,8 +28,14 @@ import {
  * anything else from `scene3d/` would pull the ~240 kB three chunk into the
  * 2D editor, which renders this component's siblings.
  *
- * It sits **top-right**: top-left is the floor switcher, bottom-left the
- * toolbar, bottom-right the catalogue dock. That is the one free corner.
+ * It sits **bottom-left**, where the 2D editor puts its own toolbar — so the
+ * controls stay in the same corner of the screen as you switch views instead
+ * of jumping across it. That corner is free in 3D: `BottomToolbar` renders
+ * only in the plan view. Top-left is the floor switcher and bottom-right the
+ * catalogue dock, both of which this clears.
+ *
+ * Laid out wide and short (4 x 2) rather than tall, for the same reason: it
+ * then has the footprint of the toolbar it stands in for.
  */
 export function CameraButtons({ onMove }: { onMove: (move: CameraRequest) => void }) {
   const { t } = useTranslation()
@@ -57,12 +61,12 @@ export function CameraButtons({ onMove }: { onMove: (move: CameraRequest) => voi
       elevation={3}
       sx={{
         position: 'absolute',
-        top: 58,
-        right: 12,
+        bottom: 16,
+        left: 16,
         zIndex: 2,
         p: 0.5,
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, auto)',
+        gridTemplateColumns: 'repeat(4, auto)',
         gap: 0.25,
         borderRadius: 2,
       }}
@@ -87,10 +91,6 @@ export function CameraButtons({ onMove }: { onMove: (move: CameraRequest) => voi
       <Btn title={t('camera.tiltUp')} onClick={() => onMove({ kind: 'tilt', degrees: TILT_STEP })}>
         <KeyboardArrowUp fontSize="small" />
       </Btn>
-
-      <Box sx={{ gridColumn: '1 / -1' }}>
-        <Divider sx={{ my: 0.25 }} />
-      </Box>
 
       <Btn title={t('camera.top')} onClick={() => onMove({ kind: 'view', view: 'top' })}>
         <FlipToBack fontSize="small" />

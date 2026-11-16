@@ -1583,8 +1583,12 @@ offers no way back once the house ends up edge-on or off screen. The same moves 
 the **top-right** — the one free corner (floor switcher top-left, toolbar bottom-left, dock
 bottom-right).
 
-Eight, in a 2×4 grid: zoom out / in, turn left / right (45°), tilt down / up (12°), top view, and
-reset.
+Eight, in a **4×2 grid at the bottom-left** — where the 2D editor puts its own toolbar, so the
+controls stay in the same corner of the screen as you switch views instead of jumping across it.
+That corner is free in 3D because `BottomToolbar` renders only in the plan view (checked: in 3D the
+only absolutely-positioned panels are the floor switcher top-left, this, and the dock
+bottom-right). Wide and short for the same reason: it then has the footprint of the toolbar it
+stands in for. Zoom out / in, turn left / right (45°), tilt down / up (12°), top view, and reset.
 - **`cameraMoves.ts` imports no three.js**, deliberately: the buttons live in `src/ui/` and are
   rendered by the designer page, so importing anything else from `scene3d/` would pull the ~240 kB
   three chunk into the 2D editor. It holds plain spherical maths — azimuth around +Y with 0 looking
@@ -1617,8 +1621,9 @@ the azimuth and eight of them return to the start position; tilt clamps at both 
 the camera below the target; **reset lands exactly on the default position** after turning, zooming
 and tilting away; top reaches 85° and keeps the azimuth; and a 4 m plan clamps against its own span.
 Then in the browser: the cluster appears in 3D only (the two zoom buttons in 2D are the existing
-toolbar's), all eight render at the top-right clear of the other overlays, and clicking all eight in
-sequence left the canvas alive with **no console errors**. `tsc -b` clean, `oxlint` 26 pre-existing
+toolbar's), all eight render at the bottom-left — measured at x=16, 15 px off the bottom, two rows
+of four in the intended order — clear of the dock, and clicking all eight in sequence left the
+canvas alive with **no console errors**. `tsc -b` clean, `oxlint` 26 pre-existing
 warnings, `pnpm run build` exit 0.
 
 ⚠️ **The movement itself is not visually confirmed.** Nothing in this environment can read the
