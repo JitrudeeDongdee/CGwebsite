@@ -1627,6 +1627,33 @@ transparent even with `preserveDrawingBuffer` (tried, and reverted since it boug
 r3f version exposes no `__r3f` store on the canvas to read the camera from. The maths and the wiring
 are proven; that the house visibly turns is not.
 
+### Closing the gap to the reference render — the white roof edge and the missing timber (2026-11-16)
+Seen side by side with the owner's render for the first time, two differences did most of the work
+of making the sample look like a different house.
+
+- ⚠️ **The fascia ignored the roof colour.** It used the fixed `TRIM_SURFACE` (`#F0EDE6`), so a
+  near-white band ran right along the eaves of a roof set to `#2F3336` — the brightest thing in the
+  frame, against a render whose roof is dark to its edge. The fascia is the roof's OWN edge, so it
+  now takes the roof colour, flat (`paint`, not the roof pattern: corrugation across a 20 cm board
+  reads as noise). `TRIM_SURFACE` still dresses window sills, steps and the plinth skirt, where a
+  pale trim is right — only the roof edge changed.
+- **The cabin had no timber at all.** The reference is charcoal cladding with warm timber: the lit
+  reveal inside the porch, and panels up the elevation. The template set no gable finish, so the
+  porch soffit — which takes the gable finish — rendered the same grey as everything else.
+  `cabin-12x3-4` now carries `gableWall: 'wood'` / `gableColor: '#B08152'`, plus `eaves: 'deep'` for
+  the overhang the porch reveal needs.
+
+Verified headlessly (10 checks): the finish carries the dark metal roof, charcoal cladding, black
+frames, the timber gable AND deep eaves, while the plan behind it is untouched — 3 rooms, 36.21 m²,
+9 openings, 3 sliders all floor-to-head. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
+`pnpm run build` exit 0.
+
+⚠️ **Still not matched, and the next thing to look at:** the render's timber runs as PANELS BETWEEN
+the glazing along the long elevation, and finishes here are per WALL — the 12 m elevation is one
+wall, so it can only be all charcoal or all timber. The pieces between openings are already
+separate boxes in `building3d` (the wall is split around each opening), so accenting those piers is
+reachable, but it is a change to the per-wall finish model rather than a template tweak.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

@@ -335,6 +335,14 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
       wall: 'fibre',
       wallColor: '#4D5154',
       frame: 'black',
+      // The warm timber lining the render is built around. The gable finish
+      // is what the porch SOFFIT takes, so this is what turns the covered bay
+      // from a grey ceiling into the lit timber reveal that is the first
+      // thing you see in the original — and the gable end picks it up with
+      // it, which is where the reference puts timber too.
+      gableWall: 'wood',
+      gableColor: '#B08152',
+      eaves: 'deep',
     },
     build: () =>
       buildFromSpec({

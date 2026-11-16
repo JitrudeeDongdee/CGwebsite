@@ -33,7 +33,6 @@ import {
   usePlaneGeometry,
   useRoofGeometry,
   useShared,
-  useSolid,
 } from './Surfaces'
 import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
@@ -268,7 +267,13 @@ function Roof({
 
   const roofing = useShared(roofPattern, color, THREE.DoubleSide)
   const gableSkin = useShared(wallPattern, wallColor, THREE.DoubleSide)
-  const trim = useSolid(TRIM_SURFACE, { side: THREE.DoubleSide })
+  // ⚠️ The fascia is the roof's OWN edge, so it takes the roof's colour. It
+  // used a fixed pale trim (`TRIM_SURFACE`, #F0EDE6), which suits a tiled
+  // roof with a painted board and nothing else: on the cabin's dark metal
+  // roof it drew a bright white band right across the elevation, and that
+  // band was the first thing you saw. Flat `paint`, not the roof pattern —
+  // corrugation running across a 20 cm board reads as noise.
+  const trim = useShared('paint', color, THREE.DoubleSide)
 
   return (
     <>
