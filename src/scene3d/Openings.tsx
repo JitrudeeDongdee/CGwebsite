@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import type { OpeningUnit } from '../drawing/building3d'
 import {
@@ -28,6 +29,79 @@ interface UnitMaterials {
  * rather than one translucent slab filling the hole. At any distance a
  * customer would actually look from, the frame is most of what says "window".
  */
+/**
+ * How far a curtain hangs clear of the glass, into the room.
+ *
+ * It has to clear the frame and the sliding track, or the fabric reads as
+ * stuck to the pane rather than hung in front of it.
+ */
+const CURTAIN_INSET = 0.13
+/** Half the depth of a fold, in metres. */
+const FOLD_DEPTH = 0.028
+/** One fold about every 11 cm, which is how a gathered sheer actually hangs. */
+const FOLD_PITCH = 0.11
+
+/**
+ * A curtain as a RIPPLED sheet rather than a flat slab.
+ *
+ * A box reads as a painted board however transparent it is: what says
+ * "fabric" is the light falling differently down each fold, and that needs
+ * real geometry — a plane displaced along z by a sine wave across its width,
+ * with the normals recomputed so the shading follows the ripple.
+ *
+ * Constant down its height on purpose: a hanging sheer keeps its folds from
+ * rail to hem, and tapering them costs vertices for something nobody sees.
+ */
+function useCurtainGeometry(width: number, height: number) {
+  const geometry = useMemo(() => {
+    const folds = Math.max(3, Math.round(width / FOLD_PITCH))
+    const geom = new THREE.PlaneGeometry(width, height, folds * 4, 1)
+    const position = geom.attributes.position
+    for (let i = 0; i < position.count; i += 1) {
+      const x = position.getX(i)
+      position.setZ(i, Math.cos(((x + width / 2) / width) * Math.PI * 2 * folds) * FOLD_DEPTH)
+    }
+    position.needsUpdate = true
+    geom.computeVertexNormals()
+    return geom
+  }, [width, height])
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return geometry
+}
+
+function CurtainPair({
+  innerW,
+  innerH,
+  depth,
+  panelFraction,
+  offsetFraction,
+  y,
+  material,
+}: {
+  innerW: number
+  innerH: number
+  depth: number
+  panelFraction: number
+  offsetFraction: number
+  y: number
+  material: THREE.Material
+}) {
+  const geometry = useCurtainGeometry(innerW * panelFraction, innerH)
+  return (
+    <>
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`curtain${side}`}
+          position={[side * (innerW * offsetFraction), y, -(depth / 2 + CURTAIN_INSET)]}
+          geometry={geometry}
+          material={material}
+        />
+      ))}
+    </>
+  )
+}
+
 function WindowUnit({
   unit,
   mats,
@@ -89,18 +163,18 @@ function WindowUnit({
           opening so the glass still shows between them. */}
       {curtains && (
         <>
-          {[-1, 1].map((side) => (
-            <mesh
-              key={`curtain${side}`}
-              position={[side * (innerW * 0.29), -MEMBER / 2, -(depth / 2 + 0.05)]}
-              material={mats.curtain}
-            >
-              <boxGeometry args={[innerW * 0.38, innerH - MEMBER, 0.03]} />
-            </mesh>
-          ))}
+          <CurtainPair
+            innerW={innerW}
+            innerH={innerH - MEMBER}
+            depth={depth}
+            panelFraction={0.38}
+            offsetFraction={0.29}
+            y={-MEMBER / 2}
+            material={mats.curtain}
+          />
           {/* The rail they hang from. */}
           <mesh
-            position={[0, height / 2 - MEMBER * 0.6, -(depth / 2 + 0.05)]}
+            position={[0, height / 2 - MEMBER * 0.6, -(depth / 2 + CURTAIN_INSET)]}
             material={mats.frame}
           >
             <boxGeometry args={[width, 0.03, 0.03]} />
@@ -187,17 +261,17 @@ function SlidingDoorUnit({
 
       {curtains && (
         <>
-          {[-1, 1].map((side) => (
-            <mesh
-              key={`curtain${side}`}
-              position={[side * (innerW * 0.3), 0, -(depth / 2 + 0.06)]}
-              material={mats.curtain}
-            >
-              <boxGeometry args={[innerW * 0.36, innerH, 0.03]} />
-            </mesh>
-          ))}
+          <CurtainPair
+            innerW={innerW}
+            innerH={innerH}
+            depth={depth}
+            panelFraction={0.36}
+            offsetFraction={0.3}
+            y={0}
+            material={mats.curtain}
+          />
           <mesh
-            position={[0, height / 2 - MEMBER * 0.6, -(depth / 2 + 0.06)]}
+            position={[0, height / 2 - MEMBER * 0.6, -(depth / 2 + CURTAIN_INSET)]}
             material={mats.frame}
           >
             <boxGeometry args={[width, 0.03, 0.03]} />
@@ -293,9 +367,18 @@ export function OpeningsView({
     trim: useSolid(TRIM_SURFACE),
     // Sheer: lit from both sides and seen against the glass, so it needs
     // some transparency or it reads as a painted board.
+    // Sheer, and meant to be SEEN THROUGH: at 0.78 it read as a solid blind
+    // and hid the room behind it, which is the opposite of what a net
+    // curtain does. `depthWrite: false` as well, or the fabric occludes
+    // whatever is behind it in the depth buffer however transparent it looks.
     curtain: useSolid(
-      { color: '#F3EFE6', roughness: 0.95, metalness: 0 },
-      { transparent: true, opacity: 0.78, side: THREE.DoubleSide },
+      { color: '#F6F3EC', roughness: 0.95, metalness: 0 },
+      {
+        transparent: true,
+        opacity: 0.38,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      },
     ),
     glass: useSolid(
       {

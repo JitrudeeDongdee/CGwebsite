@@ -87,11 +87,15 @@ interface Tab {
   Icon: typeof StraightenIcon
 }
 
+// ⚠️ NO material or colour tab in 2D, by the owner's call: the plan view is
+// for the PLAN — what is where and how big — and finishes belong to the view
+// that actually shows them. The wall-types tab stays because thickness is
+// structure, not finish. Picking and applying both live in 3D now, so the
+// brushes are not orphaned by this.
 const PLAN_TABS: Tab[] = [
   { id: 'walls', labelKey: 'dock.walls', Icon: StraightenIcon },
   { id: 'openings', labelKey: 'dock.openings', Icon: SensorDoorIcon },
   { id: 'furniture', labelKey: 'dock.furniture', Icon: ChairIcon },
-  { id: 'paint', labelKey: 'dock.paint', Icon: BrushIcon },
   { id: 'summary', labelKey: 'dock.summary', Icon: CalculateIcon },
 ]
 

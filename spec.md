@@ -1734,6 +1734,51 @@ view takes the drop.
 the browser** — the session's usage limit was reached right after it compiled, so the tab appearing
 in 3D, the drop landing where clicked, and the orbit guard are all unconfirmed.
 
+### 2D is the plan, nothing else — and curtains that look like fabric (2026-11-21)
+Two things the owner asked for while looking at the result.
+
+**No materials in the plan view.** The ทาสีผนัง tab is gone from `PLAN_TABS` and the cladding
+bands are gone from `PlanSheet`: the 2D view is for what is where and how big, and a finish belongs
+to the view that actually shows it. The wall-TYPES tab stays, because thickness is structure, not
+finish — and that was the only other thing in 2D that could be mistaken for a material choice.
+Verified in the browser: the 2D rail is ผนัง / ประตู-หน้าต่าง / เฟอร์นิเจอร์ / สรุปราคา with no brush
+icon, and the cabin — which carries seven timber panels — draws **0** colour bands in its plan.
+
+⚠️ **This leaves the paint and panel brushes with nowhere to apply.** They are still in the 3D tab
+set, but a wall cannot be clicked in 3D yet, so both tools are currently unreachable. An attempt to
+wire it is described below and was reverted; closing that gap is handed to its own session.
+
+**Curtains.** They were a flat 3 cm slab at 0.78 opacity — a painted board that hid the room.
+- **A rippled sheet, not a box.** `useCurtainGeometry` takes a `PlaneGeometry` and displaces z by a
+  cosine across the width (a fold about every 11 cm, 28 mm deep), then recomputes the normals so the
+  shading follows the folds. What says "fabric" is the light falling differently down each fold, and
+  that needs real geometry. Constant down its height, because a hanging sheer keeps its folds from
+  rail to hem.
+- **Sheer enough to see through**: opacity 0.38, and `depthWrite: false` — ⚠️ without that the fabric
+  occludes whatever is behind it in the depth buffer however transparent it looks.
+- **Hung further into the room** (`CURTAIN_INSET` 0.13 m, was 0.05/0.06) so it clears the frame and
+  the sliding track instead of reading as stuck to the pane.
+- One `CurtainPair` now serves both the window and the sliding door, which previously carried
+  near-identical copies.
+
+`tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0. ⚠️ The curtains are
+**not seen as pixels** — nothing here can read the rendered 3D frame.
+
+#### ⚠️ Painting a wall from the 3D view does not work yet — what was tried
+Wiring it up looked straightforward and was not. Recorded so the next attempt does not repeat it:
+`WallBox` gained a `wallId`, `PatternedBox` took an `onPick`, and `DesignerPage` routed the hit to
+`paintWall` / `toggleWallPanel`. **The mesh handlers never fired.** Measured, not guessed: with the
+paint tool armed, **441 synthetic clicks covering the entire canvas produced 0 hits** on any wall
+mesh, while the fixture `PlacementPlane` — mounted the same way, in the same scene — received a
+click at the first attempt and committed a placement. Ruled out along the way: the boxes DO carry a
+valid `wallId` (45/45 on the cabin, all matching a real wall); `Cutaway` sets `visible = true` when
+inactive; attaching the handlers unconditionally rather than behind `onPick ?` changed nothing; and
+`Furniture` uses the same conditional-handler pattern and works. ⚠️ Synthetic pointer events must
+define **`offsetX`/`offsetY`** — r3f raycasts from those, and a constructed `PointerEvent` leaves
+them 0, which silently aims every click at the canvas corner. That was a real bug in the first test
+round. The remaining suspect is which objects r3f puts in its hit-test set for meshes nested inside
+the recentring and raise groups.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 
