@@ -1779,6 +1779,26 @@ them 0, which silently aims every click at the canvas corner. That was a real bu
 round. The remaining suspect is which objects r3f puts in its hit-test set for meshes nested inside
 the recentring and raise groups.
 
+### Why the punched hole "did not work" (2026-11-21)
+The owner reported he could not punch a hole in a wall. The capability was all there — the `open`
+preset exists, the dock carries the flag, `addOpening` stores it, the 3D build emits no unit. What
+was missing was any way to TELL which tile it was.
+
+- ⚠️ **A hole is stored as a `window` 1.0 m wide**, which is exactly what the "หน้าต่าง 100 ซม."
+  preset is. `OpeningPreview` only ever took `kind` and `width`, so the two tiles drew **byte-identical
+  artwork** and sat next to each other in the palette. It now takes `open` and draws a gap as a gap:
+  two jamb ticks with nothing between them, against the window's line straight across.
+- ⚠️ **The tiles' React `key` was `kind-width`, so those same two presets collided.** The comment
+  directly above it warns that "two presets can share both and differ only by a flag" — but that
+  had only been applied to the selected-state check, and the key underneath it was missed. Keyed on
+  `labelKey` now. (Same class as the `contact.json` label-as-key collision in MEMORY.md.)
+
+**Verified in the browser**, which is also what proves the capability itself was never broken: with
+the cabin loaded, arming "เจาะช่องผนัง" and clicking a bare wall took the summary from
+**ประตู 6 / หน้าต่าง 3 to ประตู 6 / หน้าต่าง 4**, and the two palette tiles now render different SVG —
+the hole has four lines (two wall stubs, two jambs) where the window has three (two stubs and the
+glazing across). `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

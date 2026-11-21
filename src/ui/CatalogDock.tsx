@@ -489,7 +489,14 @@ export function CatalogDock({
                     const selected = activeOpeningLabel === preset.labelKey
                     return (
                       <Swatch
-                        key={`${preset.kind}-${preset.width}`}
+                        // ⚠️ The LABEL, not kind+width. "เจาะช่อง" is a
+                        // window 1.0 m wide and so is "หน้าต่าง 100",
+                        // differing only by the `open` flag — so keying on
+                        // kind+width gave two tiles the same React key and
+                        // the hole never appeared. The selected-check two
+                        // lines up was already fixed for exactly this and
+                        // the key was missed.
+                        key={preset.labelKey}
                         label={t(preset.labelKey)}
                         caption={t(preset.labelKey)}
                         selected={selected}
@@ -510,7 +517,11 @@ export function CatalogDock({
                         }
                       >
                         <Box sx={{ transform: 'scale(1.4)' }}>
-                          <OpeningPreview kind={preset.kind} width={preset.width} />
+                          <OpeningPreview
+                            kind={preset.kind}
+                            width={preset.width}
+                            open={preset.open}
+                          />
                         </Box>
                       </Swatch>
                     )
