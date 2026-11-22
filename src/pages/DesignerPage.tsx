@@ -13,7 +13,7 @@ import { CanvasContextMenu, type ContextTarget } from '../ui/CanvasContextMenu'
 import { CatalogDock } from '../ui/CatalogDock'
 import { FloorSwitcher } from '../ui/FloorSwitcher'
 import { wallTypeById } from '../drawing/wallTypes'
-import { findOpeningAt, placeOpenings } from '../drawing/openings'
+import { findOpeningAt, offsetAlongWall, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
 import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
@@ -534,6 +534,28 @@ export function DesignerPage() {
               onFixtureDragStart={beginNodeDrag}
               onFixtureDrag={updateFixturePosition}
               onFixtureDrop={finalizeFixtureMove}
+              // The brushes only exist in 3D now that the plan view shows no
+              // materials, so this is the one way to reach them.
+              pickingWall={tool.type === 'paint' || tool.type === 'panel'}
+              onPickWall={({ wallId, point }) => {
+                // Only the face being brushed is written, so the other side
+                // keeps whatever it had — the same patch the 2D editor sent.
+                if (tool.type === 'paint') {
+                  paintWall(
+                    wallId,
+                    tool.face === 'inside'
+                      ? { insideColor: tool.finish.color }
+                      : { material: tool.finish.material, color: tool.finish.color },
+                  )
+                  return
+                }
+                // The same click takes a band away again, so removing one
+                // needs no second tool and no selection.
+                if (tool.type === 'panel') {
+                  const offset = offsetAlongWall(state, wallId, point)
+                  if (offset !== null) toggleWallPanel(wallId, offset, tool.width, tool.finish)
+                }
+              }}
             />
           </Suspense>
           {/* One cover for the whole wait — the chunk download AND the first
