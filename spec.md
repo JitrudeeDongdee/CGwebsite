@@ -1891,6 +1891,120 @@ decision. None has been started — the files they touch (`Scene3D.tsx`, `SitePi
 `building3d.ts`, `templates.ts`) are the ones the three parallel sessions are editing, so this
 work waits for them to land.
 
+## Balconies — the floor pulled out past the walls (2026-11-22)
+The owner asked for a tool to pull the floor out into a balcony ("เครื่องมือดึงพื้น เผื่อดึงยื่น
+ออกมาเพื่อทำระเบียง"), and for railings — round a balcony and round the plot.
+
+### Why a wall-bound array and NOT a fixture kind
+`floorVoid` is a `FixtureKind` and the spec above explains why: a void is a free rectangle in the
+middle of a room, nothing anchors it, and being a fixture handed it placement, dragging, rotation,
+delete, selection, undo, templates and the file format for nothing. A balcony looks like its
+inverse and was nearly built the same way. It is not.
+- **A balcony is only a balcony while it is ATTACHED to the building edge.** Detached it is a deck
+  on the ground, and on an upper storey it is a slab hanging in mid air. Walls here can be slid
+  sideways (`moveWall`) and their corners dragged, which stretches them — and a loose fixture
+  rectangle would be left behind by both, with nothing noticing.
+- So `DrawBalcony` is `{ wallId, offset, width, projection, railing? }` and lives in its own
+  `balconies` array, bound by a centre offset along its wall exactly as `DrawOpening` and
+  `DrawWallPanel` are, for the reason this spec already gives for those two: it then moves and
+  survives the same edits. A balcony has the same relationship to a wall that a window does.
+- **Two things fall out of the binding that a loose rectangle could not give.** Which way is OUT —
+  the host wall's outward normal, away from the plan centroid, the same rule `building3d` uses —
+  without which there is no balcony, only a rectangle. And the three outer edges the RAILING is
+  derived from, which is what keeps the rail on the balcony instead of placed by hand.
+- The cost of the choice is that add / drag / delete are written rather than inherited; they are
+  ~60 lines copied from `addOpening` / `moveWall`, which is less than the first wall-move would
+  have cost to debug.
+
+### It cannot be counted as living area, by construction
+`findRooms` derives rooms from the planar graph of WALLS. A balcony is not a wall, so it forms no
+face — there is nothing to count and nothing to subtract. `estimatePrice` takes only that room
+area plus the opening count, so the price cannot move either. This is deliberately *not* the
+`floorVoid` arrangement: a void has to be subtracted from the room it sits in, and that
+subtraction needs a clamp at zero to stop a dragged void pricing a house negatively. A comment in
+`rooms.ts` says so, because the absence is the design.
+Balcony area is reported on its OWN line in the summary (`summary.balconyArea`) with a note that
+it is outside the house — stating it is what makes "it was not counted" visible to a customer,
+rather than leaving them to wonder.
+
+### The tool
+`ToolMode` gains `{ type: 'balcony'; projection; width }`, in the **ผนัง tab** — pulling the floor
+out is something you do TO a wall. Three depth presets (1 / 1.5 / 2 m) and three widths
+(1.5 / 2.4 / 3.6 m), with a ghost showing the slab in place on the wall before the click.
+- **Click a wall to place; click a balcony already there to take it away** — the same toggle the
+  cladding-band brush uses, so removing one needs no second tool and no selection. The two targets
+  never overlap, because a balcony is outside its wall.
+- **The pull.** In select mode a balcony can be grabbed and dragged: the drag's component along the
+  outward normal deepens it, the component along the wall slides it. One gesture for both, because
+  in the balcony's own frame they are simply the two components of the same drag — and hunting for
+  an edge handle on a 1 m slab is worse than pushing it the way you want it to go. Amended during
+  the drag and committed once, so the whole pull is ONE undo step, exactly like a wall drag.
+- Also selectable (Delete / Backspace) and deletable from the context menu. `onPick` now returns
+  `{ fixtureId, balconyId }`; at most one is ever set.
+- ⚠️ A wall shorter than the balcony is NOT refused the way it is for a door: the width is narrowed
+  to the wall instead. A balcony is pulled out of whatever wall you clicked, and being silently
+  given nothing reads as a broken tool.
+- ⚠️ It is a PLAN tool only — `balcony` is not in `THREE_TABS`, so it cannot be armed in 3D. Same
+  position as the paint and panel brushes.
+
+### In the drawing and in 3D
+- **Plan**: a hatched slab drawn UNDER the walls (so the poché covers the overlap), with the rail
+  as a second line inset from the three open edges. Hatched rather than blank, because a plain
+  rectangle outside the wall reads as another room — the one thing it must not look like.
+- `sheetBounds` includes balcony corners, or "fit" would cut a 2 m balcony off the edge of the sheet.
+- **3D**: `balconyPieces(floors, defaultRailing)` returns the slabs and the rail runs. Each slab's
+  top is flush with its storey's floor (`+0.02`, the same as the room slab) so the doorway has no
+  lip, and it rides with the house on its piers. ⚠️ It carries NO `outward`, deliberately: a
+  cutaway takes away the walls in the way, and taking the balcony floor with them would leave its
+  railing standing on nothing.
+
+### Railings and fences are ONE object — `src/drawing/railing.ts`
+A balcony rail is a fence at waist height standing on a slab instead of on the ground, so there is
+one `RailStyle` (`bar` / `slat` / `glass` / `wall` / `none`), one `RailRun` geometry type produced
+by the pure tier, and one `RailRunMesh` renderer. Two enums and two renderers would have drifted
+the first time one of them gained a style — and the owner asked for the two together.
+- **The balcony railing is DERIVED, never placed**, from `PlacedBalcony.rails` (the two returns and
+  the outer face; the fourth edge is the house). A balcony without one is a fall, so there must be
+  no way to end up with a slab and nothing round it by missing a step. Same reasoning as the entry
+  steps, which are built from the doors. The default is `bar`, not `none`.
+- 110 mm bar spacing is not a style choice: it is roughly what a code asks so a child cannot get
+  through, and a balcony rail drawn with fence-sized gaps reads as unsafe to anyone who knows.
+- **The house fence** keeps its old look but gains controls: style (the same four), height
+  (1.1 / 1.6 / 2 m) and **sides** — `far` / `three` / `all`. ⚠️ `far` stays the DEFAULT, and not
+  from drift: the camera starts off the +x/+z corner, so closing all four sides puts a fence across
+  the elevation the customer came to look at. `all` is offered because a walled plot is what some
+  customers have, and they can turn the camera. The fence's own controls only appear once it is
+  switched on; three dead rows under an off switch is clutter.
+
+### Verified
+**In the browser** on the `two-bed-8x6` sample at 1440×900: pulling a 2.4 × 2.0 m balcony out of
+the lower bedroom wall left the room area at **48.00 m² and the price at ฿914,000, both unchanged**,
+and added a separate **4.80 m²** balcony line with its "outside the house" note. Dragging the slab
+away from the house deepened it to **7.20 m²** (2.4 × 3.0) with area and price still 48.00 /
+฿914,000; one ⌘Z took it back to 4.80; Delete removed it and the balcony line with it. In 3D the
+slab and its railing render on the raised house, the balcony rail switched to glass while the house
+fence stayed vertical bars, and the fence went from two far sides to all round. No console errors.
+**Headless against the real modules, 33 checks, 0 failed**: area, room count and price unchanged by
+a balcony; outward normal away from the centroid on both a south and a north wall; three rail edges
+whose total length is two returns plus the outer face; width narrowed to a short wall rather than
+refused; projection and offset clamped at both ends; hit test finds the slab and misses the house;
+the drag deepens and slides by the right amounts; deleting the HOST WALL prunes the balcony; a save
+and load round trip keeps the balcony, its numbers and its railing choice, a file written before
+balconies existed still loads, and a balcony with unusable numbers is dropped rather than failing
+the plan; the slab carries no `outward`; `none` draws a slab with no rail; and an upper-storey
+balcony sits a level up.
+`npx tsc -b` clean, `pnpm run lint` 26 warnings (the pre-existing `only-export-components` class —
+no new ones), `pnpm run build` exit 0.
+
+⚠️ **Not done:** the balcony has no roof over it, the `bounds` the ground/yard and camera are sized
+from still come from the walls only (a deep balcony can reach past the gravel apron), and a balcony
+cannot be armed or placed from the 3D view.
+
+⚠️ **Relates to item 6 of the render audit above** ("the fence is off by default, which is right
+for most plans and wrong for this one sample"). The fence is still off by default and that has
+not changed here — what changed is that it now HAS controls (style, height, sides), so turning it
+on for the cabin template is now a choice of three values rather than take-it-or-leave-it.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 

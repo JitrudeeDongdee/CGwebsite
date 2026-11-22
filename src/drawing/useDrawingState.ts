@@ -9,6 +9,7 @@ import {
   type Floors,
 } from './floors'
 import {
+  addBalcony,
   addFixture,
   addOpening,
   commitWall,
@@ -30,9 +31,14 @@ import {
   clearWallFinishes,
   deleteWallPanel,
   findWallPanelAt,
+  deleteBalcony,
+  moveBalconyBy,
+  finishBalconyMove,
+  setBalconyRailing,
 } from './state'
 import type { FixtureKind, OpeningKind, Point as PointType, WallFinish } from './types'
 import { findRooms } from './rooms'
+import { balconyArea, placeBalconies } from './balconies'
 
 interface History {
   past: Floors[]
@@ -239,6 +245,46 @@ export function useDrawingState() {
     [commit],
   )
 
+  /**
+   * Pull a balcony out of a wall.
+   *
+   * The decision between placing and removing is NOT made here: only the
+   * caller knows where the click landed, and a balcony sits outside its wall
+   * so the two targets never overlap. The interaction layer hit-tests the
+   * slabs first and calls `removeBalcony` instead.
+   */
+  const placeBalcony = useCallback(
+    (wallId: string, offset: number, width: number, projection: number) =>
+      commit((prev) => addBalcony(prev, wallId, offset, width, projection)),
+    [commit],
+  )
+  const removeBalcony = useCallback(
+    (balconyId: string) => commit((prev) => deleteBalcony(prev, balconyId)),
+    [commit],
+  )
+  /** Live drag: amended, so the whole pull is one undo step. */
+  const dragBalconyBy = useCallback(
+    (balconyId: string, delta: PointType) =>
+      amend((prev) => moveBalconyBy(prev, balconyId, delta)),
+    [amend],
+  )
+  const finalizeBalconyMove = useCallback((balconyId: string) => {
+    const origin = dragOriginRef.current
+    dragOriginRef.current = null
+    setHistory((h) => {
+      const present = mapFloor(h.present, activeRef.current, (floor) =>
+        finishBalconyMove(floor, balconyId),
+      )
+      if (!origin) return { ...h, present }
+      return { past: [...h.past, origin].slice(-MAX_HISTORY), present, future: [] }
+    })
+  }, [])
+  const railBalcony = useCallback(
+    (balconyId: string, railing: string) =>
+      commit((prev) => setBalconyRailing(prev, balconyId, railing)),
+    [commit],
+  )
+
   const nameRoom = useCallback(
     (point: PointType, name: string, existingId?: string) =>
       commit((prev) => setRoomLabel(prev, point, name, existingId)),
@@ -301,6 +347,23 @@ export function useDrawingState() {
     const sum = perFloor.reduce((runningTotal, one) => runningTotal + one.totalArea, 0)
     return sum > 0 ? sum : null
   }, [perFloor])
+  /**
+   * Balconies, resolved. Reported SEPARATELY from the living area and never
+   * added to it: a balcony is outside the enclosed envelope, so it is neither
+   * priced nor counted as a room. See `balconies.ts`.
+   */
+  const balconies = useMemo(
+    () => placeBalconies(state, plan.exteriorWallIds),
+    [state, plan.exteriorWallIds],
+  )
+  const totalBalconyArea = useMemo(() => {
+    const sum = floors.reduce(
+      (runningTotal, floor, i) =>
+        runningTotal + balconyArea(placeBalconies(floor, perFloor[i].exteriorWallIds)),
+      0,
+    )
+    return sum > 0 ? sum : null
+  }, [floors, perFloor])
   /** Each storey's plan paired with its own exterior walls, for the 3D view. */
   const floorPlans = useMemo(
     () =>
@@ -328,6 +391,8 @@ export function useDrawingState() {
     floorAreas: perFloor.map((one) => (one.rooms.length > 0 ? one.totalArea : null)),
     rooms: plan.rooms,
     exteriorWallIds: plan.exteriorWallIds,
+    balconies,
+    totalBalconyArea,
     addWall,
     beginNodeDrag,
     updateNodePosition,
@@ -350,6 +415,11 @@ export function useDrawingState() {
     paintWall,
     toggleWallPanel,
     resetWallFinishes,
+    placeBalcony,
+    removeBalcony,
+    dragBalconyBy,
+    finalizeBalconyMove,
+    railBalcony,
     undo,
     redo,
     canUndo: history.past.length > 0,

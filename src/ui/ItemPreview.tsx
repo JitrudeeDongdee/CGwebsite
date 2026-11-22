@@ -1,4 +1,5 @@
 import { useTheme } from '@mui/material/styles'
+import { railStyle, type RailStyle } from '../drawing/railing'
 import type { HouseFinish } from '../drawing/houseStyle'
 import { ROOF_FINISH, WALL_FINISH } from '../drawing/materials'
 import type { DrawingState, FixtureKind, OpeningKind } from '../drawing/types'
@@ -225,6 +226,115 @@ export function IsoThumbnail({
           strokeLinejoin="round"
         />
       ))}
+    </svg>
+  )
+}
+
+/**
+ * A balcony in plan: a stretch of wall with the slab pulled out of it and the
+ * railing along its three open edges. Drawn as a section through the wall, the
+ * same way `OpeningPreview` is, so the two tiles read as the same drawing.
+ */
+export function BalconyPreview({ projection }: { projection: number }) {
+  const theme = useTheme()
+  const mid = BOX / 2
+  const span = BOX - 14
+  const x0 = (BOX - span) / 2
+  // 2 m (the deepest preset) reaches the bottom of the box.
+  const depth = Math.max(5, (projection / 2) * (BOX / 2 - 6))
+
+  return (
+    <svg width={BOX} height={BOX} style={{ flexShrink: 0 }} aria-hidden>
+      <line x1={0} y1={mid} x2={BOX} y2={mid} stroke={theme.scene.wall} strokeWidth={4} />
+      <rect
+        x={x0}
+        y={mid}
+        width={span}
+        height={depth}
+        fill={theme.scene.wall}
+        fillOpacity={0.14}
+        stroke={theme.scene.wall}
+        strokeWidth={1.2}
+      />
+      {/* The rail line, inset from the three open edges. */}
+      <path
+        d={`M ${x0 + 2.5} ${mid} L ${x0 + 2.5} ${mid + depth - 2.5} L ${x0 + span - 2.5} ${mid + depth - 2.5} L ${x0 + span - 2.5} ${mid}`}
+        fill="none"
+        stroke={theme.scene.wall}
+        strokeWidth={1.6}
+      />
+      {/* An arrow out, which is what "pull the floor out" looks like. */}
+      <path
+        d={`M ${mid} ${mid + 3} L ${mid} ${mid + depth - 6} M ${mid - 2.5} ${mid + depth - 9} L ${mid} ${mid + depth - 6} L ${mid + 2.5} ${mid + depth - 9}`}
+        fill="none"
+        stroke={theme.scene.dimension}
+        strokeWidth={1.2}
+      />
+    </svg>
+  )
+}
+
+/**
+ * A railing or fence seen in elevation: posts, a top rail, and whatever the
+ * style fills the gap with. One preview for both, because it is one object.
+ */
+export function RailPreview({ style }: { style: RailStyle }) {
+  const theme = useTheme()
+  const ink = theme.scene.wall
+  const top = 6
+  const base = BOX - 6
+  const height = base - top
+  const left = 6
+  const right = BOX - 6
+  const spec = railStyle(style, 'bar')
+
+  return (
+    <svg width={BOX} height={BOX} style={{ flexShrink: 0 }} aria-hidden>
+      <line x1={2} y1={base} x2={BOX - 2} y2={base} stroke={theme.scene.dimension} strokeWidth={1} />
+      {spec.id === 'none' ? null : (
+        <>
+          {spec.solid && (
+            <rect
+              x={left}
+              y={top + 3}
+              width={right - left}
+              height={base - top - 3}
+              fill={ink}
+              fillOpacity={0.3}
+              stroke={ink}
+              strokeWidth={1}
+            />
+          )}
+          {spec.glazed && (
+            <rect
+              x={left + 1}
+              y={top + 3}
+              width={right - left - 2}
+              height={base - top - 4}
+              fill={ink}
+              fillOpacity={0.12}
+              stroke={ink}
+              strokeWidth={0.8}
+            />
+          )}
+          {spec.bars !== undefined &&
+            Array.from({ length: 7 }, (_, i) => {
+              const x = left + 2 + ((right - left - 4) * i) / 6
+              return <line key={i} x1={x} y1={top + 2} x2={x} y2={base} stroke={ink} strokeWidth={1} />
+            })}
+          {spec.slats !== undefined &&
+            Array.from({ length: 4 }, (_, i) => {
+              const y = top + 5 + (height - 8) * (i / 3)
+              return (
+                <line key={i} x1={left} y1={y} x2={right} y2={y} stroke={ink} strokeWidth={2.4} />
+              )
+            })}
+          {/* Posts and the top rail, on every style. */}
+          <line x1={left} y1={top} x2={left} y2={base} stroke={ink} strokeWidth={2} />
+          <line x1={right} y1={top} x2={right} y2={base} stroke={ink} strokeWidth={2} />
+          <line x1={left - 2} y1={top} x2={right + 2} y2={top} stroke={ink} strokeWidth={2.4} />
+        </>
+      )}
     </svg>
   )
 }

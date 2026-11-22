@@ -12,6 +12,15 @@ interface AreaSummaryProps {
   floorAreas?: (number | null)[]
   /** The storey on screen, so its row can be marked. */
   activeFloor?: number
+  /**
+   * Balcony area over the whole house, or null when there is none.
+   *
+   * Shown on its own line and NEVER added to the figures above it. A balcony
+   * is outside the enclosed envelope: it is not living area and it is not
+   * priced as any, and stating it separately is what makes that visible to a
+   * customer instead of leaving them to wonder whether it was counted.
+   */
+  balconyArea?: number | null
   /** Drop the card chrome — inside the catalogue dock it is a card already. */
   bare?: boolean
 }
@@ -22,6 +31,7 @@ export function AreaSummary({
   wallCount,
   floorAreas,
   activeFloor = 0,
+  balconyArea,
   bare,
 }: AreaSummaryProps) {
   const { t } = useTranslation()
@@ -99,6 +109,26 @@ export function AreaSummary({
             </Typography>
           </Stack>
         </Stack>
+      )}
+
+      {balconyArea !== null && balconyArea !== undefined && balconyArea > 0 && (
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'baseline', justifyContent: 'space-between', mt: 1.5 }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {t('summary.balconyArea')}
+          </Typography>
+          <Typography variant="body2">
+            {balconyArea.toFixed(2)} {t('summary.squareMeters')}
+          </Typography>
+        </Stack>
+      )}
+      {balconyArea !== null && balconyArea !== undefined && balconyArea > 0 && (
+        <Typography variant="caption" color="text.secondary">
+          {t('summary.balconyNote')}
+        </Typography>
       )}
 
       <Stack spacing={0.5} sx={{ mt: 2 }}>

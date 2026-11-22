@@ -160,6 +160,11 @@ export function findRooms(state: DrawingState): PlanFaces {
     return cut > 0 ? { ...room, area: Math.max(0, room.area - cut) } : room
   })
 
+  // ⚠️ Balconies are deliberately absent from this function. A balcony is
+  // outside the enclosed envelope, and because it is bound to a wall rather
+  // than being a wall it forms no face — so there is nothing here to exclude
+  // and no subtraction that could be got wrong. If a balcony ever starts
+  // showing up in an area figure, the bug is upstream of this file.
   return {
     rooms: voided,
     totalArea: voided.reduce((sum, room) => sum + room.area, 0),

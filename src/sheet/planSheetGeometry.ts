@@ -1,4 +1,5 @@
 import type { DrawingState, Point } from '../drawing/types'
+import { placeBalconies } from '../drawing/balconies'
 
 /**
  * Pure geometry helpers for the SVG plan sheet. No React, no three.js — this
@@ -39,17 +40,27 @@ export interface DimensionSpan {
 /** Coordinates within this many metres are treated as the same grid line. */
 const COORD_EPSILON = 0.02
 
-/** Tight bounding box over every wall corner, or null for an empty plan. */
+/**
+ * Tight bounding box over every wall corner, or null for an empty plan.
+ *
+ * Balcony corners count too: a balcony projects past the walls, so framing
+ * the plan on the walls alone would cut a 2 m balcony off the edge of the
+ * sheet — and "fit" is the button people press when something has gone
+ * off screen.
+ */
 export function sheetBounds(state: DrawingState): SheetBounds | null {
   const nodes = Object.values(state.nodes)
   if (nodes.length < 2 || state.walls.length === 0) return null
 
-  return nodes.reduce<SheetBounds>(
-    (box, node) => ({
-      minX: Math.min(box.minX, node.x),
-      maxX: Math.max(box.maxX, node.x),
-      minY: Math.min(box.minY, node.y),
-      maxY: Math.max(box.maxY, node.y),
+  const points: Point[] = [...nodes]
+  for (const placed of placeBalconies(state)) points.push(...placed.corners)
+
+  return points.reduce<SheetBounds>(
+    (box, point) => ({
+      minX: Math.min(box.minX, point.x),
+      maxX: Math.max(box.maxX, point.x),
+      minY: Math.min(box.minY, point.y),
+      maxY: Math.max(box.maxY, point.y),
     }),
     { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity },
   )

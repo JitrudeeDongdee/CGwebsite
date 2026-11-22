@@ -66,9 +66,14 @@ export function DrawingCanvas({
   const { draft, moveSnap, cursor, onDown, onMove, onUp, cancelDrawing } = useInteraction({
     state,
     // This r3f 2D view is dead code — nothing imports this file, and the SVG
-    // `sheet/PlanEditor` replaced it. Cladding bands are wired up there; a
-    // no-op keeps this compiling until it is deleted (spec.md, TODO 3).
+    // `sheet/PlanEditor` replaced it. Cladding bands and balconies are wired
+    // up there; no-ops keep this compiling until it is deleted (spec.md,
+    // TODO 3).
     toggleWallPanel: () => {},
+    placeBalcony: () => {},
+    removeBalcony: () => {},
+    dragBalconyBy: () => {},
+    finalizeBalconyMove: () => {},
     addWall,
     beginNodeDrag,
     updateNodePosition,

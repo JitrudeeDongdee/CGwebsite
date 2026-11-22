@@ -153,6 +153,30 @@ export interface DrawWallPanel {
   finish: WallFinish
 }
 
+/**
+ * A balcony: the floor pulled out past the wall it hangs off.
+ *
+ * Bound to a wall by a centre `offset` along it, like an opening and a
+ * cladding band — see `balconies.ts` for why this is an array of its own and
+ * not another `FixtureKind`, and why it can never be counted as living area.
+ */
+export interface DrawBalcony {
+  id: string
+  wallId: string
+  /** Centre of the balcony, metres along the wall from its `a` end. */
+  offset: number
+  /** Width along the wall. */
+  width: number
+  /** How far it projects past the wall's outer FACE, in metres. */
+  projection: number
+  /**
+   * What stands round the open edges. A balcony is normally railed — it is a
+   * safety requirement, and one without reads as unfinished — so an unset
+   * value means the house default rather than none. `none` is explicit.
+   */
+  railing?: string
+}
+
 export interface DrawingState {
   nodes: Record<string, DrawNode>
   walls: DrawWall[]
@@ -161,6 +185,8 @@ export interface DrawingState {
   roomLabels: DrawRoomLabel[]
   /** Optional so every older plan, saved file and test fixture still loads. */
   panels?: DrawWallPanel[]
+  /** Floors pulled out past the walls. Optional, for the same reason. */
+  balconies?: DrawBalcony[]
 }
 
 export type SnapTarget =

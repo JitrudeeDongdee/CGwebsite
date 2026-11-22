@@ -4,6 +4,8 @@ import { useTheme } from '@mui/material/styles'
 import type { DrawingState, Point } from '../drawing/types'
 import { computeWallOutlines } from '../drawing/wallOutline'
 import { placeOpenings } from '../drawing/openings'
+import { placeBalconies } from '../drawing/balconies'
+import { railStyle } from '../drawing/railing'
 import { pointInPolygon, type Room } from '../drawing/rooms'
 import { FixtureSymbol } from './fixtureSymbols'
 import {
@@ -92,6 +94,115 @@ function Underlay({ state }: { state: DrawingState }) {
             key={outline.wallId}
             d={`M ${c0.x} ${c0.y} L ${c1.x} ${c1.y} L ${c2.x} ${c2.y} L ${c3.x} ${c3.y} Z`}
           />
+        )
+      })}
+    </g>
+  )
+}
+
+
+/**
+ * Balconies: the projecting slab, hatched, with the railing drawn as a line
+ * along the three open edges.
+ *
+ * Hatched rather than left blank, and drawn UNDER the walls, because a plain
+ * rectangle outside the wall reads as another room — which is the one thing a
+ * balcony must not look like, since it is not counted or priced as one. The
+ * rail line along the open edges is what a plan actually shows of a balcony.
+ */
+function Balconies({
+  state,
+  exteriorWallIds,
+  defaultRailing,
+  selectedId,
+  hoverId,
+}: {
+  state: DrawingState
+  exteriorWallIds: ReadonlySet<string>
+  defaultRailing: string
+  selectedId?: string | null
+  hoverId?: string | null
+}) {
+  const placed = useMemo(
+    () => placeBalconies(state, exteriorWallIds),
+    [state, exteriorWallIds],
+  )
+  const palette = usePalette()
+  if (placed.length === 0) return null
+
+  return (
+    <g>
+      <defs>
+        {/* userSpaceOnUse so the hatch keeps its real spacing in metres
+            whatever the balcony's size, like the wall poché does. */}
+        <pattern
+          id="cg-balcony-hatch"
+          width={0.3}
+          height={0.3}
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
+          <line
+            x1={0}
+            y1={0}
+            x2={0}
+            y2={0.3}
+            stroke={palette.dim}
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+          />
+        </pattern>
+      </defs>
+      {placed.map((item) => {
+        const active = item.balcony.id === selectedId
+        const hovered = !active && item.balcony.id === hoverId
+        const ink = active || hovered ? palette.accent : palette.ink
+        const style = railStyle(item.balcony.railing ?? defaultRailing, 'bar')
+        return (
+          <g key={item.balcony.id}>
+            <path
+              d={ptsToPath(item.corners) + ' Z'}
+              fill="url(#cg-balcony-hatch)"
+              stroke="none"
+            />
+            <path
+              d={ptsToPath(item.corners) + ' Z'}
+              fill="none"
+              stroke={ink}
+              strokeWidth={active || hovered ? 2.4 : 1.2}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* The railing, as a second line just inside the open edges —
+                the drafting convention, and it is absent when there is none
+                so the drawing says which balconies are railed. */}
+            {style.id !== 'none' && (
+              <path
+                d={item.rails
+                  .map((run) => {
+                    const inset = 0.1
+                    const nx = run.to.y - run.from.y
+                    const ny = -(run.to.x - run.from.x)
+                    const len = Math.hypot(nx, ny) || 1
+                    // Pulled towards the balcony's centre, whichever way the
+                    // edge runs, so all three insets go the same way.
+                    const toCentreX = item.center.x - (run.from.x + run.to.x) / 2
+                    const toCentreY = item.center.y - (run.from.y + run.to.y) / 2
+                    const sign = (nx * toCentreX + ny * toCentreY) >= 0 ? 1 : -1
+                    const ox = (nx / len) * inset * sign
+                    const oy = (ny / len) * inset * sign
+                    return (
+                      `M ${run.from.x + ox} ${run.from.y + oy} ` +
+                      `L ${run.to.x + ox} ${run.to.y + oy}`
+                    )
+                  })
+                  .join(' ')}
+                fill="none"
+                stroke={ink}
+                strokeWidth={1.6}
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+          </g>
         )
       })}
     </g>
@@ -448,6 +559,14 @@ export interface PlanSheetProps {
   selectedFixtureId?: string | null
   /** The fixture under the cursor. */
   hoverFixtureId?: string | null
+  /** The balcony the Delete key would remove, and the one under the cursor. */
+  selectedBalconyId?: string | null
+  hoverBalconyId?: string | null
+  /**
+   * What stands round a balcony that has not been given its own railing. The
+   * house default lives in the 3D options, so it is passed in.
+   */
+  defaultRailing?: string
   /** The wall under the cursor, when the tool acts on walls. */
   hoverWallId?: string | null
   /** Extra SVG (interaction overlays) drawn on top, in plan coordinates. */
@@ -506,6 +625,9 @@ export function PlanSheet({
   selectedFixtureId,
   hoverFixtureId,
   hoverWallId,
+  selectedBalconyId,
+  hoverBalconyId,
+  defaultRailing = 'bar',
   overlay,
   svgRef,
   palette,
@@ -536,6 +658,15 @@ export function PlanSheet({
         {bounds && (
           <>
             <Grid state={state} bounds={bounds} />
+            {/* Under the walls, so the wall poché draws over the slab's inner
+                edge where the two overlap. */}
+            <Balconies
+              state={state}
+              exteriorWallIds={exteriorWallIds}
+              defaultRailing={defaultRailing}
+              selectedId={selectedBalconyId}
+              hoverId={hoverBalconyId}
+            />
             <Walls state={state} exteriorWallIds={exteriorWallIds} hoverId={hoverWallId} />
             <Openings state={state} exteriorWallIds={exteriorWallIds} />
             <Fixtures state={state} selectedId={selectedFixtureId} hoverId={hoverFixtureId} />

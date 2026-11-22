@@ -8,11 +8,13 @@ import type { DrawFixture } from '../drawing/types'
 import type { SurfacePattern } from '../drawing/materials'
 import {
   LEVEL_HEIGHT,
+  balconyPieces,
   buildBuilding3D,
   entryPathBoxes,
   type Building3D,
   type FloorPlan,
 } from '../drawing/building3d'
+import type { FenceHeight, FenceSides } from '../drawing/railing'
 import {
   EAVES_OVERHANG,
   buildRoof,
@@ -51,6 +53,7 @@ import {
   RAISE_HEIGHTS,
   PlantingBeds,
   RaisedSkirt,
+  Railings,
   WallLights,
   type RaiseHeight,
 } from './SitePieces'
@@ -89,8 +92,16 @@ export interface Building3DOptions {
   curtains: boolean
   /** Sconces either side of each exterior door. */
   wallLights: boolean
-  /** A dark slatted fence round the plot. */
+  /** A fence round the plot, and how much of it, how tall, and in what. */
   fence: boolean
+  fenceSides: FenceSides
+  fenceHeight: FenceHeight
+  fenceStyle: string
+  /**
+   * What stands round a balcony that has not been given its own railing. A
+   * balcony IS normally railed, so the default is a real style, not `none`.
+   */
+  railing: string
   /** A gable in a different finish from the walls — a timber gable end. */
   gableWall?: WallMaterial
   gableColor?: string
@@ -743,6 +754,10 @@ export function Scene3D({
   const { scene: sceneColors } = useTheme()
   const orbitRef = useRef<OrbitControls>(null)
   const building = useMemo(() => buildBuilding3D(floors), [floors])
+  const balconies = useMemo(
+    () => balconyPieces(floors, options.railing),
+    [floors, options.railing],
+  )
   const storeys = Math.max(1, floors.length)
 
   const centre: [number, number, number] = building.bounds
@@ -845,7 +860,15 @@ export function Scene3D({
         <Ground bounds={building.bounds} span={span} storeys={storeys} floors={floors} />
 
         {options.scenery && <Planting bounds={building.bounds} span={span} />}
-        {options.fence && <Fence bounds={building.bounds} span={span} />}
+        {options.fence && (
+          <Fence
+            bounds={building.bounds}
+            span={span}
+            sides={options.fenceSides}
+            height={options.fenceHeight}
+            style={options.fenceStyle}
+          />
+        )}
         {options.scenery && <PlantingBeds bounds={building.bounds} />}
         {entryPathBoxes(building.openings, raise).map((box) => (
           <PatternedBox key={box.id} box={box} pattern="cobble" color="#C9A68C" cast={false} />
@@ -902,6 +925,15 @@ export function Scene3D({
             curtains={options.curtains}
           />
         </Cutaway>
+
+        {/* Balconies ride with the house on its piers, so a raised house
+            carries its balcony up with it. Outside the Cutaway: a cutaway
+            takes away the walls in the way, and taking the balcony floor with
+            them would leave its railing standing on nothing. */}
+        {balconies.slabs.map((box) => (
+          <PatternedBox key={box.id} box={box} pattern="paving" color="#D8D3CA" />
+        ))}
+        <Railings runs={balconies.rails} />
 
         {options.furniture && (
           <Furnishings

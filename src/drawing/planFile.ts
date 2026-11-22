@@ -1,4 +1,5 @@
 import type {
+  DrawBalcony,
   DrawFixture,
   DrawingState,
   DrawNode,
@@ -207,6 +208,10 @@ function validateState(raw: unknown): DrawingState {
     fixtures: validateFixtures(raw.fixtures),
     roomLabels: validateRoomLabels(raw.roomLabels),
     panels: validatePanels(raw.panels),
+    // ⚠️ The THIRD place a DrawingState is rebuilt field by field, after
+    // `createInitialState` and `loadPlan`. Anything missing here is silently
+    // dropped when a saved plan is opened.
+    balconies: validateBalconies(raw.balconies),
   }
 }
 
@@ -234,6 +239,32 @@ function validatePanels(raw: unknown): DrawWallPanel[] {
         color: typeof finish.color === 'string' ? finish.color : undefined,
         insideColor: typeof finish.insideColor === 'string' ? finish.insideColor : undefined,
       },
+    })
+  })
+  return out
+}
+
+/**
+ * Balconies. Absent from every file written before they existed, so a missing
+ * array is an empty one; and one whose numbers are unusable is dropped rather
+ * than failing the plan, since losing a balcony beats refusing to open the
+ * house. Same policy as the cladding bands above.
+ */
+function validateBalconies(raw: unknown): DrawBalcony[] {
+  if (raw === undefined || raw === null) return []
+  if (!Array.isArray(raw)) throw new PlanFileError('balconies must be a list')
+  const out: DrawBalcony[] = []
+  raw.forEach((value, index) => {
+    if (!isObject(value) || typeof value.wallId !== 'string') return
+    if (!num(value.offset) || !num(value.width) || value.width <= 0) return
+    if (!num(value.projection) || value.projection <= 0) return
+    out.push({
+      id: typeof value.id === 'string' ? value.id : `balcony_${index}`,
+      wallId: value.wallId,
+      offset: value.offset,
+      width: value.width,
+      projection: value.projection,
+      ...(typeof value.railing === 'string' ? { railing: value.railing } : {}),
     })
   })
   return out

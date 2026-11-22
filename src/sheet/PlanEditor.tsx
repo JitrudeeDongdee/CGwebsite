@@ -7,6 +7,7 @@ import { useInteraction } from '../scene/useInteraction'
 import { snapToGrid, findWallAt } from '../drawing/geometry'
 import { offsetAlongWall } from '../drawing/openings'
 import { fixtureSpec } from '../drawing/fixtures'
+import { MIN_BALCONY_WIDTH, planCentre, wallOutward } from '../drawing/balconies'
 import { EXTERIOR_WALL_THICKNESS } from '../drawing/wallOutline'
 import { PlanSheet, fitView, type SheetView } from './PlanSheet'
 import { sheetBounds } from './planSheetGeometry'
@@ -32,6 +33,10 @@ interface PlanEditorProps {
   finalizeWallMove: (wallId: string) => void
   paintWall: (wallId: string, patch: WallFinish) => void
   toggleWallPanel: (wallId: string, offset: number, width: number, finish: WallFinish) => void
+  placeBalcony: (wallId: string, offset: number, width: number, projection: number) => void
+  removeBalcony: (balconyId: string) => void
+  dragBalconyBy: (balconyId: string, delta: Point) => void
+  finalizeBalconyMove: (balconyId: string) => void
   cancelRef: React.RefObject<(() => void) | null>
   /**
    * Filled in by the editor with a zoom-by-factor function, the same way
@@ -41,7 +46,11 @@ interface PlanEditorProps {
   zoomRef?: React.RefObject<((factor: number) => void) | null>
   /** The fixture the Delete key would remove. */
   selectedFixtureId?: string | null
-  onPick?: (fixtureId: string | null) => void
+  /** The balcony the Delete key would remove. */
+  selectedBalconyId?: string | null
+  onPick?: (pick: { fixtureId: string | null; balconyId: string | null }) => void
+  /** What a balcony with no railing of its own gets, from the 3D options. */
+  defaultRailing?: string
 }
 
 const MIN_VIEW_WIDTH = 2
@@ -76,10 +85,16 @@ export function PlanEditor({
   finalizeWallMove,
   paintWall,
   toggleWallPanel,
+  placeBalcony,
+  removeBalcony,
+  dragBalconyBy,
+  finalizeBalconyMove,
   cancelRef,
   zoomRef,
   selectedFixtureId,
+  selectedBalconyId,
   onPick,
+  defaultRailing,
 }: PlanEditorProps) {
   const { scene } = useTheme()
   const svgRef = useRef<SVGSVGElement>(null)
@@ -99,6 +114,10 @@ export function PlanEditor({
     finalizeWallMove,
     paintWall,
     toggleWallPanel,
+    placeBalcony,
+    removeBalcony,
+    dragBalconyBy,
+    finalizeBalconyMove,
     onPick,
   })
   cancelRef.current = cancelDrawing
@@ -253,7 +272,15 @@ export function PlanEditor({
     return () => svg.removeEventListener('wheel', onWheel)
   }, [toWorld])
 
-  const cursorStyle = pan.current ? 'grabbing' : tool.type === 'select' ? 'default' : 'crosshair'
+  const cursorStyle = pan.current
+    ? 'grabbing'
+    : // A balcony is the only thing in select mode you can grab and pull, so
+      // the hand is what says so — there is no handle on the slab.
+      tool.type === 'select'
+      ? hover.balconyId
+        ? 'grab'
+        : 'default'
+      : 'crosshair'
 
   return (
     <PlanSheet
@@ -262,6 +289,9 @@ export function PlanEditor({
       selectedFixtureId={selectedFixtureId}
       hoverFixtureId={hover.fixtureId}
       hoverWallId={hover.wallId}
+      selectedBalconyId={selectedBalconyId}
+      hoverBalconyId={hover.balconyId}
+      defaultRailing={defaultRailing}
       rooms={rooms}
       exteriorWallIds={exteriorWallIds}
       svgRef={svgRef}
@@ -396,6 +426,44 @@ function Ghost({
         transform={`rotate(${angle} ${cx} ${cy})`}
         fill={color}
         fillOpacity={0.4}
+        stroke={color}
+        strokeWidth={1.5}
+        vectorEffect="non-scaling-stroke"
+      />
+    )
+  }
+
+  if (tool.type === 'balcony') {
+    // The slab a click would pull out, in place on the wall — so its depth
+    // and which way it will face are both visible before committing.
+    const wall = findWallAt(state, cursor)
+    if (!wall) return null
+    const offset = offsetAlongWall(state, wall.id, cursor)
+    if (offset === null) return null
+    const a = state.nodes[wall.a]
+    const b = state.nodes[wall.b]
+    const length = Math.hypot(b.x - a.x, b.y - a.y)
+    if (length === 0) return null
+
+    const width = Math.max(MIN_BALCONY_WIDTH, Math.min(tool.width, length))
+    const half = width / 2
+    const along = Math.min(Math.max(offset, half), Math.max(half, length - half))
+    const dir = { x: (b.x - a.x) / length, y: (b.y - a.y) / length }
+    const out = wallOutward(a, b, planCentre(state))
+    const on = { x: a.x + dir.x * along, y: a.y + dir.y * along }
+    const inner = EXTERIOR_WALL_THICKNESS / 2
+    const corners = [
+      [-half, inner],
+      [-half, inner + tool.projection],
+      [half, inner + tool.projection],
+      [half, inner],
+    ].map(([u, v]) => ({ x: on.x + dir.x * u + out.x * v, y: on.y + dir.y * u + out.y * v }))
+
+    return (
+      <path
+        d={corners.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z'}
+        fill={color}
+        fillOpacity={0.35}
         stroke={color}
         strokeWidth={1.5}
         vectorEffect="non-scaling-stroke"
