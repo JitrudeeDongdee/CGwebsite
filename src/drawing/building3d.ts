@@ -37,6 +37,20 @@ export interface WallBox {
   exterior?: boolean
   /** This wall's own finish, if it was painted; otherwise the house default. */
   finish?: WallFinish
+  /**
+   * The plan wall this box is a stretch of, so a click in the 3D view can be
+   * turned back into an edit of the plan. Only the boxes that ARE wall carry
+   * it — the floor band, the plinth and a free-standing column do not, since
+   * painting a wall would not change them and brushing one would read as the
+   * click having missed.
+   */
+  wallId?: string
+  /**
+   * Which storey this box belongs to. A new storey is a deep copy of the one
+   * below, so the two share wall IDS — `wallId` alone is ambiguous, and a
+   * click upstairs would quietly paint the wall beneath it.
+   */
+  level?: number
 }
 
 /**
@@ -184,6 +198,8 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
           outward,
           exterior,
           finish: wall.finish,
+          wallId: wall.id,
+          level,
         }
       }
 

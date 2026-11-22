@@ -1745,9 +1745,8 @@ finish — and that was the only other thing in 2D that could be mistaken for a 
 Verified in the browser: the 2D rail is ผนัง / ประตู-หน้าต่าง / เฟอร์นิเจอร์ / สรุปราคา with no brush
 icon, and the cabin — which carries seven timber panels — draws **0** colour bands in its plan.
 
-⚠️ **This leaves the paint and panel brushes with nowhere to apply.** They are still in the 3D tab
-set, but a wall cannot be clicked in 3D yet, so both tools are currently unreachable. An attempt to
-wire it is described below and was reverted; closing that gap is handed to its own session.
+That left the paint and panel brushes with nowhere to apply — they are in the 3D tab set, and a wall
+could not be clicked there. **Closed 2026-11-22** by the wall picker below.
 
 **Curtains.** They were a flat 3 cm slab at 0.78 opacity — a painted board that hid the room.
 - **A rippled sheet, not a box.** `useCurtainGeometry` takes a `PlaneGeometry` and displaces z by a
@@ -1765,20 +1764,53 @@ wire it is described below and was reverted; closing that gap is handed to its o
 `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0. ⚠️ The curtains are
 **not seen as pixels** — nothing here can read the rendered 3D frame.
 
-#### ⚠️ Painting a wall from the 3D view does not work yet — what was tried
-Wiring it up looked straightforward and was not. Recorded so the next attempt does not repeat it:
-`WallBox` gained a `wallId`, `PatternedBox` took an `onPick`, and `DesignerPage` routed the hit to
-`paintWall` / `toggleWallPanel`. **The mesh handlers never fired.** Measured, not guessed: with the
-paint tool armed, **441 synthetic clicks covering the entire canvas produced 0 hits** on any wall
-mesh, while the fixture `PlacementPlane` — mounted the same way, in the same scene — received a
-click at the first attempt and committed a placement. Ruled out along the way: the boxes DO carry a
-valid `wallId` (45/45 on the cabin, all matching a real wall); `Cutaway` sets `visible = true` when
-inactive; attaching the handlers unconditionally rather than behind `onPick ?` changed nothing; and
-`Furniture` uses the same conditional-handler pattern and works. ⚠️ Synthetic pointer events must
-define **`offsetX`/`offsetY`** — r3f raycasts from those, and a constructed `PointerEvent` leaves
-them 0, which silently aims every click at the canvas corner. That was a real bug in the first test
-round. The remaining suspect is which objects r3f puts in its hit-test set for meshes nested inside
-the recentring and raise groups.
+#### Painting a wall from the 3D view — `src/scene3d/useWallPick.ts` (2026-11-22)
+Removing the materials from the plan view left both brushes with nowhere to apply: they are still
+in the 3D tab set, but a wall could not be clicked there. They can now.
+
+- **The picker raycasts the SCENE ITSELF**, from `pointerdown`/`pointerup` listeners of its own,
+  rather than hanging r3f's `onPointerDown` on each wall mesh. That is a design choice, not a
+  workaround for the earlier attempt: **r3f only hit-tests objects that carry handlers**, so with
+  handlers on the walls alone the roof, the glazing and the furniture would not occlude them — a
+  click on the roof would paint the wall hidden behind it, and a click on a window would paint the
+  wall it is set into. Casting against the whole scene and insisting the NEAREST VISIBLE surface is
+  a wall gets both right for free: what you cannot see, you cannot brush. Verified in the browser —
+  a click on the roof and one on the ground changed nothing.
+- ⚠️ **three.js raycasting ignores `visible` entirely**, so the cutaway's hidden near walls are
+  still hit — and in that view they are exactly the walls standing between the camera and the one
+  being aimed at. `onScreen()` walks the parent chain and drops anything switched off.
+- **The hit is a point on the wall's own face**, so `offsetAlongWall` gets the place that was
+  actually clicked. The obvious fallback — an invisible floor-level pick plane, the mechanism the
+  fixture palette uses — cannot: from the ~15° exterior camera the ray crosses the floor several
+  metres BEHIND the face, which for a 0.6 m band of cladding is the difference between the right
+  wall and the next one along.
+- **`WallBox` carries `wallId` and `level`**, read off the mesh's `userData`. `level` is not
+  optional cleverness: a new storey is a `structuredClone` of the one below, so **the two share wall
+  ids**, and an edit goes to the active floor — without it a click upstairs would quietly paint the
+  wall beneath it. Only the boxes that ARE wall carry them; the floor band, the plinth and a
+  free-standing column do not, so brushing one reads as the click having missed rather than as a
+  wall changing colour somewhere else.
+- ⚠️ **An orbit drag must not paint.** r3f and the DOM both call a press and release on the same
+  spot a click however far the pointer travelled between, and an orbit drag does exactly that. The
+  pointer's screen travel is measured instead (`CLICK_SLOP` 5px), the same idea as the 2D editor's
+  `DRAG_THRESHOLD`. Verified: a 260px drag across the elevation turned the house right round and
+  painted nothing.
+- `pointerdown` is on the canvas (a press that began on the dock never brushes a wall) and
+  `pointerup` on the window (a release just outside clears the press instead of leaving it armed).
+  The cursor turns to a crosshair while a brush is armed — nothing else in the 3D view says a wall
+  can be clicked, and the hook is only mounted while one is.
+
+**Verified in the browser** on `cabin-12x3-4` at 800×560, 3D view: arming ส้มอิฐ and clicking the
+long elevation turned that wall's charcoal stretches terracotta while the rest of the house and the
+timber panels stayed as they were, and **one** ⌘Z put it back; arming the panel brush in white and
+clicking a charcoal stretch added a band, and clicking the same spot again removed it. No console
+errors throughout. `tsc -b` clean, `oxlint` 26 warnings — the pre-existing `only-export-components`
+class, no new ones — and `pnpm run build` exit 0.
+
+⚠️ What the previous attempt measured still stands as a warning about the test harness, not about
+the walls: **synthetic pointer events must define `offsetX`/`offsetY`** or r3f aims every click at
+the canvas corner. This picker reads `clientX`/`clientY` and does its own raycast, so it is immune
+to that particular trap — but OrbitControls is not.
 
 ### Why the punched hole "did not work" (2026-11-21)
 The owner reported he could not punch a hole in a wall. The capability was all there — the `open`

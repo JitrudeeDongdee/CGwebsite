@@ -51,6 +51,20 @@ export function PatternedBox({
 }) {
   const outward = box.exterior ? box.outward : undefined
   const material = useShared(pattern, color)
+  /**
+   * What the cutaway and the wall picker read off the mesh.
+   *
+   * One object, built here, because `userData` is a single prop: handing the
+   * cutaway its `outward` and the picker its `wallId` separately would mean
+   * one overwriting the other.
+   */
+  const userData = useMemo(
+    () => ({
+      ...(outward ? { outward } : {}),
+      ...(box.wallId ? { wallId: box.wallId, level: box.level ?? 0 } : {}),
+    }),
+    [outward, box.wallId, box.level],
+  )
   // The inner face is paint, never the outside cladding: a brick elevation
   // does not mean a brick living room.
   const inner = useShared('paint', insideColor ?? color)
@@ -93,7 +107,7 @@ export function PatternedBox({
       material={faces ?? material}
       castShadow={cast}
       receiveShadow={receive}
-      userData={outward ? { outward } : undefined}
+      userData={userData}
     />
   )
 }

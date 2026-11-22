@@ -38,6 +38,7 @@ import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
 import { resolveMove, type CameraMove } from './cameraMoves'
 import { useFixtureDrag } from './useFixtureDrag'
+import { useWallPick, type WallHit } from './useWallPick'
 
 /** How far a button-driven move closes the gap each frame. */
 const CAMERA_EASE = 0.16
@@ -488,6 +489,27 @@ function PlacementPlane({
   )
 }
 
+/**
+ * Turns a click on a wall into an edit of the plan.
+ *
+ * Its own component because `useWallPick` needs the Canvas context — the
+ * camera, the renderer and the raycaster — and `Scene3D`'s body runs outside
+ * it. Mounted only while a brush is armed, so an ordinary orbit costs
+ * nothing.
+ */
+function WallPicker({
+  centre,
+  activeFloor,
+  onPick,
+}: {
+  centre: [number, number, number]
+  activeFloor: number
+  onPick: (hit: WallHit) => void
+}) {
+  useWallPick({ centre, activeFloor, onPick })
+  return null
+}
+
 /** One storey's slab, with its voids cut out. */
 function FloorSlab({
   width,
@@ -691,6 +713,8 @@ export function Scene3D({
   cameraMove,
   placingFixture,
   onPlaceFixture,
+  pickingWall,
+  onPickWall,
 }: {
   /** One entry per storey, ground floor first — each with its own plan. */
   floors: FloorPlan[]
@@ -712,6 +736,9 @@ export function Scene3D({
   /** The fixture the palette has armed, or null. Placing is off when null. */
   placingFixture?: string | null
   onPlaceFixture?: (point: Point) => void
+  /** True while a paint or cladding brush is armed — clicks then hit walls. */
+  pickingWall?: boolean
+  onPickWall?: (hit: WallHit) => void
 }) {
   const { scene: sceneColors } = useTheme()
   const orbitRef = useRef<OrbitControls>(null)
@@ -806,6 +833,10 @@ export function Scene3D({
 
       {placingFixture && onPlaceFixture && (
         <PlacementPlane y={raise} centre={centre} reach={span * 8 + 40} onPlace={onPlaceFixture} />
+      )}
+
+      {pickingWall && onPickWall && (
+        <WallPicker centre={centre} activeFloor={activeFloor} onPick={onPickWall} />
       )}
 
       {/* Centred on the origin, so the light, its shadow camera and the orbit
