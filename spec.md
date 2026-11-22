@@ -1262,7 +1262,8 @@ was clickable and there was no keyboard delete.
 
 ⚠️ **Not matched to the render yet:** the wrap-around porch soffit lining, the gravel/paving
 pattern of the yard, and the planter beds. The fence is off by default, since most plans are not
-walled.
+walled. (All three of those landed the same day — see "The porch lining and the yard" below. The
+list that is still open is in "What the render still has that we do not" at the end of this file.)
 
 
 ## Dragging furniture in the 3D view — `src/scene3d/useFixtureDrag.ts` (2026-11-13)
@@ -1428,11 +1429,10 @@ a uuid, that uuid is the URL (`/design/<id>`), and there is a save button.
   than loading it into the current editor, so the address bar always says which plan is on screen.
 - An id this browser has never seen says so. An empty sheet would read as "the plan was lost".
 
-⚠️ **A saved plan lives in this browser only, so the link opens on no other machine.** That is a
-real limitation of this step, stated in the save dialog and in the not-found message rather than
-left to be discovered — a URL with a uuid in it is exactly the kind of thing people assume they
-can send to someone. The id and the route are what a backend needs anyway, so the next step is a
-`plans` table with RLS and the save gated behind sign-in; everything else stays as it is.
+~~⚠️ **A saved plan lives in this browser only, so the link opens on no other machine.**~~ —
+**superseded the same day by the `plans` table below**, which is exactly the next step this
+paragraph named. localStorage is still the fallback, so the caveat holds wherever Supabase is not
+configured or the migration has not been run.
 
 Verified headlessly against the repository with a stubbed storage (15 checks): an unknown id
 returns null rather than throwing; floors, finishes and the measured area all survive a
@@ -1442,6 +1442,454 @@ than reporting success**; and corrupt stored data reads as empty instead of taki
 down. `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` passes. **Not seen in a
 browser.**
 
+
+## Each account keeps its own designs — `public.plans` (2026-11-15)
+A saved plan now lives in Postgres against the account that saved it, so `/design/<id>` opens on
+any machine that signs in, and one person's designs are never another's.
+
+- **`owner uuid not null references auth.users(id) on delete cascade` IS the access rule.** RLS
+  `plans_owner_all` is `for all` with the check on **both** sides (`using` and `with check`) — with
+  `using` alone a signed-in account could insert a row owned by someone else and then not be able
+  to see what it had created. NOT NULL matters for the same reason: a row with no owner would be
+  readable by whichever policy asked first. The app filters nothing; `select *` returns that
+  person's plans because the policy says so.
+- **Staff may READ and deliberately cannot write.** `plans_staff_read` is `for select` only, so the
+  team can open a design a customer is asking about and nobody on the team can edit, or silently
+  delete, somebody's drawing.
+- **`src/plans/index.ts` is a `PlanStore` wrapper, not a straight choice between the two
+  repositories**, because two things have to survive at once: the code may deploy before anyone
+  runs the SQL, and plans saved before any of this existed are sitting in localStorage. A missing
+  table (`PGRST205` / `42P01`) drops the session to localStorage — the order-independent rollout
+  `CompanyProvider` uses — and local plans are **merged into** the listing rather than hidden, the
+  backend winning on an id collision because it is the copy that is shared.
+- ⚠️ **Only a missing table falls back.** Signed out, offline or refused **rethrows**: quietly
+  writing to localStorage instead would tell someone their design is safe on their account when it
+  is not. `sharesAcrossDevices` is what the editor reads to decide whether to ask for a sign-in
+  first (`requireAuth`) and which sentence the save dialog shows.
+- `options` (the 3D finishes) is stored as well as `floors`. A house reopened in the default
+  plaster and tile is not the house that was saved. It stays typed as `Record<string, unknown>` —
+  `plans/` must not import from `scene3d/`, which pulls in three.js.
+- Save upserts on the primary key, since the editor mints the id on the first save and re-sends it
+  afterwards; `touch_updated_at` keeps `updated_at` current, so the gallery's "newest first" needs
+  nothing from the client.
+
+**Verified on a throwaway local Postgres** (the migration applied twice — the second run's
+"already exists, skipping" notices are the proof it is re-runnable — with the `authenticated` /
+`anon` / `service_role` roles created to stand in for Supabase's): as Alice, 1 plan; as Bob, **0 of
+Alice's**; Bob's insert of a row owned by Alice **refused** (`insufficient_privilege`); his delete
+of her row matched **0 rows**; he then saw only his own; with `is_staff` on, **2 rows readable** and
+a staff `UPDATE` matched **nothing**; `updated_at` equal to `created_at` on insert and greater after
+an update. The database was dropped afterwards. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
+`pnpm run build` exit 0.
+
+**The migration is applied — 2026-11-15.** Run through the dashboard's SQL editor against the live
+project (it warns "destructive operations" on the three `drop ... if exists` lines; all three target
+only the new `public.plans`, which did not exist yet, so they were no-ops). Verified against the
+live REST API straight afterwards: `/rest/v1/plans` answers **200** where it was `PGRST205` before,
+a signed-out `select` returns **`[]`** rather than rows, and a signed-out `insert` is refused
+**42501 — "new row violates row-level security policy"**. So the table is there and `owner` is doing
+its job from the first request.
+
+⚠️ **Still not seen in a browser**: the sign-up modal, the labelled save button and a plan actually
+opening on a second device are unverified visually.
+
+### Saving asks for an account, and never holds the drawing hostage (2026-11-15)
+The owner's ask: anyone may edit without an account, but saving should require signing up, with the
+sign-up as a modal that saves straight afterwards.
+
+**The constraint that shapes it:** this project has `mailer_autoconfirm = false` (read off
+`/auth/v1/settings`), so `signUp` returns a user and **no session**. "Sign up and it saves" cannot
+be one step — there is nothing to save with until the e-mail link is clicked, which can be minutes
+later and in another tab. A hard gate here would be a dialog that stands between someone and the
+house they just drew, and loses it if they close the tab.
+
+So the order is: **keep the work, then ask.**
+- Pressing save always saves. `persist()` tries the account; on `plan-save-needs-sign-in` it writes
+  the plan into **this browser** (`PlanStore.saveLocally`), puts the id in the URL, says
+  `plans.savedLocalSignUp`, and only then opens the dialog on its **sign-up** tab.
+- The dialog keeps the save as its pending action, and `AuthProvider` runs it **the moment a session
+  exists — from any source**. The resume moved out of the submit handler into `onAuthStateChange`,
+  because confirming the e-mail **in another tab signs this one in too** (supabase-js keeps the
+  session in localStorage and broadcasts it). Press save → sign up → click the link → come back to
+  find the save already done.
+- `PlanStore.syncLocalToAccount()` moves every browser-held plan up when an account appears (an
+  effect keyed on the account **id** — `setUser` builds a fresh object on every token refresh, so
+  keying on the object would run it hourly). The local copy is removed **only after** the upload
+  succeeds; one bad row leaves that plan local and the rest still move.
+- ⚠️ **`persist(id, name)` takes the id as a PARAMETER.** Caught in review: the retry re-read
+  `planId` from a closure captured before the first save, so it minted a **fresh uuid** and stored a
+  second plan under an id the URL did not name. `addressIt` compares `window.location.pathname` for
+  the same reason.
+- **The auth dialog had no sign-up at all** — sign-in only, so a visitor with no account had to leave
+  `/design` (losing the drawing) for `/login`. It is now two tabs reusing the login page's existing
+  strings, with an 8-character minimum matching that page, `autoComplete` switching between
+  `new-password` and `current-password`, and the form **replaced** by the "check your inbox" panel so
+  a second submit cannot send a second e-mail.
+- **The save button was one bare icon among seven view-control icons** and effectively invisible —
+  which is why it was asked for again after being built. It is a labelled contained `Button` now,
+  icon-only below `sm`.
+
+**Verified** against the real `PlanStore` with a stubbed Supabase client and `localStorage`
+(bundled with Vite, aliasing `../supabase/client`) — **26 checks, 0 failed**: signed out, the account
+save rejects and nothing reaches the backend while the plan stays readable locally; on sign-in both
+local plans move up carrying the signed-in `owner`, the local copies go, the listing does not
+duplicate and a second sync moves nothing; a refused row stays in the browser and off the account
+while its neighbours move; a missing table stops trying, keeps everything and flips
+`sharesAcrossDevices` to false; and the full sequence (local save under the URL's id → sign in →
+retry + sync) ends as **exactly one plan, under that same id, owned by the account**. `tsc -b`
+clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
+⚠️ **Not seen in a browser** — the dialog, the labelled button and the snackbars are unverified
+visually (Chrome's *Allow JavaScript from Apple Events* is off, so no tool here can read or drive the
+page).
+
+**`mailer_autoconfirm` is ON — done 2026-11-15** (the owner's call), so `signUp` hands back a
+session immediately and pressing save → signing up → the plan on the account is one unbroken step.
+Verified by reading `GET <project>/auth/v1/settings` straight after the save: `mailer_autoconfirm:
+True`, with `disable_signup` still false and no other auth setting touched.
+- **No code change is needed, and that was checked rather than assumed.** Both callers of `signUp`
+  already handle the `'signedIn'` outcome: the designer's modal falls through and lets
+  `onAuthStateChange` run the waiting save, and `LoginPage` lets its `user` redirect effect take
+  over. The two were written for a setting that could go either way, so the flip changes behaviour
+  without touching a line.
+- ⚠️ **The toggle is NOT in the Email provider dialog**, which is where every guide sends you and
+  where half an hour went. It is on the **Sign In / Providers page body**
+  (`/project/<ref>/auth/providers`), in the FIRST card, as the **4th of four switches** — after
+  *Allow new users to sign up*, *Allow manual linking*, *Allow anonymous sign-ins* — above that
+  card's own **Save changes** button. Found by reading the dashboard's own source
+  (`apps/studio/components/interfaces/Auth/BasicAuthSettingsForm.tsx`) rather than hunting the UI,
+  which also settles the inversion: the form field is `!authConfig.MAILER_AUTOCONFIRM`, so the
+  switch reading **off** is `mailer_autoconfirm: true`.
+- The other route is the **Management API** (`PATCH /v1/projects/{ref}/config/auth`), which needs a
+  *personal access token* — the service-role key in this repo does not reach project config.
+  Either way, confirm with `GET <project>/auth/v1/settings`, which reports the value live.
+- **The trade:** anyone can then register an address they do not own — spam accounts, and someone
+  could take a real customer's e-mail before that customer does. It does **not** weaken the back
+  office: a new account carries no role, so `is_staff()` in RLS still keeps it out of `/admin`, and
+  `plans` rows stay scoped to `owner = auth.uid()`.
+- ⚠️ **What it actually buys is smaller than it first looked.** The save-first ordering above already
+  means the drawing is never at risk and the save never waits on an e-mail; autoconfirm only moves
+  the plan from the browser to the account minutes sooner. Worth knowing before trading away e-mail
+  verification — the owner was told and chose to proceed.
+- ⚠️ **Nothing now proves an address belongs to the person who typed it.** A typo at sign-up makes
+  an account whose password can never be reset, and `contact_messages` / `leads` still carry the
+  e-mail people type into forms, which was never verified anyway. If sign-up spam appears, turning
+  the switch back on is the fix, and no code changes either way.
+- Password reset remains the account-recovery path, and it still e-mails, so a mistyped address at
+  sign-up is recoverable only by signing up again.
+
+### Camera buttons for the 3D view — `src/scene3d/cameraMoves.ts`, `src/ui/CameraButtons.tsx` (2026-11-16)
+The 3D view could only be moved by dragging. That is fine with a mouse, awkward on a trackpad, and
+offers no way back once the house ends up edge-on or off screen. The same moves are now buttons, in
+the **top-right** — the one free corner (floor switcher top-left, toolbar bottom-left, dock
+bottom-right).
+
+Eight, in a **4×2 grid at the bottom-left** — where the 2D editor puts its own toolbar, so the
+controls stay in the same corner of the screen as you switch views instead of jumping across it.
+That corner is free in 3D because `BottomToolbar` renders only in the plan view (checked: in 3D the
+only absolutely-positioned panels are the floor switcher top-left, this, and the dock
+bottom-right). Wide and short for the same reason: it then has the footprint of the toolbar it
+stands in for. Zoom out / in, turn left / right (45°), tilt down / up (12°), top view, and reset.
+- **`cameraMoves.ts` imports no three.js**, deliberately: the buttons live in `src/ui/` and are
+  rendered by the designer page, so importing anything else from `scene3d/` would pull the ~240 kB
+  three chunk into the 2D editor. It holds plain spherical maths — azimuth around +Y with 0 looking
+  from +Z, elevation above the horizon — and `resolveMove` is pure, so the whole button set is
+  checkable without a renderer.
+- ⚠️ **`CameraMove` is `CameraRequest & { seq }`, not `Omit<CameraMove, 'seq'>`.** `Omit` over a
+  union keeps only the keys every member shares, so the omitted type lost `factor`, `degrees` and
+  `view` and accepted none of them — eight type errors that all pointed at the call sites rather
+  than the cause.
+- **`seq` is what lets the same button be pressed twice.** The effect compares sequence numbers; an
+  identical object would otherwise never re-fire.
+- ⚠️ **A drag must win over a button.** `Orbit` listens for OrbitControls' `start` event and drops
+  the pending goal, or the eased move keeps pulling toward its target while the pointer drags the
+  other way and the camera fights the hand holding it. Taking the roof off clears it too.
+- ⚠️ **Reset returns the default POSITION, not angles that approximate it.** The default camera's
+  elevation depends on the eaves-to-span ratio, so a fixed pair of angles is right for one house and
+  wrong for the next — on the 12 m cabin a nominal 15° is really 11.3°. `resolveMove` takes
+  `cameraFor(...)` and returns it verbatim.
+- Tilt is clamped to 4–85°. At 90° the view direction is parallel to the camera's up vector,
+  OrbitControls gimbal-locks and the house spins on the next turn; the low end keeps the camera off
+  the ground, from under which a house is a floor slab and nothing else. Zoom is clamped to
+  0.5–4.5 × the plan's **span**, not a fixed number of metres, so a 4 m plan and a 12 m one both
+  stop somewhere sensible.
+- Top view keeps the azimuth you were at, so the roof plan faces the same way as the view you left.
+
+**Verified.** The maths headlessly against the real module (22 checks, 0 failed): the angle
+conversions round-trip; azimuth 0 is +Z and 90 is +X; zoom scales the radius by exactly the step and
+40 presses either way stop on the limit instead of passing through the house; a turn changes only
+the azimuth and eight of them return to the start position; tilt clamps at both ends and never puts
+the camera below the target; **reset lands exactly on the default position** after turning, zooming
+and tilting away; top reaches 85° and keeps the azimuth; and a 4 m plan clamps against its own span.
+Then in the browser: the cluster appears in 3D only (the two zoom buttons in 2D are the existing
+toolbar's), all eight render at the bottom-left — measured at x=16, 15 px off the bottom, two rows
+of four in the intended order — clear of the dock, and clicking all eight in sequence left the
+canvas alive with **no console errors**. `tsc -b` clean, `oxlint` 26 pre-existing
+warnings, `pnpm run build` exit 0.
+
+⚠️ **The movement itself is not visually confirmed.** Nothing in this environment can read the
+rendered frame: `screencapture` needs Screen Recording permission, a WebGL canvas readback comes back
+transparent even with `preserveDrawingBuffer` (tried, and reverted since it bought nothing), and this
+r3f version exposes no `__r3f` store on the canvas to read the camera from. The maths and the wiring
+are proven; that the house visibly turns is not.
+
+### Closing the gap to the reference render — the white roof edge and the missing timber (2026-11-16)
+Seen side by side with the owner's render for the first time, two differences did most of the work
+of making the sample look like a different house.
+
+- ⚠️ **The fascia ignored the roof colour.** It used the fixed `TRIM_SURFACE` (`#F0EDE6`), so a
+  near-white band ran right along the eaves of a roof set to `#2F3336` — the brightest thing in the
+  frame, against a render whose roof is dark to its edge. The fascia is the roof's OWN edge, so it
+  now takes the roof colour, flat (`paint`, not the roof pattern: corrugation across a 20 cm board
+  reads as noise). `TRIM_SURFACE` still dresses window sills, steps and the plinth skirt, where a
+  pale trim is right — only the roof edge changed.
+- **The cabin had no timber at all.** The reference is charcoal cladding with warm timber: the lit
+  reveal inside the porch, and panels up the elevation. The template set no gable finish, so the
+  porch soffit — which takes the gable finish — rendered the same grey as everything else.
+  `cabin-12x3-4` now carries `gableWall: 'wood'` / `gableColor: '#B08152'`, plus `eaves: 'deep'` for
+  the overhang the porch reveal needs.
+
+Verified headlessly (10 checks): the finish carries the dark metal roof, charcoal cladding, black
+frames, the timber gable AND deep eaves, while the plan behind it is untouched — 3 rooms, 36.21 m²,
+9 openings, 3 sliders all floor-to-head. `tsc -b` clean, `oxlint` 26 pre-existing warnings,
+`pnpm run build` exit 0.
+
+### Timber panels — `DrawWallPanel` (2026-11-16)
+The render's defining feature is warm timber set BETWEEN the glazing of a charcoal elevation.
+`DrawWall.finish` could not say that: it is per wall, so a 12 m elevation was all charcoal or all
+timber with nothing in between.
+
+- **A panel is a band of different cladding on part of one wall** — `{ wallId, offset, width,
+  finish }`, bound by a centre offset exactly like an opening so it survives the same edits.
+  Deliberately **not** an opening: `kind` drives pricing, the plan-file validator and the context
+  menu, and a panel cuts no hole and costs nothing.
+- **It cost one function.** Every solid, header and sill already goes through one `push` in
+  `building3d`, so `push` now cuts its stretch again at any panel edge inside it and stamps the
+  pieces that fall within a panel with its finish. The loop above it never learns panels exist, and
+  a panel that crosses an opening still clads the wall over and under it. A panel's own fields win
+  and the rest fall back to the wall's, so a band can change only the colour.
+- ⚠️ **`DrawingState` is rebuilt field by field in three places** — `createInitialState`,
+  `loadPlan` and `planFile`'s validator — so a new array has to be added to each or it is silently
+  dropped on load. `panels` is optional, and a file written before it existed loads as an empty
+  list rather than an error.
+- ⚠️ **Planarization splits an elevation at every partition**, so a panel's offset runs along its
+  OWN segment, not from the corner of the house — and one placed past a segment's end is CLAMPED
+  inward. That is how the first attempt slid a panel 0.11 m into the big slider. The cabin's seven
+  panels were then placed against the built walls rather than computed from spec coordinates.
+- A panel MAY cover a whole wall on purpose: the cabin's porch back wall is timber end to end with
+  its slider punched through it, which is what the render shows.
+
+**Verified** against the real modules (15 checks, 0 failed): all seven panels find a host wall and
+fit inside it; none lands partly over an opening (a full-wall one is allowed); `loadPlan` keeps
+them; the 3D build emits timber boxes carrying the right colour while **most boxes are still
+charcoal** — it is an accent, not a repaint; the plan behind it is untouched at 3 rooms, 36.21 m²,
+9 openings; and panels survive a save/load round trip while a file with none still opens.
+`tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
+#### Placing one — the panel brush
+A second tool in the **ทาสีผนัง** tab, beside the whole-wall brush. Pick a colour and a width
+(0.6 / 1 / 1.5 m), then click a wall.
+
+- **The same click removes it.** Clicking bare wall adds a band; clicking an existing band takes it
+  away (`findWallPanelAt` → `deleteWallPanel`). So deleting needs no second tool, no selection and
+  no context menu — the thing you click is the thing you act on.
+- Separate from `paint` in `ToolMode` rather than a mode of it: paint takes a WHOLE wall and needs
+  no width, and its click repaints where this one toggles.
+- `addWallPanel` is shaped on `addOpening`, clamp included — the band is pulled fully inside the
+  wall, and a wall too short to hold it is left alone rather than given one hanging off its end.
+- `clearWallFinishes` ("back to default") now drops the panels too: leaving a row of timber
+  standing would not be back to default.
+- In plan, a band is drawn **in its own colour** at wall thickness, under the opening symbols —
+  a hatch would hide which material it is, which is the only thing a panel is.
+- ⚠️ `scene/DrawingCanvas.tsx` needed a no-op to keep compiling. Nothing imports it; the SVG
+  `sheet/PlanEditor` replaced it, and deleting it is already TODO 3.
+
+**Verified in the browser** on the real page: the section renders with its hint and all three width
+pills; the cabin draws **7 bands in the 2D plan**, matching its 7 template panels; clicking the
+timber swatch arms the panel tool (and not the paint tool); a synthetic click on bare wall took the
+plan **7 → 8**, a second click on that band took it **8 → 7**, and after a fresh load
+**7 → add → 8 → one undo → 7**, so an edit is one history step. `tsc -b` clean, `oxlint` 26
+pre-existing warnings, `pnpm run build` exit 0.
+
+⚠️ Still **not seen as pixels** — nothing here can read the rendered 3D frame, so the look of the
+timber on the house is confirmed only by the owner's screenshots.
+
+### Placing furniture in the 3D view (2026-11-16)
+The palette only ever armed a tool the 2D editor could act on, so a sofa had to be added on the
+plan even while looking at the room in 3D. The furniture tab is now in BOTH tab sets, and the 3D
+view takes the drop.
+
+- **`PlacementPlane`** is an invisible floor-level plane that converts a click to plan coordinates:
+  everything plan-shaped is drawn inside a group translated by `-centre`, so `world = plan − centre`
+  and the way back is `plan = world + centre`. The point is then snapped with the same
+  `snapToGrid` the plan editor uses, so the two views agree.
+- ⚠️ **Mounted only while a fixture is armed.** It spans the view, so if it were always there it
+  would swallow every pointer event before the furniture underneath saw one — and dragging a piece
+  in 3D would stop working.
+- ⚠️ **A click has to be told from an ORBIT.** r3f fires `onClick` whenever pointerdown and
+  pointerup land on the same object however far the pointer travelled, and an orbit drag does
+  exactly that — every attempt to turn the house would drop a sofa. The pointer's screen travel is
+  measured instead (`PLACE_SLOP`), the same idea as the 2D editor's `DRAG_THRESHOLD`.
+
+`tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0. ⚠️ **Not verified in
+the browser** — the session's usage limit was reached right after it compiled, so the tab appearing
+in 3D, the drop landing where clicked, and the orbit guard are all unconfirmed.
+
+### 2D is the plan, nothing else — and curtains that look like fabric (2026-11-21)
+Two things the owner asked for while looking at the result.
+
+**No materials in the plan view.** The ทาสีผนัง tab is gone from `PLAN_TABS` and the cladding
+bands are gone from `PlanSheet`: the 2D view is for what is where and how big, and a finish belongs
+to the view that actually shows it. The wall-TYPES tab stays, because thickness is structure, not
+finish — and that was the only other thing in 2D that could be mistaken for a material choice.
+Verified in the browser: the 2D rail is ผนัง / ประตู-หน้าต่าง / เฟอร์นิเจอร์ / สรุปราคา with no brush
+icon, and the cabin — which carries seven timber panels — draws **0** colour bands in its plan.
+
+That left the paint and panel brushes with nowhere to apply — they are in the 3D tab set, and a wall
+could not be clicked there. **Closed 2026-11-22** by the wall picker below.
+
+**Curtains.** They were a flat 3 cm slab at 0.78 opacity — a painted board that hid the room.
+- **A rippled sheet, not a box.** `useCurtainGeometry` takes a `PlaneGeometry` and displaces z by a
+  cosine across the width (a fold about every 11 cm, 28 mm deep), then recomputes the normals so the
+  shading follows the folds. What says "fabric" is the light falling differently down each fold, and
+  that needs real geometry. Constant down its height, because a hanging sheer keeps its folds from
+  rail to hem.
+- **Sheer enough to see through**: opacity 0.38, and `depthWrite: false` — ⚠️ without that the fabric
+  occludes whatever is behind it in the depth buffer however transparent it looks.
+- **Hung further into the room** (`CURTAIN_INSET` 0.13 m, was 0.05/0.06) so it clears the frame and
+  the sliding track instead of reading as stuck to the pane.
+- One `CurtainPair` now serves both the window and the sliding door, which previously carried
+  near-identical copies.
+
+`tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0. ⚠️ The curtains are
+**not seen as pixels** — nothing here can read the rendered 3D frame.
+
+#### Painting a wall from the 3D view — `src/scene3d/useWallPick.ts` (2026-11-22)
+Removing the materials from the plan view left both brushes with nowhere to apply: they are still
+in the 3D tab set, but a wall could not be clicked there. They can now.
+
+- **The picker raycasts the SCENE ITSELF**, from `pointerdown`/`pointerup` listeners of its own,
+  rather than hanging r3f's `onPointerDown` on each wall mesh. That is a design choice, not a
+  workaround for the earlier attempt: **r3f only hit-tests objects that carry handlers**, so with
+  handlers on the walls alone the roof, the glazing and the furniture would not occlude them — a
+  click on the roof would paint the wall hidden behind it, and a click on a window would paint the
+  wall it is set into. Casting against the whole scene and insisting the NEAREST VISIBLE surface is
+  a wall gets both right for free: what you cannot see, you cannot brush. Verified in the browser —
+  a click on the roof and one on the ground changed nothing.
+- ⚠️ **three.js raycasting ignores `visible` entirely**, so the cutaway's hidden near walls are
+  still hit — and in that view they are exactly the walls standing between the camera and the one
+  being aimed at. `onScreen()` walks the parent chain and drops anything switched off.
+- **The hit is a point on the wall's own face**, so `offsetAlongWall` gets the place that was
+  actually clicked. The obvious fallback — an invisible floor-level pick plane, the mechanism the
+  fixture palette uses — cannot: from the ~15° exterior camera the ray crosses the floor several
+  metres BEHIND the face, which for a 0.6 m band of cladding is the difference between the right
+  wall and the next one along.
+- **`WallBox` carries `wallId` and `level`**, read off the mesh's `userData`. `level` is not
+  optional cleverness: a new storey is a `structuredClone` of the one below, so **the two share wall
+  ids**, and an edit goes to the active floor — without it a click upstairs would quietly paint the
+  wall beneath it. Only the boxes that ARE wall carry them; the floor band, the plinth and a
+  free-standing column do not, so brushing one reads as the click having missed rather than as a
+  wall changing colour somewhere else.
+- ⚠️ **An orbit drag must not paint.** r3f and the DOM both call a press and release on the same
+  spot a click however far the pointer travelled between, and an orbit drag does exactly that. The
+  pointer's screen travel is measured instead (`CLICK_SLOP` 5px), the same idea as the 2D editor's
+  `DRAG_THRESHOLD`. Verified: a 260px drag across the elevation turned the house right round and
+  painted nothing.
+- `pointerdown` is on the canvas (a press that began on the dock never brushes a wall) and
+  `pointerup` on the window (a release just outside clears the press instead of leaving it armed).
+  The cursor turns to a crosshair while a brush is armed — nothing else in the 3D view says a wall
+  can be clicked, and the hook is only mounted while one is.
+
+**Verified in the browser** on `cabin-12x3-4` at 800×560, 3D view: arming ส้มอิฐ and clicking the
+long elevation turned that wall's charcoal stretches terracotta while the rest of the house and the
+timber panels stayed as they were, and **one** ⌘Z put it back; arming the panel brush in white and
+clicking a charcoal stretch added a band, and clicking the same spot again removed it. No console
+errors throughout. `tsc -b` clean, `oxlint` 26 warnings — the pre-existing `only-export-components`
+class, no new ones — and `pnpm run build` exit 0.
+
+⚠️ What the previous attempt measured still stands as a warning about the test harness, not about
+the walls: **synthetic pointer events must define `offsetX`/`offsetY`** or r3f aims every click at
+the canvas corner. This picker reads `clientX`/`clientY` and does its own raycast, so it is immune
+to that particular trap — but OrbitControls is not.
+
+### Why the punched hole "did not work" (2026-11-21)
+The owner reported he could not punch a hole in a wall. The capability was all there — the `open`
+preset exists, the dock carries the flag, `addOpening` stores it, the 3D build emits no unit. What
+was missing was any way to TELL which tile it was.
+
+- ⚠️ **A hole is stored as a `window` 1.0 m wide**, which is exactly what the "หน้าต่าง 100 ซม."
+  preset is. `OpeningPreview` only ever took `kind` and `width`, so the two tiles drew **byte-identical
+  artwork** and sat next to each other in the palette. It now takes `open` and draws a gap as a gap:
+  two jamb ticks with nothing between them, against the window's line straight across.
+- ⚠️ **The tiles' React `key` was `kind-width`, so those same two presets collided.** The comment
+  directly above it warns that "two presets can share both and differ only by a flag" — but that
+  had only been applied to the selected-state check, and the key underneath it was missed. Keyed on
+  `labelKey` now. (Same class as the `contact.json` label-as-key collision in MEMORY.md.)
+
+**Verified in the browser**, which is also what proves the capability itself was never broken: with
+the cabin loaded, arming "เจาะช่องผนัง" and clicking a bare wall took the summary from
+**ประตู 6 / หน้าต่าง 3 to ประตู 6 / หน้าต่าง 4**, and the two palette tiles now render different SVG —
+the hole has four lines (two wall stubs, two jambs) where the window has three (two stubs and the
+glazing across). `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
+### /products had no loading state while the catalogue arrived (2026-11-21)
+Each image already had its own shimmer (`SmartImage`), but the page around them did not. The seed
+array renders synchronously, so the first frame of `/products` showed the **21 bundled seed rows**
+— several of whose convention photo paths 404 into the flat coloured panel — and the toolbar read
+"พบ 21 รายการ"; a few hundred ms later the 46 Supabase rows replaced the lot. Nothing on screen said
+"still loading", and what was on screen was wrong rather than blank.
+- `ProductsPage` now reads `useCatalog().loading` and renders `CardSkeletonGrid` (16 = `PAGE_SIZE`,
+  `ratio="4 / 3"`, the real grid's gap) in the real grid's shape, hiding the row grid, the
+  `noResults` line and the pagination until the rows land. Same pattern `FeaturedSection` /
+  `PortfolioSection` already use on the home page — the seed is a fallback for an unconfigured or
+  failed Supabase, not something worth flashing on the way to the real catalogue.
+- `CatalogToolbar`'s `resultCount` takes `null` for "still counting" and shows a text skeleton, so
+  the row keeps its height instead of stating a number that is about to change.
+- `CardSkeletonGrid` gained `gap` + `sx`: it hardcoded `gap: 1.5` while this grid uses
+  `{xs: 1.5, sm: 2}`, which would shift every card sideways as the rows arrived.
+- Verified in the browser with a temporary 4 s delay injected into `CatalogProvider`'s Supabase
+  fetch (reverted): the skeleton grid renders in the same 4-column geometry the real cards land in,
+  with no "ไม่พบรายการ" and no pagination, then swaps cleanly to 46 rows. `tsc -b` clean, `oxlint` 26
+  pre-existing warnings, `pnpm run build` exit 0.
+- ⚠️ `/portfolio` and `/community` have the same gap and were left alone — out of scope here.
+- ⚠️ Separately, the whole page is blank but for `RouteFallback`'s small spinner while the lazy
+  route chunk downloads. That is before `ProductsPage` mounts and is untouched by this.
+
+## What the render still has that we do not (audited 2026-11-22)
+
+The owner's reference render was read back out of the conversation history and compared surface by
+surface against what `cabin-12x3-4` actually builds. Everything below is measured against that
+image, not against memory of it.
+
+**In the render and implemented:** the dark standing-seam metal roof with its fascia dark to the
+edge; charcoal vertical cladding; the warm timber panels between the glazing; the timber porch
+soffit; black frames; full-height sliding glazed doors; sheer curtains behind them; the covered
+porch as a roofed open bay; the house raised on piers with a skirt; a flight of steps at every
+exterior door; wall sconces flanking the doors; the chippings yard; the herringbone path; planting
+beds, shrubs and background conifers; the slat fence; and the sky the glass reflects.
+
+**Still open, in descending order of how much it costs the likeness:**
+1. **No flue.** The render carries a black capped flue pipe standing off the roof at the far end —
+   the one thing breaking the roof's silhouette, and the eye goes to it. Nothing in `scene3d/`
+   draws one; there is no `chimney` or `flue` anywhere in `src/`.
+2. **The porch floor is the house's slab.** `Ground` lays one `paving` surface (`#D8D3CA`) under
+   the whole footprint, porch included, while the render's porch — and the flight of steps down
+   from it — is grey timber decking. The slab reads as concrete where the render reads as a deck.
+3. **The porch's inner faces are charcoal.** The render lines the porch on three surfaces: ceiling,
+   the return wall and the reveal. We line the ceiling (the soffit takes the gable finish) and the
+   back wall (a full-width timber panel), but the two reveals are still the wall's outside finish.
+   The per-wall `insideColor` exists and could carry this; the cabin template does not set it.
+4. **No boulders.** Three pale rocks sit in the chippings in the render. `Scenery.tsx` draws trees
+   and shrubs only.
+5. **The outdoor lounge is not placed.** `campChair` and `firePit` exist as fixtures and the render
+   has a sofa and a fire table on the gravel plus two armchairs on the porch — the cabin template
+   places none of them outside.
+6. **The fence is off by default**, which is right for most plans and wrong for this one sample.
+
+Items 1, 2 and 4 are new geometry; 3, 5 and 6 are data on the template and cost nothing but a
+decision. None has been started — the files they touch (`Scene3D.tsx`, `SitePieces.tsx`,
+`building3d.ts`, `templates.ts`) are the ones the three parallel sessions are editing, so this
+work waits for them to land.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).

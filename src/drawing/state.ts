@@ -4,6 +4,7 @@ import type {
   DrawNode,
   DrawOpening,
   DrawWall,
+  DrawWallPanel,
   DrawRoomLabel,
   FixtureKind,
   OpeningKind,
@@ -14,7 +15,7 @@ import { fixtureSpec } from './fixtures'
 import { GRID_SIZE, distance, findSnapTarget, snapToGrid } from './geometry'
 
 export function createInitialState(): DrawingState {
-  return { nodes: {}, walls: [], openings: [], fixtures: [], roomLabels: [] }
+  return { nodes: {}, walls: [], openings: [], fixtures: [], roomLabels: [], panels: [] }
 }
 
 function nextId(prefix: string): string {
@@ -304,11 +305,74 @@ export function setWallFinish(
   }
 }
 
+/**
+ * Put a band of different cladding on part of a wall.
+ *
+ * Shaped on `addOpening`, including its clamp: the band is pulled fully
+ * inside the wall, and a wall too short to hold it is left alone rather than
+ * given a panel hanging off its end.
+ */
+export function addWallPanel(
+  state: DrawingState,
+  wallId: string,
+  offsetAlongWall: number,
+  width: number,
+  finish: WallFinish,
+): DrawingState {
+  const wall = state.walls.find((w) => w.id === wallId)
+  if (!wall) return state
+  const a = state.nodes[wall.a]
+  const b = state.nodes[wall.b]
+  if (!a || !b) return state
+
+  const wallLength = distance(a, b)
+  if (wallLength <= width) return state
+  const half = width / 2
+  const offset = Math.min(Math.max(offsetAlongWall, half), wallLength - half)
+
+  return {
+    ...state,
+    panels: [
+      ...(state.panels ?? []),
+      { id: nextId('panel'), wallId, offset, width, finish },
+    ],
+  }
+}
+
+/**
+ * The panel covering a point on a wall, if there is one.
+ *
+ * Used to make the panel brush a toggle: clicking bare wall adds a band and
+ * clicking an existing one takes it away, so removing a panel needs no second
+ * tool and no selection.
+ */
+export function findWallPanelAt(
+  state: DrawingState,
+  wallId: string,
+  offsetAlongWall: number,
+): DrawWallPanel | null {
+  return (
+    (state.panels ?? []).find(
+      (panel) =>
+        panel.wallId === wallId &&
+        offsetAlongWall >= panel.offset - panel.width / 2 &&
+        offsetAlongWall <= panel.offset + panel.width / 2,
+    ) ?? null
+  )
+}
+
+export function deleteWallPanel(state: DrawingState, panelId: string): DrawingState {
+  return { ...state, panels: (state.panels ?? []).filter((panel) => panel.id !== panelId) }
+}
+
 /** Takes every wall back to the house default. */
 export function clearWallFinishes(state: DrawingState): DrawingState {
   return {
     ...state,
     walls: state.walls.map(({ finish: _dropped, ...wall }) => wall),
+    // The bands go with the brushwork: "back to default" that left a row of
+    // timber panels standing would not be back to default.
+    panels: [],
   }
 }
 
@@ -319,6 +383,9 @@ export function loadPlan(plan: DrawingState): DrawingState {
     openings: [...plan.openings],
     fixtures: [...plan.fixtures],
     roomLabels: [...plan.roomLabels],
+    // ⚠️ Rebuilt field by field, so anything added to DrawingState has to be
+    // listed here too or loading a plan silently drops it.
+    panels: [...(plan.panels ?? [])],
   })
 }
 

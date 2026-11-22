@@ -37,6 +37,20 @@ export interface WallBox {
   exterior?: boolean
   /** This wall's own finish, if it was painted; otherwise the house default. */
   finish?: WallFinish
+  /**
+   * The plan wall this box is a stretch of, so a click in the 3D view can be
+   * turned back into an edit of the plan. Only the boxes that ARE wall carry
+   * it — the floor band, the plinth and a free-standing column do not, since
+   * painting a wall would not change them and brushing one would read as the
+   * click having missed.
+   */
+  wallId?: string
+  /**
+   * Which storey this box belongs to. A new storey is a deep copy of the one
+   * below, so the two share wall IDS — `wallId` alone is ambiguous, and a
+   * click upstairs would quietly paint the wall beneath it.
+   */
+  level?: number
 }
 
 /**
@@ -184,6 +198,8 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
           outward,
           exterior,
           finish: wall.finish,
+          wallId: wall.id,
+          level,
         }
       }
 
@@ -202,9 +218,49 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
         })
         .sort((one, two) => one.start - two.start)
 
+      // Panels on THIS wall, as spans along it, in order. A panel is a band
+      // of different cladding, so it does not cut a hole — it only changes
+      // which finish a stretch of wall is built with.
+      const wallPanels = (state.panels ?? [])
+        .filter((panel) => panel.wallId === wall.id)
+        .map((panel) => ({
+          finish: panel.finish,
+          start: Math.max(0, panel.offset - panel.width / 2),
+          end: Math.min(length, panel.offset + panel.width / 2),
+        }))
+        .filter((panel) => panel.end > panel.start)
+        .sort((one, two) => one.start - two.start)
+
+      /**
+       * Emit a stretch of wall, cut again wherever a panel starts or ends.
+       *
+       * Every solid, header and sill goes through here, so a panel runs the
+       * full height of the wall without the loop above knowing it exists —
+       * and a panel that happens to cross an opening still clads the wall
+       * over and under it.
+       */
       const push = (id: string, span: Span) => {
-        const box = boxFor(`${id}-L${level}`, span)
-        if (box) walls.push(box)
+        // The cut points inside this span: its own ends, plus any panel edge
+        // that falls within it. A Set collapses an edge that coincides with
+        // the span's own end, which would otherwise emit a zero-width box.
+        const cuts = new Set<number>([span.from, span.to])
+        for (const panel of wallPanels) {
+          if (panel.start > span.from && panel.start < span.to) cuts.add(panel.start)
+          if (panel.end > span.from && panel.end < span.to) cuts.add(panel.end)
+        }
+        const edges = [...cuts].sort((one, two) => one - two)
+
+        for (let i = 0; i < edges.length - 1; i += 1) {
+          const from = edges[i]
+          const to = edges[i + 1]
+          const middle = (from + to) / 2
+          const panel = wallPanels.find((one) => middle > one.start && middle < one.end)
+          const box = boxFor(`${id}-${i}-L${level}`, { ...span, from, to })
+          if (!box) continue
+          // The panel's own fields win; anything it leaves out falls back to
+          // the wall's finish, so a panel can change only the colour.
+          walls.push(panel ? { ...box, finish: { ...wall.finish, ...panel.finish } } : box)
+        }
       }
 
       let cursor = 0

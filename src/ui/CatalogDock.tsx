@@ -87,11 +87,15 @@ interface Tab {
   Icon: typeof StraightenIcon
 }
 
+// ⚠️ NO material or colour tab in 2D, by the owner's call: the plan view is
+// for the PLAN — what is where and how big — and finishes belong to the view
+// that actually shows them. The wall-types tab stays because thickness is
+// structure, not finish. Picking and applying both live in 3D now, so the
+// brushes are not orphaned by this.
 const PLAN_TABS: Tab[] = [
   { id: 'walls', labelKey: 'dock.walls', Icon: StraightenIcon },
   { id: 'openings', labelKey: 'dock.openings', Icon: SensorDoorIcon },
   { id: 'furniture', labelKey: 'dock.furniture', Icon: ChairIcon },
-  { id: 'paint', labelKey: 'dock.paint', Icon: BrushIcon },
   { id: 'summary', labelKey: 'dock.summary', Icon: CalculateIcon },
 ]
 
@@ -99,6 +103,10 @@ const THREE_TABS: Tab[] = [
   { id: 'style', labelKey: 'dock.style', Icon: VillaIcon },
   { id: 'roof', labelKey: 'dock.roof', Icon: RoofingIcon },
   { id: 'surfaces', labelKey: 'dock.surfaces', Icon: FormatPaintIcon },
+  // Furniture is in BOTH tab sets: the palette only arms a tool, and the 3D
+  // view can now take the drop as well, so there is no reason to make
+  // someone go back to the plan to add a sofa to a room they are looking at.
+  { id: 'furniture', labelKey: 'dock.furniture', Icon: ChairIcon },
   { id: 'paint', labelKey: 'dock.paint', Icon: BrushIcon },
   { id: 'summary', labelKey: 'dock.summary', Icon: CalculateIcon },
 ]
@@ -150,6 +158,7 @@ interface CatalogDockProps {
   onSelectFixture: (kind: FixtureKind | null) => void
   /** Arms the brush with a finish, or disarms it with null. */
   onSelectPaint: (paint: { finish: WallFinish; face: 'outside' | 'inside' } | null) => void
+  onSelectPanel: (panel: { finish: WallFinish; width: number } | null) => void
   onResetPaint: () => void
   /** 3D: the house's finishes. */
   options: Building3DOptions
@@ -251,6 +260,7 @@ export function CatalogDock({
   onSelectOpening,
   onSelectFixture,
   onSelectPaint,
+  onSelectPanel,
   onResetPaint,
   options,
   onOptionsChange,
@@ -269,6 +279,7 @@ export function CatalogDock({
   const [tab, setTab] = useState<TabId>('walls')
   const [paintFace, setPaintFace] = useState<'outside' | 'inside'>('outside')
   const [paintMaterial, setPaintMaterial] = useState<WallMaterial>('wood')
+  const [panelWidth, setPanelWidth] = useState<number>(1)
   const [open, setOpenState] = useState<boolean>(() => remembered(OPEN_KEY, true))
   /** Expanded: a full-height column down the side instead of a corner box. */
   const [big, setBigState] = useState<boolean>(() => remembered(BIG_KEY, false))
@@ -478,7 +489,14 @@ export function CatalogDock({
                     const selected = activeOpeningLabel === preset.labelKey
                     return (
                       <Swatch
-                        key={`${preset.kind}-${preset.width}`}
+                        // ⚠️ The LABEL, not kind+width. "เจาะช่อง" is a
+                        // window 1.0 m wide and so is "หน้าต่าง 100",
+                        // differing only by the `open` flag — so keying on
+                        // kind+width gave two tiles the same React key and
+                        // the hole never appeared. The selected-check two
+                        // lines up was already fixed for exactly this and
+                        // the key was missed.
+                        key={preset.labelKey}
                         label={t(preset.labelKey)}
                         caption={t(preset.labelKey)}
                         selected={selected}
@@ -499,7 +517,11 @@ export function CatalogDock({
                         }
                       >
                         <Box sx={{ transform: 'scale(1.4)' }}>
-                          <OpeningPreview kind={preset.kind} width={preset.width} />
+                          <OpeningPreview
+                            kind={preset.kind}
+                            width={preset.width}
+                            open={preset.open}
+                          />
                         </Box>
                       </Swatch>
                     )
@@ -621,9 +643,56 @@ export function CatalogDock({
                   </SwatchGrid>
                 </DockSection>
 
+                {/* A band across PART of a wall, which is what the whole
+                    elevation brush above cannot do: the reference's timber
+                    sits between the glazing, not over a whole 12 m side. */}
+                <DockSection label={t('panel.section')}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    {t('panel.hint')}
+                  </Typography>
+                  <PillRow
+                    label={t('panel.width')}
+                    value={panelWidth}
+                    values={[0.6, 1, 1.5] as const}
+                    render={(item) => `${item} ม.`}
+                    onChange={setPanelWidth}
+                  />
+                  <SwatchGrid>
+                    {WALL_COLORS.map((option) => {
+                      const armed =
+                        tool.type === 'panel' &&
+                        tool.finish.color?.toLowerCase() === option.hex.toLowerCase()
+                      return (
+                        <Swatch
+                          key={option.id}
+                          size={SWATCH_SMALL}
+                          label={t(`building3d.color.${option.id}`)}
+                          color={option.hex}
+                          selected={armed}
+                          onClick={() =>
+                            onSelectPanel(
+                              armed
+                                ? null
+                                : {
+                                    width: panelWidth,
+                                    finish: { color: option.hex, material: paintMaterial },
+                                  },
+                            )
+                          }
+                        />
+                      )
+                    })}
+                  </SwatchGrid>
+                </DockSection>
+
                 {tool.type === 'paint' && (
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
                     {t('paint.armed')}
+                  </Typography>
+                )}
+                {tool.type === 'panel' && (
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
+                    {t('panel.armed')}
                   </Typography>
                 )}
 

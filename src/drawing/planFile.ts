@@ -5,6 +5,7 @@ import type {
   DrawOpening,
   DrawRoomLabel,
   DrawWall,
+  DrawWallPanel,
 } from './types'
 
 /**
@@ -205,7 +206,37 @@ function validateState(raw: unknown): DrawingState {
     openings: validateOpenings(raw.openings),
     fixtures: validateFixtures(raw.fixtures),
     roomLabels: validateRoomLabels(raw.roomLabels),
+    panels: validatePanels(raw.panels),
   }
+}
+
+/**
+ * Cladding bands. Absent in every file written before they existed, so a
+ * missing array is an empty one rather than an error — and a panel whose
+ * numbers are unusable is dropped rather than failing the whole plan, since
+ * losing a stripe of timber is better than refusing to open the house.
+ */
+function validatePanels(raw: unknown): DrawWallPanel[] {
+  if (raw === undefined || raw === null) return []
+  if (!Array.isArray(raw)) throw new PlanFileError('panels must be a list')
+  const out: DrawWallPanel[] = []
+  raw.forEach((value, index) => {
+    if (!isObject(value) || typeof value.wallId !== 'string') return
+    if (!num(value.offset) || !num(value.width) || value.width <= 0) return
+    const finish = isObject(value.finish) ? value.finish : {}
+    out.push({
+      id: typeof value.id === 'string' ? value.id : `panel_${index}`,
+      wallId: value.wallId,
+      offset: value.offset,
+      width: value.width,
+      finish: {
+        material: typeof finish.material === 'string' ? finish.material : undefined,
+        color: typeof finish.color === 'string' ? finish.color : undefined,
+        insideColor: typeof finish.insideColor === 'string' ? finish.insideColor : undefined,
+      },
+    })
+  })
+  return out
 }
 
 /**

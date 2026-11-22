@@ -28,6 +28,13 @@ export type ToolMode =
    * the walls you want it on is how a build-mode catalogue already works.
    */
   | { type: 'paint'; finish: WallFinish; face: 'outside' | 'inside' }
+  /**
+   * Drop a band of different cladding on part of a wall.
+   *
+   * Separate from `paint`, which takes a WHOLE wall: this one needs a width,
+   * and clicking an existing band removes it rather than repainting it.
+   */
+  | { type: 'panel'; finish: WallFinish; width: number }
 
 export const SELECT_TOOL: ToolMode = { type: 'select' }
 /** Default draw mode: `auto` thickness, matching the previous behaviour. */

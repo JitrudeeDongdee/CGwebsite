@@ -5,6 +5,7 @@ import type {
   DrawOpening,
   DrawRoomLabel,
   DrawWall,
+  DrawWallPanel,
   FixtureKind,
   OpeningKind,
 } from './types'
@@ -72,6 +73,19 @@ interface Spec {
   }[]
   /** Room names, stamped at a point inside the room they name. */
   labels?: { x: number; y: number; nameKey: string }[]
+  /**
+   * Bands of a different cladding on the elevations — the timber panels the
+   * reference render is built around. Authored as a point ON the wall plus a
+   * width, like an opening, because wall ids are generated.
+   */
+  panels?: {
+    x: number
+    y: number
+    width: number
+    /** A `WallMaterial` id; left out, the band keeps the wall's own. */
+    material?: string
+    color?: string
+  }[]
 }
 
 type Segment = [number, number, number, number]
@@ -141,6 +155,7 @@ function buildFromSpec({
   openings = [],
   furniture = [],
   labels = [],
+  panels: claddingPanels = [],
 }: Spec): DrawingState {
   const halfW = width / 2
   const halfD = depth / 2
@@ -238,7 +253,31 @@ function buildFromSpec({
     name: label.nameKey,
   }))
 
-  return { nodes, walls, openings: placed, fixtures, roomLabels }
+  // Cladding bands, authored as a point on a wall exactly like an opening
+  // and for the same reason: wall ids only exist after planarization.
+  const panels: DrawWallPanel[] = []
+  claddingPanels.forEach((spec, index) => {
+    const point = { x: spec.x - halfW, y: spec.y - halfD }
+    const host = walls.find(
+      (wall) => distanceToSegment(point, nodes[wall.a], nodes[wall.b]) < 1e-6,
+    )
+    if (!host) return
+    const a = nodes[host.a]
+    const b = nodes[host.b]
+    const wallLength = Math.hypot(b.x - a.x, b.y - a.y)
+    if (wallLength <= spec.width) return
+    const offset = Math.hypot(point.x - a.x, point.y - a.y)
+    const half = spec.width / 2
+    panels.push({
+      id: `tpl_panel_${index}`,
+      wallId: host.id,
+      offset: Math.min(Math.max(offset, half), wallLength - half),
+      width: spec.width,
+      finish: { material: spec.material, color: spec.color },
+    })
+  })
+
+  return { nodes, walls, openings: placed, fixtures, roomLabels, panels }
 }
 
 /**
@@ -335,6 +374,14 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
       wall: 'fibre',
       wallColor: '#4D5154',
       frame: 'black',
+      // The warm timber lining the render is built around. The gable finish
+      // is what the porch SOFFIT takes, so this is what turns the covered bay
+      // from a grey ceiling into the lit timber reveal that is the first
+      // thing you see in the original — and the gable end picks it up with
+      // it, which is where the reference puts timber too.
+      gableWall: 'wood',
+      gableColor: '#B08152',
+      eaves: 'deep',
     },
     build: () =>
       buildFromSpec({
@@ -357,6 +404,32 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
           { x: 9, y: 2.9, width: 0.8, kind: 'door' }, // bedroom
           { x: 9.96, y: 3.4, width: 1.26, kind: 'door', sliding: true, tall: true }, // bedroom slider, front
           { x: 12, y: 1.7, width: 1.6, kind: 'window', tall: true }, // bedroom, end
+        ],
+        // The render's warm timber, set BETWEEN the glazing rather than over
+        // a whole elevation. Each one is sized and placed to land in the pier
+        // the openings above leave: on the y=0 side the big slider spans
+        // 2.43-5.56 and the bathroom window 7.75-8.25, and on the y=3.4 side
+        // the three openings span 2.47-3.55, 6.02-7.00 and 9.33-10.59.
+        panels: [
+          // The porch's back wall, timber across its full width — the lit
+          // reveal that reads first in the original. 3.3 not 3.4: a panel as
+          // wide as its wall is rejected, the same guard openings use.
+          { x: 1.35, y: 1.7, width: 3.3, material: 'wood', color: '#B08152' },
+          // Long elevation, y = 0. ⚠️ Planarization splits this side at each
+          // partition, so a panel's offset runs along its OWN segment, not
+          // from x = 0 — and a panel placed past a segment's end is CLAMPED
+          // inward, which is how the first attempt slid one 0.11 m into the
+          // big slider. Each of these was read off the built walls:
+          // 1.35-6.55 holds the slider at 2.43-5.56, 6.55-9.00 the bathroom
+          // window at 7.75-8.25, and 9.00-12.00 is blank.
+          { x: 1.9, y: 0, width: 1, material: 'wood', color: '#B08152' },
+          { x: 7.2, y: 0, width: 0.7, material: 'wood', color: '#B08152' },
+          { x: 6.11, y: 0, width: 0.8, material: 'wood', color: '#B08152' },
+          { x: 9.8, y: 0, width: 1, material: 'wood', color: '#B08152' },
+          // Long elevation, y = 3.4 — one wall 1.35-9.00, openings at
+          // 3.33-4.33 and 6.82-7.90 along it.
+          { x: 4.6, y: 3.4, width: 1, material: 'wood', color: '#B08152' },
+          { x: 8.2, y: 3.4, width: 1, material: 'wood', color: '#B08152' },
         ],
         furniture: [
           // Porch

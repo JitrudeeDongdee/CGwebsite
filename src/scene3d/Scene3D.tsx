@@ -33,11 +33,15 @@ import {
   usePlaneGeometry,
   useRoofGeometry,
   useShared,
-  useSolid,
 } from './Surfaces'
 import { OpeningsView } from './Openings'
 import { FurnitureView } from './Furniture'
+import { resolveMove, type CameraMove } from './cameraMoves'
 import { useFixtureDrag } from './useFixtureDrag'
+import { useWallPick, type WallHit } from './useWallPick'
+
+/** How far a button-driven move closes the gap each frame. */
+const CAMERA_EASE = 0.16
 import type { Point } from '../drawing/types'
 import { Planting, SUN_DIRECTION, SkyDome, SkyEnvironment } from './Scenery'
 import {
@@ -143,6 +147,7 @@ function Orbit({
   eaves,
   cutaway,
   controls,
+  move,
 }: {
   target: [number, number, number]
   span: number
@@ -150,6 +155,8 @@ function Orbit({
   cutaway: boolean
   /** Handed out so a furniture drag can switch the camera off imperatively. */
   controls?: React.RefObject<OrbitControls | null>
+  /** The latest request from the camera buttons, or null. */
+  move?: CameraMove | null
 }) {
   const { camera, gl } = useThree()
   // Kept as its own stable ref and the outside one is MIRRORED onto it: a
@@ -157,17 +164,58 @@ function Orbit({
   // the effect below depend on something that always changes.
   const ref = useRef<OrbitControls>(null)
   const wasCutaway = useRef(cutaway)
+  /** Where a button press is taking the camera, or null when it is resting. */
+  const goal = useRef<THREE.Vector3 | null>(null)
+  const lastMove = useRef(0)
 
-  useFrame(() => ref.current?.update())
+  useFrame(() => {
+    if (goal.current) {
+      // Eased rather than snapped: a cut from one side of the house to the
+      // other tells you nothing about how the two relate, where a turn does.
+      camera.position.lerp(goal.current, CAMERA_EASE)
+      if (camera.position.distanceTo(goal.current) < 0.02) {
+        camera.position.copy(goal.current)
+        goal.current = null
+      }
+    }
+    ref.current?.update()
+  })
 
   // Move only when the customer takes the roof off or puts it back — never
   // on a plan edit, which would yank the view out from under them mid-orbit.
   useEffect(() => {
     if (wasCutaway.current === cutaway) return
     wasCutaway.current = cutaway
+    goal.current = null
     camera.position.set(...cameraFor(span, eaves, cutaway))
     ref.current?.update()
   }, [camera, cutaway, span, eaves])
+
+  // ⚠️ A drag must win over a button. Without this the eased move keeps
+  // pulling towards its goal while the pointer is dragging the other way,
+  // and the camera fights the hand holding it.
+  useEffect(() => {
+    const instance = ref.current
+    if (!instance) return
+    const stop = () => {
+      goal.current = null
+    }
+    instance.addEventListener('start', stop)
+    return () => instance.removeEventListener('start', stop)
+  }, [])
+
+  useEffect(() => {
+    if (!move || move.seq === lastMove.current) return
+    lastMove.current = move.seq
+    const next = resolveMove(
+      move,
+      [camera.position.x, camera.position.y, camera.position.z],
+      target,
+      span,
+      cameraFor(span, eaves, cutaway),
+    )
+    goal.current = new THREE.Vector3(...next)
+  }, [move, camera, target, span, eaves, cutaway])
 
   return (
     <orbitControls
@@ -220,7 +268,13 @@ function Roof({
 
   const roofing = useShared(roofPattern, color, THREE.DoubleSide)
   const gableSkin = useShared(wallPattern, wallColor, THREE.DoubleSide)
-  const trim = useSolid(TRIM_SURFACE, { side: THREE.DoubleSide })
+  // ⚠️ The fascia is the roof's OWN edge, so it takes the roof's colour. It
+  // used a fixed pale trim (`TRIM_SURFACE`, #F0EDE6), which suits a tiled
+  // roof with a painted board and nothing else: on the cabin's dark metal
+  // roof it drew a bright white band right across the elevation, and that
+  // band was the first thing you saw. Flat `paint`, not the roof pattern —
+  // corrugation running across a 20 cm board reads as noise.
+  const trim = useShared('paint', color, THREE.DoubleSide)
 
   return (
     <>
@@ -378,6 +432,82 @@ function shoelace(polygon: { x: number; y: number }[]): number {
     total += a.x * b.y - b.x * a.y
   }
   return total / 2
+}
+
+/**
+ * An invisible floor the armed fixture is dropped onto.
+ *
+ * ⚠️ Mounted ONLY while a fixture is armed. It spans the whole view, so if it
+ * were always there it would swallow every pointer event before the furniture
+ * underneath could see one — and dragging a piece in 3D would stop working.
+ *
+ * ⚠️ A click has to be told from an ORBIT. r3f fires `onClick` whenever
+ * pointerdown and pointerup land on the same object however far the pointer
+ * travelled between, and an orbit drag does exactly that — so every attempt
+ * to turn the house would drop a sofa. The pointer's screen travel is
+ * measured instead, the same idea as the 2D editor's DRAG_THRESHOLD.
+ */
+const PLACE_SLOP = 5
+
+function PlacementPlane({
+  y,
+  centre,
+  reach,
+  onPlace,
+}: {
+  y: number
+  centre: [number, number, number]
+  reach: number
+  onPlace: (point: Point) => void
+}) {
+  const down = useRef<{ x: number; y: number } | null>(null)
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, y, 0]}
+      onPointerDown={(event) => {
+        down.current = { x: event.nativeEvent.clientX, y: event.nativeEvent.clientY }
+      }}
+      onPointerUp={(event) => {
+        const start = down.current
+        down.current = null
+        if (!start) return
+        const travelled = Math.hypot(
+          event.nativeEvent.clientX - start.x,
+          event.nativeEvent.clientY - start.y,
+        )
+        if (travelled > PLACE_SLOP) return
+        // Everything in plan coordinates is drawn inside a group translated
+        // by -centre, so world = plan - centre and the way back is this.
+        onPlace({ x: event.point.x + centre[0], y: event.point.z + centre[2] })
+      }}
+    >
+      <planeGeometry args={[reach, reach]} />
+      <meshBasicMaterial visible={false} />
+    </mesh>
+  )
+}
+
+/**
+ * Turns a click on a wall into an edit of the plan.
+ *
+ * Its own component because `useWallPick` needs the Canvas context — the
+ * camera, the renderer and the raycaster — and `Scene3D`'s body runs outside
+ * it. Mounted only while a brush is armed, so an ordinary orbit costs
+ * nothing.
+ */
+function WallPicker({
+  centre,
+  activeFloor,
+  onPick,
+}: {
+  centre: [number, number, number]
+  activeFloor: number
+  onPick: (hit: WallHit) => void
+}) {
+  useWallPick({ centre, activeFloor, onPick })
+  return null
 }
 
 /** One storey's slab, with its voids cut out. */
@@ -580,6 +710,11 @@ export function Scene3D({
   onFixtureDragStart,
   onFixtureDrag,
   onFixtureDrop,
+  cameraMove,
+  placingFixture,
+  onPlaceFixture,
+  pickingWall,
+  onPickWall,
 }: {
   /** One entry per storey, ground floor first — each with its own plan. */
   floors: FloorPlan[]
@@ -596,6 +731,14 @@ export function Scene3D({
   onFixtureDragStart?: () => void
   onFixtureDrag?: (fixtureId: string, point: Point) => void
   onFixtureDrop?: (fixtureId: string, point: Point) => void
+  /** The latest press from the camera buttons; null when none yet. */
+  cameraMove?: CameraMove | null
+  /** The fixture the palette has armed, or null. Placing is off when null. */
+  placingFixture?: string | null
+  onPlaceFixture?: (point: Point) => void
+  /** True while a paint or cladding brush is armed — clicks then hit walls. */
+  pickingWall?: boolean
+  onPickWall?: (hit: WallHit) => void
 }) {
   const { scene: sceneColors } = useTheme()
   const orbitRef = useRef<OrbitControls>(null)
@@ -685,7 +828,16 @@ export function Scene3D({
         eaves={eaves}
         cutaway={!options.showRoof}
         controls={orbitRef}
+        move={cameraMove}
       />
+
+      {placingFixture && onPlaceFixture && (
+        <PlacementPlane y={raise} centre={centre} reach={span * 8 + 40} onPlace={onPlaceFixture} />
+      )}
+
+      {pickingWall && onPickWall && (
+        <WallPicker centre={centre} activeFloor={activeFloor} onPick={onPickWall} />
+      )}
 
       {/* Centred on the origin, so the light, its shadow camera and the orbit
           target all work from one place whatever the plan's coordinates. */}

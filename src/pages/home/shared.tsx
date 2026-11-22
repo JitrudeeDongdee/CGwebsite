@@ -89,14 +89,19 @@ export function CardSkeletonGrid({
   count,
   columns = { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
   ratio,
+  gap = 1.5,
+  sx,
 }: {
   count: number
   columns?: object
   /** Image-slot aspect ratio — match the real cards so nothing jumps on load. */
   ratio?: string | object
+  /** Grid gap — match the real grid's, or the cards shift when the rows arrive. */
+  gap?: number | object
+  sx?: object
 }) {
   return (
-    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: columns }}>
+    <Box sx={{ display: 'grid', gap, gridTemplateColumns: columns, ...sx }}>
       {Array.from({ length: count }, (_, i) => (
         <CardSkeleton key={i} ratio={ratio} />
       ))}
