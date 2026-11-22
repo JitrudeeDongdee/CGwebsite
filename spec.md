@@ -1779,6 +1779,49 @@ them 0, which silently aims every click at the canvas corner. That was a real bu
 round. The remaining suspect is which objects r3f puts in its hit-test set for meshes nested inside
 the recentring and raise groups.
 
+### Why the punched hole "did not work" (2026-11-21)
+The owner reported he could not punch a hole in a wall. The capability was all there — the `open`
+preset exists, the dock carries the flag, `addOpening` stores it, the 3D build emits no unit. What
+was missing was any way to TELL which tile it was.
+
+- ⚠️ **A hole is stored as a `window` 1.0 m wide**, which is exactly what the "หน้าต่าง 100 ซม."
+  preset is. `OpeningPreview` only ever took `kind` and `width`, so the two tiles drew **byte-identical
+  artwork** and sat next to each other in the palette. It now takes `open` and draws a gap as a gap:
+  two jamb ticks with nothing between them, against the window's line straight across.
+- ⚠️ **The tiles' React `key` was `kind-width`, so those same two presets collided.** The comment
+  directly above it warns that "two presets can share both and differ only by a flag" — but that
+  had only been applied to the selected-state check, and the key underneath it was missed. Keyed on
+  `labelKey` now. (Same class as the `contact.json` label-as-key collision in MEMORY.md.)
+
+**Verified in the browser**, which is also what proves the capability itself was never broken: with
+the cabin loaded, arming "เจาะช่องผนัง" and clicking a bare wall took the summary from
+**ประตู 6 / หน้าต่าง 3 to ประตู 6 / หน้าต่าง 4**, and the two palette tiles now render different SVG —
+the hole has four lines (two wall stubs, two jambs) where the window has three (two stubs and the
+glazing across). `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
+
+### /products had no loading state while the catalogue arrived (2026-11-21)
+Each image already had its own shimmer (`SmartImage`), but the page around them did not. The seed
+array renders synchronously, so the first frame of `/products` showed the **21 bundled seed rows**
+— several of whose convention photo paths 404 into the flat coloured panel — and the toolbar read
+"พบ 21 รายการ"; a few hundred ms later the 46 Supabase rows replaced the lot. Nothing on screen said
+"still loading", and what was on screen was wrong rather than blank.
+- `ProductsPage` now reads `useCatalog().loading` and renders `CardSkeletonGrid` (16 = `PAGE_SIZE`,
+  `ratio="4 / 3"`, the real grid's gap) in the real grid's shape, hiding the row grid, the
+  `noResults` line and the pagination until the rows land. Same pattern `FeaturedSection` /
+  `PortfolioSection` already use on the home page — the seed is a fallback for an unconfigured or
+  failed Supabase, not something worth flashing on the way to the real catalogue.
+- `CatalogToolbar`'s `resultCount` takes `null` for "still counting" and shows a text skeleton, so
+  the row keeps its height instead of stating a number that is about to change.
+- `CardSkeletonGrid` gained `gap` + `sx`: it hardcoded `gap: 1.5` while this grid uses
+  `{xs: 1.5, sm: 2}`, which would shift every card sideways as the rows arrived.
+- Verified in the browser with a temporary 4 s delay injected into `CatalogProvider`'s Supabase
+  fetch (reverted): the skeleton grid renders in the same 4-column geometry the real cards land in,
+  with no "ไม่พบรายการ" and no pagination, then swaps cleanly to 46 rows. `tsc -b` clean, `oxlint` 26
+  pre-existing warnings, `pnpm run build` exit 0.
+- ⚠️ `/portfolio` and `/community` have the same gap and were left alone — out of scope here.
+- ⚠️ Separately, the whole page is blank but for `RouteFallback`'s small spinner while the lazy
+  route chunk downloads. That is before `ProductsPage` mounts and is untouched by this.
+
 ## Balconies — the floor pulled out past the walls (2026-11-22)
 The owner asked for a tool to pull the floor out into a balcony ("เครื่องมือดึงพื้น เผื่อดึงยื่น
 ออกมาเพื่อทำระเบียง"), and for railings — round a balcony and round the plot.

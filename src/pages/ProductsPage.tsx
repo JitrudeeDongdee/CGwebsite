@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Pagination from '@mui/material/Pagination'
-import { useProductsByCategory } from '../catalog/CatalogProvider'
+import { useCatalog, useProductsByCategory } from '../catalog/CatalogProvider'
 import { CatalogImage } from '../catalog/CatalogImage'
 import { trackProductSelect } from '../analytics/ga'
 import { productImagePath } from '../catalog/images'
@@ -16,6 +16,7 @@ import { matchesQuery, paginate, useCatalogQuery } from '../catalog/useCatalogQu
 import { CatalogToolbar } from '../ui/CatalogToolbar'
 import { ensureMarketingI18n } from '../marketing/i18n'
 import { useSeo } from '../seo/useSeo'
+import { CardSkeletonGrid } from './home/shared'
 
 ensureMarketingI18n()
 
@@ -32,6 +33,11 @@ export function ProductsPage() {
   const L = useLocalized()
   const { cat, query, requestedPage, update } = useCatalogQuery()
 
+  // The catalogue is fetched after the page mounts, so for the first moment
+  // there are no rows at all. Without this flag the grid is simply empty and
+  // the toolbar reports "found 0" — a page that looks finished and wrong,
+  // rather than one that is still loading.
+  const { loading } = useCatalog()
   const inCategory = useProductsByCategory(cat)
   const matches = inCategory.filter((p) =>
     matchesQuery([p.name.th, p.name.en, p.shortDesc.th, p.shortDesc.en, p.slug], query),
@@ -54,15 +60,26 @@ export function ProductsPage() {
         onCategory={(next) => update({ category: next })}
         onQuery={(next) => update({ q: next })}
         searchPlaceholder={t('mkt.catalog.search')}
-        resultCount={matches.length}
+        resultCount={loading ? null : matches.length}
         suggestions={inCategory.map((p) => L(p.name))}
       />
 
-      {matches.length === 0 && (
+      {!loading && matches.length === 0 && (
         <Typography color="text.secondary" sx={{ mt: 4 }}>{t('mkt.catalog.noResults')}</Typography>
       )}
 
-      <Box sx={{ display: 'grid', gap: { xs: 1.5, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, mt: 2 }}>
+      {/* A full page of placeholder cards in the real grid's shape, so the page
+          keeps its height and nothing jumps when the rows land. */}
+      {loading && (
+        <CardSkeletonGrid
+          count={PAGE_SIZE}
+          ratio="4 / 3"
+          gap={{ xs: 1.5, sm: 2 }}
+          sx={{ mt: 2 }}
+        />
+      )}
+
+      <Box sx={{ display: loading ? 'none' : 'grid', gap: { xs: 1.5, sm: 2 }, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, mt: 2 }}>
         {products.map((p) => (
           <Paper
             key={p.id}
@@ -88,7 +105,7 @@ export function ProductsPage() {
         ))}
       </Box>
 
-      {pageCount > 1 && (
+      {!loading && pageCount > 1 && (
         <Stack direction="row" sx={{ justifyContent: 'center', mt: 4 }}>
           <Pagination
             page={page}

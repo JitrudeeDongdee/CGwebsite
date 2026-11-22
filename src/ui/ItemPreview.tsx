@@ -339,7 +339,16 @@ export function RailPreview({ style }: { style: RailStyle }) {
   )
 }
 
-export function OpeningPreview({ kind, width }: { kind: OpeningKind; width: number }) {
+export function OpeningPreview({
+  kind,
+  width,
+  open,
+}: {
+  kind: OpeningKind
+  width: number
+  /** A punched hole: no leaf, no glazing — just the gap. */
+  open?: boolean
+}) {
   const theme = useTheme()
   // Scaled so a 1.5 m window fills the box and an 0.8 m door reads narrower.
   const span = Math.min(BOX - 8, (width / 1.5) * (BOX - 8))
@@ -352,7 +361,23 @@ export function OpeningPreview({ kind, width }: { kind: OpeningKind; width: numb
       <line x1={0} y1={mid} x2={x0} y2={mid} stroke={theme.scene.wall} strokeWidth={4} />
       <line x1={x0 + span} y1={mid} x2={BOX} y2={mid} stroke={theme.scene.wall} strokeWidth={4} />
 
-      {kind === 'door' ? (
+      {/* ⚠️ A hole is stored as a `window` 1.0 m wide, which is exactly what
+          the "หน้าต่าง 100 ซม." preset is — so without this the two tiles
+          drew identical artwork and sat next to each other in the palette.
+          A gap is drawn as a gap: jamb ticks and nothing between them. */}
+      {open ? (
+        <>
+          <line x1={x0} y1={mid - 5} x2={x0} y2={mid + 5} stroke={theme.scene.wall} strokeWidth={1.5} />
+          <line
+            x1={x0 + span}
+            y1={mid - 5}
+            x2={x0 + span}
+            y2={mid + 5}
+            stroke={theme.scene.wall}
+            strokeWidth={1.5}
+          />
+        </>
+      ) : kind === 'door' ? (
         <>
           <line
             x1={x0}
