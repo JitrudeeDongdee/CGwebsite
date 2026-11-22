@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Stack from '@mui/material/Stack'
+import Skeleton from '@mui/material/Skeleton'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
@@ -53,7 +54,9 @@ export function CatalogToolbar({
   onCategory: (next: Cat) => void
   onQuery: (next: string) => void
   searchPlaceholder: string
-  resultCount: number
+  /** How many rows matched — `null` while the catalogue is still loading, which
+   *  shows a placeholder instead of the honest-but-wrong "found 0". */
+  resultCount: number | null
   /** Words offered as you type in the search box (e.g. product/project names). */
   suggestions?: string[]
 }) {
@@ -170,9 +173,13 @@ export function CatalogToolbar({
             onDelete={() => onCategory('all')}
           />
         )}
-        <Typography variant="body2" color="text.secondary">
-          {t('mkt.catalog.resultCount', { count: resultCount })}
-        </Typography>
+        {resultCount === null ? (
+          <Skeleton variant="text" width={88} sx={{ fontSize: 14 }} />
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            {t('mkt.catalog.resultCount', { count: resultCount })}
+          </Typography>
+        )}
       </Stack>
     </>
   )

@@ -1799,6 +1799,29 @@ the cabin loaded, arming "เจาะช่องผนัง" and clicking a b
 the hole has four lines (two wall stubs, two jambs) where the window has three (two stubs and the
 glazing across). `tsc -b` clean, `oxlint` 26 pre-existing warnings, `pnpm run build` exit 0.
 
+### /products had no loading state while the catalogue arrived (2026-11-21)
+Each image already had its own shimmer (`SmartImage`), but the page around them did not. The seed
+array renders synchronously, so the first frame of `/products` showed the **21 bundled seed rows**
+— several of whose convention photo paths 404 into the flat coloured panel — and the toolbar read
+"พบ 21 รายการ"; a few hundred ms later the 46 Supabase rows replaced the lot. Nothing on screen said
+"still loading", and what was on screen was wrong rather than blank.
+- `ProductsPage` now reads `useCatalog().loading` and renders `CardSkeletonGrid` (16 = `PAGE_SIZE`,
+  `ratio="4 / 3"`, the real grid's gap) in the real grid's shape, hiding the row grid, the
+  `noResults` line and the pagination until the rows land. Same pattern `FeaturedSection` /
+  `PortfolioSection` already use on the home page — the seed is a fallback for an unconfigured or
+  failed Supabase, not something worth flashing on the way to the real catalogue.
+- `CatalogToolbar`'s `resultCount` takes `null` for "still counting" and shows a text skeleton, so
+  the row keeps its height instead of stating a number that is about to change.
+- `CardSkeletonGrid` gained `gap` + `sx`: it hardcoded `gap: 1.5` while this grid uses
+  `{xs: 1.5, sm: 2}`, which would shift every card sideways as the rows arrived.
+- Verified in the browser with a temporary 4 s delay injected into `CatalogProvider`'s Supabase
+  fetch (reverted): the skeleton grid renders in the same 4-column geometry the real cards land in,
+  with no "ไม่พบรายการ" and no pagination, then swaps cleanly to 46 rows. `tsc -b` clean, `oxlint` 26
+  pre-existing warnings, `pnpm run build` exit 0.
+- ⚠️ `/portfolio` and `/community` have the same gap and were left alone — out of scope here.
+- ⚠️ Separately, the whole page is blank but for `RouteFallback`'s small spinner while the lazy
+  route chunk downloads. That is before `ProductsPage` mounts and is untouched by this.
+
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
 
