@@ -1262,7 +1262,8 @@ was clickable and there was no keyboard delete.
 
 ⚠️ **Not matched to the render yet:** the wrap-around porch soffit lining, the gravel/paving
 pattern of the yard, and the planter beds. The fence is off by default, since most plans are not
-walled.
+walled. (All three of those landed the same day — see "The porch lining and the yard" below. The
+list that is still open is in "What the render still has that we do not" at the end of this file.)
 
 
 ## Dragging furniture in the 3D view — `src/scene3d/useFixtureDrag.ts` (2026-11-13)
@@ -1822,6 +1823,42 @@ array renders synchronously, so the first frame of `/products` showed the **21 b
 - ⚠️ Separately, the whole page is blank but for `RouteFallback`'s small spinner while the lazy
   route chunk downloads. That is before `ProductsPage` mounts and is untouched by this.
 
+## What the render still has that we do not (audited 2026-11-22)
+
+The owner's reference render was read back out of the conversation history and compared surface by
+surface against what `cabin-12x3-4` actually builds. Everything below is measured against that
+image, not against memory of it.
+
+**In the render and implemented:** the dark standing-seam metal roof with its fascia dark to the
+edge; charcoal vertical cladding; the warm timber panels between the glazing; the timber porch
+soffit; black frames; full-height sliding glazed doors; sheer curtains behind them; the covered
+porch as a roofed open bay; the house raised on piers with a skirt; a flight of steps at every
+exterior door; wall sconces flanking the doors; the chippings yard; the herringbone path; planting
+beds, shrubs and background conifers; the slat fence; and the sky the glass reflects.
+
+**Still open, in descending order of how much it costs the likeness:**
+1. **No flue.** The render carries a black capped flue pipe standing off the roof at the far end —
+   the one thing breaking the roof's silhouette, and the eye goes to it. Nothing in `scene3d/`
+   draws one; there is no `chimney` or `flue` anywhere in `src/`.
+2. **The porch floor is the house's slab.** `Ground` lays one `paving` surface (`#D8D3CA`) under
+   the whole footprint, porch included, while the render's porch — and the flight of steps down
+   from it — is grey timber decking. The slab reads as concrete where the render reads as a deck.
+3. **The porch's inner faces are charcoal.** The render lines the porch on three surfaces: ceiling,
+   the return wall and the reveal. We line the ceiling (the soffit takes the gable finish) and the
+   back wall (a full-width timber panel), but the two reveals are still the wall's outside finish.
+   The per-wall `insideColor` exists and could carry this; the cabin template does not set it.
+4. **No boulders.** Three pale rocks sit in the chippings in the render. `Scenery.tsx` draws trees
+   and shrubs only.
+5. **The outdoor lounge is not placed.** `campChair` and `firePit` exist as fixtures and the render
+   has a sofa and a fire table on the gravel plus two armchairs on the porch — the cabin template
+   places none of them outside.
+6. **The fence is off by default**, which is right for most plans and wrong for this one sample.
+
+Items 1, 2 and 4 are new geometry; 3, 5 and 6 are data on the template and cost nothing but a
+decision. None has been started — the files they touch (`Scene3D.tsx`, `SitePieces.tsx`,
+`building3d.ts`, `templates.ts`) are the ones the three parallel sessions are editing, so this
+work waits for them to land.
+
 ## Balconies — the floor pulled out past the walls (2026-11-22)
 The owner asked for a tool to pull the floor out into a balcony ("เครื่องมือดึงพื้น เผื่อดึงยื่น
 ออกมาเพื่อทำระเบียง"), and for railings — round a balcony and round the plot.
@@ -1930,6 +1967,11 @@ no new ones), `pnpm run build` exit 0.
 ⚠️ **Not done:** the balcony has no roof over it, the `bounds` the ground/yard and camera are sized
 from still come from the walls only (a deep balcony can reach past the gravel apron), and a balcony
 cannot be armed or placed from the 3D view.
+
+⚠️ **Relates to item 6 of the render audit above** ("the fence is off by default, which is right
+for most plans and wrong for this one sample"). The fence is still off by default and that has
+not changed here — what changed is that it now HAS controls (style, height, sides), so turning it
+on for the cabin template is now a choice of three values rather than take-it-or-leave-it.
 
 ## Current state
 Phases 1, 2, 2.5 and the first half of Phase 3 are live on `main` — the Supabase schema/RLS/repositories, the catalog Storage bucket and the dev-only Facebook import merged via **PR #7** (`origin/main` tip `540c3b1`).
