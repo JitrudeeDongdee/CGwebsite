@@ -1,4 +1,5 @@
 import type {
+  DrawBalcony,
   DrawFixture,
   DrawingState,
   DrawNode,
@@ -12,10 +13,25 @@ import type {
   WallFinish,
 } from './types'
 import { fixtureSpec } from './fixtures'
+import {
+  MAX_BALCONY_PROJECTION,
+  MIN_BALCONY_PROJECTION,
+  MIN_BALCONY_WIDTH,
+  placeBalconies,
+  resolveBalcony,
+} from './balconies'
 import { GRID_SIZE, distance, findSnapTarget, snapToGrid } from './geometry'
 
 export function createInitialState(): DrawingState {
-  return { nodes: {}, walls: [], openings: [], fixtures: [], roomLabels: [], panels: [] }
+  return {
+    nodes: {},
+    walls: [],
+    openings: [],
+    fixtures: [],
+    roomLabels: [],
+    panels: [],
+    balconies: [],
+  }
 }
 
 function nextId(prefix: string): string {
@@ -113,11 +129,24 @@ function syncStructuralColumns(state: DrawingState): DrawingState {
   return { ...state, fixtures: [...columns, ...loose] }
 }
 
-/** Drops openings whose wall has gone away. */
+/**
+ * Drops anything bound to a wall that has gone away — openings, cladding
+ * bands and balconies alike. A balcony whose wall was deleted would otherwise
+ * be left hanging in the air with nothing holding it up.
+ */
 function pruneOpenings(state: DrawingState): DrawingState {
   const wallIds = new Set(state.walls.map((wall) => wall.id))
   const openings = state.openings.filter((opening) => wallIds.has(opening.wallId))
-  return openings.length === state.openings.length ? state : { ...state, openings }
+  const panels = (state.panels ?? []).filter((panel) => wallIds.has(panel.wallId))
+  const balconies = (state.balconies ?? []).filter((one) => wallIds.has(one.wallId))
+  if (
+    openings.length === state.openings.length &&
+    panels.length === (state.panels ?? []).length &&
+    balconies.length === (state.balconies ?? []).length
+  ) {
+    return state
+  }
+  return { ...state, openings, panels, balconies }
 }
 
 export function commitWall(
@@ -287,6 +316,134 @@ export function deleteOpening(state: DrawingState, openingId: string): DrawingSt
   return { ...state, openings: state.openings.filter((o) => o.id !== openingId) }
 }
 
+
+/**
+ * Pull the floor out from a wall into a balcony.
+ *
+ * Shaped on `addOpening` — the offset is clamped so the slab sits fully on
+ * its host wall — but a wall shorter than the balcony is NOT refused the way
+ * it is for a door: the width is narrowed to the wall instead, because a
+ * balcony is pulled out of whatever wall you clicked and being silently given
+ * nothing reads as a broken tool.
+ */
+export function addBalcony(
+  state: DrawingState,
+  wallId: string,
+  offsetAlongWall: number,
+  width: number,
+  projection: number,
+  railing?: string,
+): DrawingState {
+  const wall = state.walls.find((one) => one.id === wallId)
+  if (!wall) return state
+  const a = state.nodes[wall.a]
+  const b = state.nodes[wall.b]
+  if (!a || !b) return state
+
+  const wallLength = distance(a, b)
+  if (wallLength < MIN_BALCONY_WIDTH) return state
+
+  const clearWidth = Math.max(MIN_BALCONY_WIDTH, Math.min(width, wallLength))
+  const half = clearWidth / 2
+  const balcony: DrawBalcony = {
+    id: nextId('balcony'),
+    wallId,
+    offset: Math.min(Math.max(offsetAlongWall, half), wallLength - half),
+    width: clearWidth,
+    projection: Math.max(
+      MIN_BALCONY_PROJECTION,
+      Math.min(MAX_BALCONY_PROJECTION, projection),
+    ),
+    ...(railing ? { railing } : {}),
+  }
+  return { ...state, balconies: [...(state.balconies ?? []), balcony] }
+}
+
+export function deleteBalcony(state: DrawingState, balconyId: string): DrawingState {
+  return {
+    ...state,
+    balconies: (state.balconies ?? []).filter((one) => one.id !== balconyId),
+  }
+}
+
+/**
+ * The drag that gives the tool its name: pulling the slab OUT deepens it,
+ * sliding it sideways moves it along the wall.
+ *
+ * One gesture for both, because in the balcony's own frame they are simply
+ * the two components of the same drag — and because asking someone to find a
+ * particular edge handle on a 1 m slab is worse than letting them push it
+ * the way they want it to go.
+ */
+export function moveBalconyBy(
+  state: DrawingState,
+  balconyId: string,
+  delta: Point,
+): DrawingState {
+  const placed = placeBalconies(state).find((one) => one.balcony.id === balconyId)
+  if (!placed) return state
+
+  const along = delta.x * placed.direction.x + delta.y * placed.direction.y
+  const out = delta.x * placed.outward.x + delta.y * placed.outward.y
+
+  return {
+    ...state,
+    balconies: (state.balconies ?? []).map((one) =>
+      one.id === balconyId
+        ? {
+            ...one,
+            offset: one.offset + along,
+            projection: Math.max(
+              MIN_BALCONY_PROJECTION,
+              Math.min(MAX_BALCONY_PROJECTION, one.projection + out),
+            ),
+          }
+        : one,
+    ),
+  }
+}
+
+/**
+ * Tidies a finished balcony drag: the projection lands on a round 10 cm and
+ * the offset is pulled back onto its wall. Stored rather than only resolved,
+ * so what is saved is what was drawn.
+ */
+export function finishBalconyMove(state: DrawingState, balconyId: string): DrawingState {
+  const wallLengths = new Map<string, number>()
+  for (const wall of state.walls) {
+    const a = state.nodes[wall.a]
+    const b = state.nodes[wall.b]
+    if (a && b) wallLengths.set(wall.id, distance(a, b))
+  }
+
+  return {
+    ...state,
+    balconies: (state.balconies ?? []).map((one) => {
+      const length = wallLengths.get(one.wallId)
+      if (length === undefined) return one
+      const resolved = resolveBalcony(
+        { ...one, projection: Math.round(one.projection * 10) / 10 },
+        length,
+      )
+      return one.id === balconyId ? { ...one, ...resolved } : one
+    }),
+  }
+}
+
+/** Swaps what stands round one balcony's open edges. */
+export function setBalconyRailing(
+  state: DrawingState,
+  balconyId: string,
+  railing: string,
+): DrawingState {
+  return {
+    ...state,
+    balconies: (state.balconies ?? []).map((one) =>
+      one.id === balconyId ? { ...one, railing } : one,
+    ),
+  }
+}
+
 /** Replaces the whole plan, e.g. when loading a starter template. */
 /**
  * Paints one wall. A patch, not a replacement, so brushing the outside does
@@ -386,6 +543,7 @@ export function loadPlan(plan: DrawingState): DrawingState {
     // ⚠️ Rebuilt field by field, so anything added to DrawingState has to be
     // listed here too or loading a plan silently drops it.
     panels: [...(plan.panels ?? [])],
+    balconies: [...(plan.balconies ?? [])],
   })
 }
 

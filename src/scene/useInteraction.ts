@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type {
   DrawingState,
   FixtureKind,
@@ -10,6 +10,7 @@ import type {
 import { findNodeAt, findSnapTarget, findWallAt, snapToGrid } from '../drawing/geometry'
 import { offsetAlongWall } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
+import { findBalconyAt, placeBalconies } from '../drawing/balconies'
 import type { ToolMode } from '../drawing/tools'
 
 export interface DraftWall {
@@ -34,6 +35,8 @@ interface Press {
   fixtureId: string | null
   /** Set when the press landed on a wall body, to slide the whole wall. */
   wallId: string | null
+  /** Set when the press landed on a balcony slab, to pull it in or out. */
+  balconyId: string | null
   moved: boolean
 }
 
@@ -59,12 +62,16 @@ interface UseInteractionOptions {
   finalizeWallMove: (wallId: string) => void
   paintWall: (wallId: string, patch: WallFinish) => void
   toggleWallPanel: (wallId: string, offset: number, width: number, finish: WallFinish) => void
+  placeBalcony: (wallId: string, offset: number, width: number, projection: number) => void
+  removeBalcony: (balconyId: string) => void
+  dragBalconyBy: (balconyId: string, delta: Point) => void
+  finalizeBalconyMove: (balconyId: string) => void
   /**
    * A plain click in select mode: the fixture under the cursor, or null for
    * empty ground. The editor has no selection of its own — this is where one
    * comes from, so the Delete key has something to act on.
    */
-  onPick?: (fixtureId: string | null) => void
+  onPick?: (pick: { fixtureId: string | null; balconyId: string | null }) => void
 }
 
 /**
@@ -93,6 +100,10 @@ export function useInteraction({
   placeFixture,
   paintWall,
   toggleWallPanel,
+  placeBalcony,
+  removeBalcony,
+  dragBalconyBy,
+  finalizeBalconyMove,
   onPick,
   updateFixturePosition,
   finalizeFixtureMove,
@@ -105,16 +116,24 @@ export function useInteraction({
 
   const [draft, setDraft] = useState<DraftWall | null>(null)
   const [moveSnap, setMoveSnap] = useState<SnapTarget | null>(null)
-  const [hover, setHover] = useState<{ fixtureId: string | null; wallId: string | null }>({
-    fixtureId: null,
-    wallId: null,
-  })
+  const [hover, setHover] = useState<{
+    fixtureId: string | null
+    wallId: string | null
+    balconyId: string | null
+  }>({ fixtureId: null, wallId: null, balconyId: null })
   // Read inside the move handler to skip a pointless state write; a state
   // read there would be from the closure of the previous render.
   const hoverRef = useRef(hover)
   hoverRef.current = hover
   /** Latest cursor position, for the ghost preview of a pending item. */
   const [cursor, setCursor] = useState<Point | null>(null)
+
+  /** Balconies in world coordinates, for hit-testing a click or a drag. */
+  const balconies = useMemo(() => placeBalconies(state), [state])
+  // The move/up handlers run during the same gesture that can change the
+  // plan, so they must not read this out of a stale closure.
+  const balconiesRef = useRef(balconies)
+  balconiesRef.current = balconies
 
   /** Resolves a raw pointer position to where geometry would actually land. */
   const resolve = useCallback(
@@ -143,16 +162,24 @@ export function useInteraction({
       const node = findNodeAt(state, point)
       // Corners win over fixtures: they're smaller and harder to hit.
       const fixture = node ? null : findFixtureAt(state.fixtures, point)
+      // A balcony is outside the walls, so it never competes with a corner or
+      // a wall for the same click. It does sit under furniture put out on it,
+      // which keeps its turn here: the sofa is on top of the slab.
+      const balcony =
+        node || fixture ? null : findBalconyAt(balconiesRef.current, point)
       // Only the move tool slides a whole wall; in draw mode a press on a
       // wall still means "start a wall here".
       const wall =
-        node || fixture || tool.type !== 'select' ? null : findWallAt(state, point)
+        node || fixture || balcony || tool.type !== 'select'
+          ? null
+          : findWallAt(state, point)
       pressRef.current = {
         origin: point,
         last: point,
         nodeId: node?.id ?? null,
         fixtureId: fixture?.id ?? null,
         wallId: wall?.id ?? null,
+        balconyId: balcony?.id ?? null,
         moved: false,
       }
     },
@@ -166,29 +193,58 @@ export function useInteraction({
       // What the cursor is over, so the sheet can say "this is clickable"
       // before anyone clicks. Which kind depends on what the tool acts on:
       // select moves furniture, paint and openings act on walls.
+      const setHoverTo = (next: {
+        fixtureId: string | null
+        wallId: string | null
+        balconyId: string | null
+      }) =>
+        setHover((current) =>
+          current.fixtureId === next.fixtureId &&
+          current.wallId === next.wallId &&
+          current.balconyId === next.balconyId
+            ? current
+            : next,
+        )
+
       if (tool.type === 'select') {
         const over = findFixtureAt(state.fixtures, point)
-        setHover((current) =>
-          current.fixtureId === (over?.id ?? null) && current.wallId === null
-            ? current
-            : { fixtureId: over?.id ?? null, wallId: null },
-        )
+        // A balcony can be grabbed and pulled in select mode, so it lights up
+        // there too — it is the only thing that says the slab is draggable.
+        const slab = over ? null : findBalconyAt(balconiesRef.current, point)
+        setHoverTo({
+          fixtureId: over?.id ?? null,
+          wallId: null,
+          balconyId: slab?.id ?? null,
+        })
+      } else if (tool.type === 'balcony') {
+        // Either target is live: a wall to pull a new balcony out of, or an
+        // existing slab to take away.
+        const slab = findBalconyAt(balconiesRef.current, point)
+        const over = slab ? null : findWallAt(state, point)
+        setHoverTo({
+          fixtureId: null,
+          wallId: over?.id ?? null,
+          balconyId: slab?.id ?? null,
+        })
       } else if (tool.type === 'paint' || tool.type === 'panel' || tool.type === 'opening') {
         const over = findWallAt(state, point)
-        setHover((current) =>
-          current.wallId === (over?.id ?? null) && current.fixtureId === null
-            ? current
-            : { fixtureId: null, wallId: over?.id ?? null },
-        )
-      } else if (hoverRef.current.fixtureId || hoverRef.current.wallId) {
-        setHover({ fixtureId: null, wallId: null })
+        setHoverTo({ fixtureId: null, wallId: over?.id ?? null, balconyId: null })
+      } else if (
+        hoverRef.current.fixtureId ||
+        hoverRef.current.wallId ||
+        hoverRef.current.balconyId
+      ) {
+        setHover({ fixtureId: null, wallId: null, balconyId: null })
       }
 
       const press = pressRef.current
 
       if (press && !press.moved) {
         const travelled = Math.hypot(point.x - press.origin.x, point.y - press.origin.y)
-        if (travelled > DRAG_THRESHOLD && (press.nodeId || press.fixtureId || press.wallId)) {
+        if (
+          travelled > DRAG_THRESHOLD &&
+          (press.nodeId || press.fixtureId || press.wallId || press.balconyId)
+        ) {
           press.moved = true
           beginNodeDrag()
         }
@@ -214,6 +270,19 @@ export function useInteraction({
         return
       }
 
+      // The gesture the tool is named for: dragging the slab AWAY from the
+      // house deepens it, dragging it sideways slides it along the wall.
+      // Incremental, for the same reason a wall drag is — a balcony moved by
+      // the absolute offset would jump its centre onto the cursor.
+      if (press?.moved && press.balconyId) {
+        dragBalconyBy(press.balconyId, {
+          x: point.x - press.last.x,
+          y: point.y - press.last.y,
+        })
+        press.last = point
+        return
+      }
+
       // Not dragging a corner: keep the rubber-band preview on the cursor.
       // Suppressed while placing an opening — clicks mean "drop it here".
       const anchor = anchorRef.current
@@ -222,7 +291,16 @@ export function useInteraction({
         setDraft({ start: anchor, current: end, snap })
       }
     },
-    [state, beginNodeDrag, updateNodePosition, updateFixturePosition, dragWallBy, resolve, tool],
+    [
+      state,
+      beginNodeDrag,
+      updateNodePosition,
+      updateFixturePosition,
+      dragWallBy,
+      dragBalconyBy,
+      resolve,
+      tool,
+    ],
   )
 
   const onUp = useCallback(
@@ -246,8 +324,34 @@ export function useInteraction({
         return
       }
 
+      if (press?.moved && press.balconyId) {
+        finalizeBalconyMove(press.balconyId)
+        return
+      }
+
       if (tool.type === 'select') {
-        onPick?.(press?.fixtureId ?? null)
+        onPick?.({
+          fixtureId: press?.fixtureId ?? null,
+          balconyId: press?.balconyId ?? null,
+        })
+        return
+      }
+
+      // Pull a new balcony out of the wall under the cursor — or, if the
+      // click landed on one already there, take it away. One tool, both
+      // directions, the same shape as the cladding-band brush.
+      if (tool.type === 'balcony') {
+        if (press?.balconyId) {
+          removeBalcony(press.balconyId)
+          return
+        }
+        const wall = findWallAt(state, point)
+        if (wall) {
+          const offset = offsetAlongWall(state, wall.id, point)
+          if (offset !== null) {
+            placeBalcony(wall.id, offset, tool.width, tool.projection)
+          }
+        }
         return
       }
 
@@ -327,6 +431,9 @@ export function useInteraction({
       placeFixture,
       paintWall,
       toggleWallPanel,
+      placeBalcony,
+      removeBalcony,
+      finalizeBalconyMove,
       onPick,
       resolve,
       state,

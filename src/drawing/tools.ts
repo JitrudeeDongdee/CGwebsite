@@ -35,6 +35,12 @@ export type ToolMode =
    * and clicking an existing band removes it rather than repainting it.
    */
   | { type: 'panel'; finish: WallFinish; width: number }
+  /**
+   * Pull the floor out from a wall into a balcony. Click a wall to place one;
+   * click a balcony already there to take it away, the way the panel brush
+   * toggles — so removing one needs no second tool and no selection.
+   */
+  | { type: 'balcony'; projection: number; width: number }
 
 export const SELECT_TOOL: ToolMode = { type: 'select' }
 /** Default draw mode: `auto` thickness, matching the previous behaviour. */

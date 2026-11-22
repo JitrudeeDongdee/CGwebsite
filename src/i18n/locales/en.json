@@ -68,7 +68,9 @@
     "roomCount": "Rooms",
     "roomUnit": "rooms",
     "floorArea": "Room area, floor {{n}}",
-    "houseTotal": "Whole house"
+    "houseTotal": "Whole house",
+    "balconyArea": "Balcony area",
+    "balconyNote": "A balcony is outside the house — not counted as living area and not priced as any."
   },
   "estimate": {
     "title": "Price estimate",
@@ -438,5 +440,31 @@
     "hint": "Pick a colour, then click a wall to place a band. Click the band again to remove it.",
     "width": "Width",
     "armed": "Panel tool — click a wall to place, click a band to remove"
+  },
+  "balcony": {
+    "title": "Balcony (pull the floor out)",
+    "hint": "Pick a depth, then click a wall to pull the floor out into a balcony.",
+    "placeHint": "Click a wall to place a balcony — drag the slab outwards to pull it deeper.",
+    "removeHint": "Click a balcony already there to take it away.",
+    "depth": "{{m}} m deep",
+    "width": "Width",
+    "delete": "Delete balcony"
+  },
+  "railing": {
+    "title": "Balcony railing",
+    "hint": "The railing follows the balcony's own edges — nothing to place.",
+    "bar": "Vertical bars",
+    "slat": "Horizontal slats",
+    "glass": "Glass",
+    "wall": "Solid wall",
+    "none": "No railing"
+  },
+  "fence": {
+    "style": "Fence style",
+    "sides": "Sides fenced",
+    "sidesFar": "Two far sides",
+    "sidesThree": "Three sides",
+    "sidesAll": "All round",
+    "height": "Fence height"
   }
 }

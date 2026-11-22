@@ -18,6 +18,7 @@ export interface ContextTarget {
   nodeId: string | null
   openingId: string | null
   fixtureId: string | null
+  balconyId: string | null
   /** World point of the right-click, for naming the room under it. */
   point: { x: number; y: number }
   /** Existing label in that room, if any. */
@@ -31,6 +32,7 @@ interface CanvasContextMenuProps {
   onClose: () => void
   onDeleteOpening: (openingId: string) => void
   onDeleteFixture: (fixtureId: string) => void
+  onDeleteBalcony: (balconyId: string) => void
   onRotateFixture: (fixtureId: string) => void
   onRenameRoom: () => void
   onDeleteWall: (wallId: string) => void
@@ -49,6 +51,7 @@ export function CanvasContextMenu({
   onClose,
   onDeleteOpening,
   onDeleteFixture,
+  onDeleteBalcony,
   onRotateFixture,
   onRenameRoom,
   onDeleteWall,
@@ -101,6 +104,15 @@ export function CanvasContextMenu({
             <DriveFileRenameOutline fontSize="small" />
           </ListItemIcon>
           <ListItemText>{t('rooms.rename')}</ListItemText>
+        </MenuItem>
+      )}
+
+      {target?.balconyId && (
+        <MenuItem onClick={() => run(() => onDeleteBalcony(target.balconyId!))}>
+          <ListItemIcon>
+            <DeleteOutline fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('balcony.delete')}</ListItemText>
         </MenuItem>
       )}
 

@@ -1,6 +1,8 @@
 import type { DrawingState, OpeningKind, WallFinish } from './types'
 import { distance } from './geometry'
 import { resolveOpening } from './openings'
+import { BALCONY_SLAB, placeBalconies } from './balconies'
+import { BALCONY_RAIL_HEIGHT } from './railing'
 import { EXTERIOR_WALL_THICKNESS, INTERIOR_WALL_THICKNESS } from './wallOutline'
 
 /** Storey and opening heights in metres, typical for a house built here. */
@@ -418,6 +420,89 @@ export function buildBuilding3D(floors: FloorPlan[]): Building3D {
   const roofBounds = [...footprints].reverse().find((one) => one !== null) ?? null
 
   return { walls, openings, trim, columns, bounds, roofBounds, eaves }
+}
+
+/**
+ * One straight run of railing or fence, in plan.
+ *
+ * Produced here and drawn by the scene, the same arrangement `entryPathBoxes`
+ * uses: the geometry is decided by the plan, which this tier owns, while how
+ * a bar or a sheet of glass looks belongs to the renderer.
+ */
+export interface RailRun {
+  id: string
+  from: { x: number; z: number }
+  to: { x: number; z: number }
+  /** Height of the run's base above the ground. */
+  y: number
+  height: number
+  /** A `RailStyle` id; kept as a string so this file stays pure data. */
+  style: string
+}
+
+export interface BalconyPieces {
+  /** The projecting slabs themselves. */
+  slabs: WallBox[]
+  /** Posts, rails and infill round each slab's three open edges. */
+  rails: RailRun[]
+}
+
+/**
+ * The balconies of every storey, as a slab plus the railing round it.
+ *
+ * ⚠️ The railing is DERIVED from the balcony's own edges, not placed: a
+ * balcony without one is a fall, so there must be no way to end up with a
+ * slab and no rail by forgetting a step. It is built from `PlacedBalcony.rails`
+ * — the two returns and the outer face; the fourth edge is the house. The
+ * same reasoning as the entry steps, which are built from the doors.
+ *
+ * Each slab sits on the storey it was drawn on, with its top flush with that
+ * storey's floor, so stepping out through the door is level.
+ */
+export function balconyPieces(
+  floors: FloorPlan[],
+  defaultRailing: string,
+): BalconyPieces {
+  const slabs: WallBox[] = []
+  const rails: RailRun[] = []
+
+  floors.forEach((floor, level) => {
+    const base = level * LEVEL_HEIGHT
+    // +0.02 matches the floor slab the rooms are drawn on, so the two are
+    // level and there is no lip in the doorway.
+    const top = base + 0.02
+
+    for (const placed of placeBalconies(floor.state, floor.exteriorWallIds)) {
+      slabs.push({
+        id: `balcony-${placed.balcony.id}-L${level}`,
+        x: placed.center.x,
+        y: top - BALCONY_SLAB / 2,
+        z: placed.center.y,
+        length: placed.width,
+        height: BALCONY_SLAB,
+        thickness: placed.depth,
+        angle: placed.angle,
+        // Deliberately no `outward`/`exterior`: a cutaway takes away the
+        // walls in the way, and taking the balcony floor away with them
+        // would leave its railing standing on nothing.
+      })
+
+      const style = placed.balcony.railing ?? defaultRailing
+      if (style === 'none') continue
+      placed.rails.forEach((run, i) => {
+        rails.push({
+          id: `balcony-rail-${placed.balcony.id}-L${level}-${i}`,
+          from: { x: run.from.x, z: run.from.y },
+          to: { x: run.to.x, z: run.to.y },
+          y: top,
+          height: BALCONY_RAIL_HEIGHT,
+          style,
+        })
+      })
+    }
+  })
+
+  return { slabs, rails }
 }
 
 /**

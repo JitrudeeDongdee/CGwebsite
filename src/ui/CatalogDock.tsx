@@ -22,6 +22,15 @@ import OpenInFullIcon from '@mui/icons-material/OpenInFull'
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen'
 
 import { WALL_TYPES } from '../drawing/wallTypes'
+import { BALCONY_PROJECTIONS, DEFAULT_BALCONY_WIDTH } from '../drawing/balconies'
+import {
+  FENCE_HEIGHTS,
+  FENCE_SIDE_OPTIONS,
+  RAIL_STYLES,
+  type FenceHeight,
+  type FenceSides,
+  type RailStyle,
+} from '../drawing/railing'
 import { OPENING_PRESETS } from '../drawing/openings'
 import { FIXTURE_CATALOG, FIXTURE_GROUPS } from '../drawing/fixtures'
 import { HOUSE_STYLES } from '../drawing/houseStyle'
@@ -48,7 +57,13 @@ import type { FixtureKind, OpeningKind, WallFinish } from '../drawing/types'
 import type { ToolMode } from '../drawing/tools'
 import type { Building3DOptions } from '../scene3d/Scene3D'
 import type { MaterialGrade, PriceEstimate } from '../pricing/types'
-import { FixturePreview, OpeningPreview, WallTypePreview } from './ItemPreview'
+import {
+  BalconyPreview,
+  FixturePreview,
+  OpeningPreview,
+  RailPreview,
+  WallTypePreview,
+} from './ItemPreview'
 import { MaterialPreview } from './MaterialPreview'
 import { RoofShapePreview } from './RoofPreview'
 import { DockSection, Swatch, SwatchGrid, SWATCH_SMALL } from './Swatch'
@@ -159,12 +174,20 @@ interface CatalogDockProps {
   /** Arms the brush with a finish, or disarms it with null. */
   onSelectPaint: (paint: { finish: WallFinish; face: 'outside' | 'inside' } | null) => void
   onSelectPanel: (panel: { finish: WallFinish; width: number } | null) => void
+  /** Arms the balcony tool with a projection and width, or disarms it. */
+  onSelectBalcony: (balcony: { projection: number; width: number } | null) => void
   onResetPaint: () => void
   /** 3D: the house's finishes. */
   options: Building3DOptions
   onOptionsChange: (options: Building3DOptions) => void
   /** Summary tab. */
   area: number | null
+  /**
+   * Balcony area over the whole house, shown SEPARATELY and never added in —
+   * a balcony is outside the enclosed envelope, so it is neither counted as
+   * living area nor priced as one.
+   */
+  balconyArea: number | null
   floorAreas: (number | null)[]
   activeFloor: number
   roomCount: number
@@ -261,10 +284,12 @@ export function CatalogDock({
   onSelectFixture,
   onSelectPaint,
   onSelectPanel,
+  onSelectBalcony,
   onResetPaint,
   options,
   onOptionsChange,
   area,
+  balconyArea,
   floorAreas,
   activeFloor,
   roomCount,
@@ -280,6 +305,7 @@ export function CatalogDock({
   const [paintFace, setPaintFace] = useState<'outside' | 'inside'>('outside')
   const [paintMaterial, setPaintMaterial] = useState<WallMaterial>('wood')
   const [panelWidth, setPanelWidth] = useState<number>(1)
+  const [balconyWidth, setBalconyWidth] = useState<number>(DEFAULT_BALCONY_WIDTH)
   const [open, setOpenState] = useState<boolean>(() => remembered(OPEN_KEY, true))
   /** Expanded: a full-height column down the side instead of a corner box. */
   const [big, setBigState] = useState<boolean>(() => remembered(BIG_KEY, false))
@@ -305,6 +331,7 @@ export function CatalogDock({
   const activeOpening = tool.type === 'opening'
   const activeFixture = tool.type === 'fixture' ? tool.kind : null
   const activeWallTypeId = tool.type === 'draw' ? tool.wallTypeId : null
+  const activeBalcony = tool.type === 'balcony' ? tool.projection : null
 
   return (
     <Paper
@@ -475,6 +502,61 @@ export function CatalogDock({
                   ))}
                 </SwatchGrid>
               </DockSection>
+            )}
+
+            {/* Pulling the floor out is a thing you do TO a wall, so it lives
+                with the walls rather than in a tab of its own. */}
+            {active === 'walls' && (
+              <>
+                <DockSection
+                  label={t('balcony.title')}
+                  hint={
+                    activeBalcony !== null ? t('balcony.placeHint') : t('balcony.hint')
+                  }
+                >
+                  <SwatchGrid>
+                    {BALCONY_PROJECTIONS.map((projection) => {
+                      const selected = activeBalcony === projection
+                      return (
+                        <Swatch
+                          key={projection}
+                          label={t('balcony.depth', { m: projection })}
+                          caption={t('balcony.depth', { m: projection })}
+                          selected={selected}
+                          onClick={() =>
+                            onSelectBalcony(
+                              selected ? null : { projection, width: balconyWidth },
+                            )
+                          }
+                        >
+                          <Box sx={{ transform: 'scale(1.4)' }}>
+                            <BalconyPreview projection={projection} />
+                          </Box>
+                        </Swatch>
+                      )
+                    })}
+                  </SwatchGrid>
+                </DockSection>
+                <PillRow
+                  label={t('balcony.width')}
+                  value={balconyWidth}
+                  values={[1.5, 2.4, 3.6] as const}
+                  render={(item) => `${item} m`}
+                  onChange={(width) => {
+                    setBalconyWidth(width)
+                    // Re-arm, so a width picked while the tool is live takes
+                    // effect on the next click instead of the one after it.
+                    if (activeBalcony !== null) {
+                      onSelectBalcony({ projection: activeBalcony, width })
+                    }
+                  }}
+                />
+                {activeBalcony !== null && (
+                  <Typography variant="caption" color="text.secondary">
+                    {t('balcony.removeHint')}
+                  </Typography>
+                )}
+              </>
             )}
 
             {active === 'openings' && (
@@ -776,6 +858,69 @@ export function CatalogDock({
                     />
                   ))}
                 </Stack>
+
+                {/* The fence's own controls, only once it is switched on —
+                    three dead rows under an off switch is clutter. */}
+                {options.fence && (
+                  <>
+                    <DockSection label={t('fence.style')}>
+                      <SwatchGrid>
+                        {RAIL_STYLES.filter((one) => one.id !== 'none').map((one) => (
+                          <Swatch
+                            key={one.id}
+                            label={t(one.labelKey)}
+                            caption={t(one.labelKey)}
+                            selected={options.fenceStyle === one.id}
+                            onClick={() => set({ fenceStyle: one.id })}
+                          >
+                            <Box sx={{ transform: 'scale(1.3)' }}>
+                              <RailPreview style={one.id} />
+                            </Box>
+                          </Swatch>
+                        ))}
+                      </SwatchGrid>
+                    </DockSection>
+                    <PillRow
+                      label={t('fence.sides')}
+                      value={options.fenceSides}
+                      values={FENCE_SIDE_OPTIONS.map((one) => one.id) as FenceSides[]}
+                      render={(item) =>
+                        t(
+                          FENCE_SIDE_OPTIONS.find((one) => one.id === item)?.labelKey ??
+                            'fence.sidesFar',
+                        )
+                      }
+                      onChange={(fenceSides) => set({ fenceSides })}
+                    />
+                    <PillRow
+                      label={t('fence.height')}
+                      value={options.fenceHeight}
+                      values={Object.keys(FENCE_HEIGHTS) as FenceHeight[]}
+                      render={(item) => `${FENCE_HEIGHTS[item]} m`}
+                      onChange={(fenceHeight) => set({ fenceHeight })}
+                    />
+                  </>
+                )}
+
+                {/* The balcony railing. `none` is offered but is not the
+                    default: a balcony with nothing round it is a fall. */}
+                <DockSection label={t('railing.title')} hint={t('railing.hint')}>
+                  <SwatchGrid>
+                    {RAIL_STYLES.map((one) => (
+                      <Swatch
+                        key={one.id}
+                        label={t(one.labelKey)}
+                        caption={t(one.labelKey)}
+                        selected={options.railing === one.id}
+                        onClick={() => set({ railing: one.id })}
+                      >
+                        <Box sx={{ transform: 'scale(1.3)' }}>
+                          <RailPreview style={one.id as RailStyle} />
+                        </Box>
+                      </Swatch>
+                    ))}
+                  </SwatchGrid>
+                </DockSection>
               </>
             )}
 
@@ -915,6 +1060,7 @@ export function CatalogDock({
               <>
                 <AreaSummary
                   bare
+                  balconyArea={balconyArea}
                   area={area}
                   floorAreas={floorAreas}
                   activeFloor={activeFloor}

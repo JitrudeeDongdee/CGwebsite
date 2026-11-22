@@ -15,6 +15,7 @@ import { FloorSwitcher } from '../ui/FloorSwitcher'
 import { wallTypeById } from '../drawing/wallTypes'
 import { findOpeningAt, placeOpenings } from '../drawing/openings'
 import { findFixtureAt } from '../drawing/fixtures'
+import { findBalconyAt } from '../drawing/balconies'
 import { pointInPolygon } from '../drawing/rooms'
 import { RoomNameDialog } from '../ui/RoomNameDialog'
 import { PlanNameDialog } from '../ui/PlanNameDialog'
@@ -103,6 +104,12 @@ export function DesignerPage() {
     paintWall,
     toggleWallPanel,
     resetWallFinishes,
+    balconies,
+    totalBalconyArea,
+    placeBalcony,
+    removeBalcony,
+    dragBalconyBy,
+    finalizeBalconyMove,
     undo,
     redo,
     canUndo,
@@ -134,6 +141,12 @@ export function DesignerPage() {
   /** What Delete would remove. Cleared by Escape, a click on empty ground,
       or the piece itself going away. */
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null)
+  /**
+   * The same, for a balcony. Its own state rather than one tagged selection,
+   * because the two are picked by different hit tests and only ever one is
+   * set — a click returns both and at most one is non-null.
+   */
+  const [selectedBalconyId, setSelectedBalconyId] = useState<string | null>(null)
   const [view, setView] = useState<'plan' | 'three'>('plan')
   /**
    * 3D only: the top storey to build, or null for the whole house. Separate
@@ -163,6 +176,12 @@ export function DesignerPage() {
     curtains: true,
     wallLights: true,
     fence: false,
+    fenceSides: 'far',
+    fenceHeight: 'medium',
+    fenceStyle: 'slat',
+    // A balcony is railed unless someone says otherwise: it is a safety
+    // requirement, and a slab with nothing round it reads as unfinished.
+    railing: 'bar',
   })
   const cancelDrawingRef = useRef<(() => void) | null>(null)
   /** Filled in by PlanEditor, so the toolbar's zoom buttons can drive it. */
@@ -241,7 +260,10 @@ export function DesignerPage() {
       const fixture = findFixtureAt(state.fixtures, point)
       const opening = fixture ? null : findOpeningAt(placeOpenings(state, exteriorWallIds), point)
       const node = fixture || opening ? null : findNodeAt(state, point)
-      const wall = fixture || opening || node ? null : findWallAt(state, point)
+      // A balcony lies outside the walls, so it competes with nothing here —
+      // but furniture put out on it is on top of it, so it comes after.
+      const balcony = fixture || opening || node ? null : findBalconyAt(balconies, point)
+      const wall = fixture || opening || node || balcony ? null : findWallAt(state, point)
       const room = rooms.find((item) => pointInPolygon(point, item.polygon))
       const existingLabel = room
         ? state.roomLabels.find((item) => pointInPolygon(item, room.polygon))
@@ -254,12 +276,13 @@ export function DesignerPage() {
         wallId: wall?.id ?? null,
         openingId: opening?.id ?? null,
         fixtureId: fixture?.id ?? null,
+        balconyId: balcony?.id ?? null,
         roomLabelId: existingLabel?.id ?? null,
         roomLabelName: existingLabel ? existingLabel.name : '',
         insideRoom: room !== undefined,
       })
     },
-    [state, exteriorWallIds, rooms],
+    [state, exteriorWallIds, rooms, balconies],
   )
 
   useEffect(() => {
@@ -272,6 +295,7 @@ export function DesignerPage() {
         // Drop back to plain drawing rather than leaving a tool armed.
         setTool((current) => (current.type === 'opening' ? DRAW_TOOL : current))
         setSelectedFixtureId(null)
+        setSelectedBalconyId(null)
         cancelDrawingRef.current?.()
         return
       }
@@ -280,6 +304,12 @@ export function DesignerPage() {
       // everyone reaches for that one; neither fires while a field has
       // focus, which the guard above already covers.
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedBalconyId) {
+          e.preventDefault()
+          removeBalcony(selectedBalconyId)
+          setSelectedBalconyId(null)
+          return
+        }
         if (!selectedFixtureId) return
         e.preventDefault()
         removeFixture(selectedFixtureId)
@@ -297,7 +327,7 @@ export function DesignerPage() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [undo, redo, removeFixture, selectedFixtureId])
+  }, [undo, redo, removeFixture, selectedFixtureId, removeBalcony, selectedBalconyId])
 
   const handleSubmit = async (contact: LeadContact) => {
     await leadRepository.create({
@@ -556,7 +586,16 @@ export function DesignerPage() {
         cancelRef={cancelDrawingRef}
         zoomRef={zoomRef}
         selectedFixtureId={selectedFixtureId}
-        onPick={setSelectedFixtureId}
+        selectedBalconyId={selectedBalconyId}
+        defaultRailing={building3d.railing}
+        onPick={(pick) => {
+          setSelectedFixtureId(pick.fixtureId)
+          setSelectedBalconyId(pick.balconyId)
+        }}
+        placeBalcony={placeBalcony}
+        removeBalcony={removeBalcony}
+        dragBalconyBy={dragBalconyBy}
+        finalizeBalconyMove={finalizeBalconyMove}
         tool={tool}
         fitToken={fitToken}
         placeOpening={placeOpening}
@@ -612,6 +651,9 @@ export function DesignerPage() {
         onSelectFixture={(kind) => setTool(kind ? { type: 'fixture', kind } : SELECT_TOOL)}
         onSelectPaint={(paint) => setTool(paint ? { type: 'paint', ...paint } : SELECT_TOOL)}
         onSelectPanel={(panel) => setTool(panel ? { type: 'panel', ...panel } : SELECT_TOOL)}
+        onSelectBalcony={(balcony) =>
+          setTool(balcony ? { type: 'balcony', ...balcony } : SELECT_TOOL)
+        }
         onResetPaint={() => {
           resetWallFinishes()
           setTool(SELECT_TOOL)
@@ -619,6 +661,7 @@ export function DesignerPage() {
         options={building3d}
         onOptionsChange={setBuilding3d}
         area={roomArea}
+        balconyArea={totalBalconyArea}
         floorAreas={floorAreas}
         activeFloor={activeFloor}
         roomCount={rooms.length}
@@ -641,6 +684,10 @@ export function DesignerPage() {
         onDeleteFixture={(id) => {
           removeFixture(id)
           setSelectedFixtureId((current) => (current === id ? null : current))
+        }}
+        onDeleteBalcony={(id) => {
+          removeBalcony(id)
+          setSelectedBalconyId((current) => (current === id ? null : current))
         }}
         onRotateFixture={turnFixture}
         onRenameRoom={() => setRenaming(true)}

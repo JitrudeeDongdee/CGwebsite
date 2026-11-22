@@ -448,3 +448,43 @@ and its children's before reading the code — the numbers separate "not rendere
 "rendered somewhere you are not looking" in one call, and a screenshot cannot. Same lesson
 as the furniture and the sky entries above: three times now the thing was drawn correctly
 and the view was the problem.
+
+## `Array.from(n, fn)` passes no array, so a third callback parameter is undefined
+
+**What happened**: the railing renderer filled a run with bars and slats using
+`Array.from({ length: n }, (_, i, all) => ... all.length ...)`, copying a habit from
+`Array.prototype.map`. It would have thrown `Cannot read properties of undefined`
+on the first render of any railing or fence — caught in review before it ran, so
+no browser ever saw it.
+
+**Root cause**: `Array.prototype.map`'s callback takes `(element, index, array)`,
+but `Array.from(arrayLike, mapFn)`'s takes **only `(element, index)`**. The two
+read identically at a glance and TypeScript does not object, because the extra
+parameter simply widens to `any` against a two-parameter signature.
+
+**Correct behavior**: inside an `Array.from` map callback, never reach for a third
+parameter — compute the count into a `const` above the call and read that. The same
+goes for any API whose callback arity you have not actually checked: `forEach`,
+`map` and `filter` pass the array, `Array.from` and `flatMap`'s own callback differ.
+
+## A balcony is NOT a fixture, even though a floor void is
+
+**What happened**: the obvious way to add balconies was a new `FixtureKind`, since
+`floorVoid` — arguably its inverse — is one, and the spec argues at length that
+being a fixture gave the void placement, dragging, rotation, delete, selection,
+undo and the file format for free. Following that precedent would have produced a
+balcony that silently detaches from its house.
+
+**Root cause**: the precedent was read as "a non-furniture rectangle is a fixture",
+when what it actually says is "a thing with nothing anchoring it is a fixture". A
+void floats inside a room and nothing it relates to can move out from under it. A
+balcony is defined by the wall it hangs off: walls here can be slid sideways and
+their corners dragged, and a free rectangle would be left behind by both, with
+nothing in the code noticing — a slab in mid air on an upper storey.
+
+**Correct behavior**: before copying a precedent, state the ONE property that made
+it right and check the new case has it, rather than matching on shape. Here the
+question is "can anything this depends on move without it?" — if yes it is bound
+(by `wallId` + offset, like `DrawOpening` and `DrawWallPanel`), if no it is a
+fixture. The binding also pays twice over: it is where "which way is out" comes
+from, and where the railing's edges come from.

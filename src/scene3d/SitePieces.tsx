@@ -1,7 +1,13 @@
 import * as THREE from 'three'
 import { useMemo } from 'react'
-import type { Bounds, OpeningUnit } from '../drawing/building3d'
+import type { Bounds, OpeningUnit, RailRun } from '../drawing/building3d'
 import { TRIM_SURFACE } from '../drawing/materials'
+import {
+  FENCE_HEIGHTS,
+  railStyle,
+  type FenceHeight,
+  type FenceSides,
+} from '../drawing/railing'
 import { useSolid } from './Surfaces'
 
 /**
@@ -165,74 +171,196 @@ export function WallLights({ units, raise }: { units: OpeningUnit[]; raise: numb
 }
 
 /**
- * The dark slatted fence that closes the plot in the render.
+ * The fence round the plot.
  *
- * Set well back from the house so it frames the view rather than crowding
- * it, and left OPEN on the camera's corner — a fence across the elevation
- * the customer came to look at is a wall in front of the house.
+ * Built from the same `RailRunMesh` as a balcony railing, because it is the
+ * same object: posts, a top rail and infill. What is controllable is how much
+ * of the plot it closes, how tall it is and what it is made of.
+ *
+ * ⚠️ `far` stays the DEFAULT and the reason is not aesthetic drift: the camera
+ * starts off the +x/+z corner, so closing all four sides puts a fence across
+ * the elevation the customer came to look at. `all` is offered because a
+ * walled plot is what some customers have, and they can turn the camera.
  */
-export function Fence({ bounds, span }: { bounds: Bounds | null; span: number }) {
-  const post = useSolid({ color: '#2A2C2E', roughness: 0.7, metalness: 0.1 })
-  const slat = useSolid({ color: '#34373A', roughness: 0.75, metalness: 0.05 })
-
-  const runs = useMemo(() => {
-    if (!bounds) return []
+export function Fence({
+  bounds,
+  span,
+  sides = 'far',
+  height = 'medium',
+  style = 'slat',
+}: {
+  bounds: Bounds | null
+  span: number
+  sides?: FenceSides
+  height?: FenceHeight
+  style?: string
+}) {
+  const runs = useMemo<RailRun[]>(() => {
+    if (!bounds || style === 'none') return []
     const back = Math.max(4, span * 0.75)
     const x0 = bounds.minX - back
     const x1 = bounds.maxX + back
     const z0 = bounds.minZ - back
     const z1 = bounds.maxZ + back
-    // Only the two far sides: the camera starts off the +x/+z corner.
-    return [
-      { from: [x0, z0], to: [x1, z0] },
-      { from: [x0, z0], to: [x0, z1] },
-    ] as { from: [number, number]; to: [number, number] }[]
-  }, [bounds, span])
+    const H = FENCE_HEIGHTS[height] ?? FENCE_HEIGHTS.medium
+
+    // The two FAR sides first, so `far` and `three` are prefixes of `all`
+    // rather than three separate lists that could disagree.
+    const lines: [number, number, number, number][] = [
+      [x0, z0, x1, z0],
+      [x0, z0, x0, z1],
+    ]
+    if (sides === 'three' || sides === 'all') lines.push([x0, z1, x1, z1])
+    if (sides === 'all') lines.push([x1, z0, x1, z1])
+
+    return lines.map(([ax, az, bx, bz], i) => ({
+      id: `fence-${i}`,
+      from: { x: ax, z: az },
+      to: { x: bx, z: bz },
+      y: 0,
+      height: H,
+      style,
+    }))
+  }, [bounds, span, sides, height, style])
+
+  return <Railings runs={runs} />
+}
+
+/**
+ * One straight run of railing or fence.
+ *
+ * ONE renderer for both, which is the whole reason `RailStyle` is a single
+ * vocabulary: a balcony rail is a fence at waist height standing on a slab
+ * instead of on the ground. Posts and a top rail always; what fills the gap
+ * between them is the style.
+ */
+function RailRunMesh({
+  run,
+  post,
+  rail,
+  infill,
+  glass,
+}: {
+  run: RailRun
+  post: THREE.Material
+  rail: THREE.Material
+  infill: THREE.Material
+  glass: THREE.Material
+}) {
+  const dx = run.to.x - run.from.x
+  const dz = run.to.z - run.from.z
+  const length = Math.hypot(dx, dz)
+  if (length < 0.05) return null
+
+  const angle = Math.atan2(dz, dx)
+  const midX = run.from.x + dx / 2
+  const midZ = run.from.z + dz / 2
+  const style = railStyle(run.style, 'bar')
+  const H = run.height
+  const POST = 0.07
+
+  // A post every ~1.8 m, and one at each end whatever the length — a run
+  // whose ends float is the thing that makes a railing look unbuilt.
+  const posts = Math.max(2, Math.round(length / 1.8) + 1)
+  // ⚠️ Counted up front, NOT from a third `Array.from` callback argument:
+  // `Array.from(arrayLike, fn)` passes fn only (element, index), so an `all`
+  // parameter is undefined and reading `all.length` throws at render.
+  const bars = style.bars ? Math.max(2, Math.floor(length / style.bars)) : 0
+  const slats = style.slats ? Math.max(2, Math.floor((H - 0.1) / style.slats)) : 0
+
+  return (
+    <group position={[midX, run.y, midZ]} rotation={[0, -angle, 0]}>
+      {Array.from({ length: posts }, (_, i) => {
+        const along = -length / 2 + (length * i) / (posts - 1)
+        return (
+          <mesh key={i} position={[along, H / 2, 0]} material={post} castShadow>
+            <boxGeometry args={[POST, H, POST]} />
+          </mesh>
+        )
+      })}
+
+      {/* The top rail — the hand goes on this, so it is on every style. */}
+      <mesh position={[0, H, 0]} material={rail} castShadow>
+        <boxGeometry args={[length, 0.06, 0.1]} />
+      </mesh>
+
+      {bars > 0 && (
+        <>
+          {Array.from({ length: bars }, (_, i) => {
+            const along = -length / 2 + (length * (i + 0.5)) / bars
+            return (
+              <mesh key={i} position={[along, H / 2, 0]} material={infill} castShadow={false}>
+                <boxGeometry args={[0.022, H - 0.06, 0.022]} />
+              </mesh>
+            )
+          })}
+        </>
+      )}
+
+      {slats > 0 && (
+        <>
+          {Array.from({ length: slats }, (_, i) => {
+            const y = 0.14 + ((H - 0.28) * i) / Math.max(1, slats - 1)
+            return (
+              <mesh key={i} position={[0, y, 0]} material={infill} castShadow>
+                <boxGeometry args={[length, 0.14, 0.03]} />
+              </mesh>
+            )
+          })}
+        </>
+      )}
+
+      {style.glazed && (
+        <mesh position={[0, H / 2, 0]} material={glass} castShadow={false}>
+          <boxGeometry args={[length - POST, H - 0.12, 0.014]} />
+        </mesh>
+      )}
+
+      {style.solid && (
+        <mesh position={[0, (H - 0.06) / 2, 0]} material={infill} castShadow receiveShadow>
+          <boxGeometry args={[length, H - 0.06, 0.12]} />
+        </mesh>
+      )}
+    </group>
+  )
+}
+
+/**
+ * The railing round every balcony.
+ *
+ * The runs are DERIVED from each balcony's own edges by `balconyPieces`, not
+ * placed: a balcony without a rail is a fall, so there must be no way to end
+ * up with a slab and nothing round it by missing a step. Same reasoning as the
+ * entry steps, which are built from the doors.
+ */
+export function Railings({ runs }: { runs: RailRun[] }) {
+  const post = useSolid({ color: '#2E3134', roughness: 0.6, metalness: 0.25 })
+  const rail = useSolid({ color: '#3A3D41', roughness: 0.55, metalness: 0.3 })
+  const infill = useSolid({ color: '#43464A', roughness: 0.7, metalness: 0.15 })
+  // `transparent` is not part of `Surface`, so it belongs in the extras —
+  // and without it the opacity is simply ignored and the glass is a slab.
+  const glass = useSolid(
+    { color: '#CFE3EC', roughness: 0.08, metalness: 0 },
+    // `Surface` is colour/roughness/metalness only, so transparency belongs
+    // in the extras — and without `transparent` the opacity is ignored and
+    // the panel renders as a solid slab.
+    { transparent: true, opacity: 0.4, envMapIntensity: 1.6 },
+  )
 
   if (runs.length === 0) return null
 
-  const H = 1.6
-
   return (
     <>
-      {runs.map((run, r) => {
-        const dx = run.to[0] - run.from[0]
-        const dz = run.to[1] - run.from[1]
-        const length = Math.hypot(dx, dz)
-        const angle = Math.atan2(dz, dx)
-        const posts = Math.max(2, Math.round(length / 2.4) + 1)
-        return (
-          <group key={r}>
-            {Array.from({ length: posts }, (_, i) => {
-              const t = i / (posts - 1)
-              return (
-                <mesh
-                  key={i}
-                  position={[run.from[0] + dx * t, H / 2, run.from[1] + dz * t]}
-                  rotation={[0, -angle, 0]}
-                  material={post}
-                  castShadow
-                >
-                  <boxGeometry args={[0.1, H, 0.1]} />
-                </mesh>
-              )
-            })}
-            {/* Horizontal slats with gaps, which is what makes it a fence
-                rather than a hoarding. */}
-            {[0.25, 0.55, 0.85, 1.15, 1.45].map((y) => (
-              <mesh
-                key={y}
-                position={[run.from[0] + dx / 2, y, run.from[1] + dz / 2]}
-                rotation={[0, -angle, 0]}
-                material={slat}
-                castShadow
-              >
-                <boxGeometry args={[length, 0.16, 0.03]} />
-              </mesh>
-            ))}
-          </group>
-        )
-      })}
+      {runs.map((run) => (
+        <RailRunMesh
+          key={run.id}
+          run={run}
+          post={post}
+          rail={rail}
+          infill={infill}
+          glass={glass}
+        />
+      ))}
     </>
   )
 }
